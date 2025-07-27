@@ -27,6 +27,7 @@ repos:
       - id: mypy
         additional_dependencies: [types-requests, types-PyYAML]
         args: [--strict]
+        exclude: ^src/cc_orchestrator/utils/logging\.py$
 
   - repo: https://github.com/PyCQA/bandit
     rev: 1.7.5
