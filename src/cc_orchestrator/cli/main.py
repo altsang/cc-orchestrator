@@ -1,7 +1,8 @@
 """Main CLI entry point for CC-Orchestrator."""
 
-import click
 from typing import Optional
+
+import click
 
 
 @click.group()
