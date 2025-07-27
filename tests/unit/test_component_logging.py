@@ -13,8 +13,6 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from cc_orchestrator.utils.logging import CCOrchestratorException
-
 from cc_orchestrator.core.logging_utils import (
     handle_instance_errors,
     handle_task_errors,
@@ -42,6 +40,7 @@ from cc_orchestrator.tmux.logging_utils import (
     log_session_list,
     log_session_operation,
 )
+from cc_orchestrator.utils.logging import CCOrchestratorException
 from cc_orchestrator.web.logging_utils import (
     handle_api_errors,
     log_api_request,
@@ -529,7 +528,9 @@ class TestComponentDecoratorFunctionality:
         def api_function():
             raise ValueError("API error")
 
-        with pytest.raises(CCOrchestratorException):  # Should convert to CCOrchestratorException
+        with pytest.raises(
+            CCOrchestratorException
+        ):  # Should convert to CCOrchestratorException
             api_function()
 
     def test_track_api_performance_decorator(self):
