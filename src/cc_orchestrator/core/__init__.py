@@ -1,6 +1,6 @@
 """Core orchestration functionality."""
 
-from .orchestrator import Orchestrator
 from .instance import ClaudeInstance
+from .orchestrator import Orchestrator
 
 __all__ = ["Orchestrator", "ClaudeInstance"]
