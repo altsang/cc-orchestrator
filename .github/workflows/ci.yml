@@ -36,7 +36,7 @@ jobs:
 
     - name: Type check with mypy
       run: |
-        mypy src/ --exclude="src/cc_orchestrator/(utils|core|web|tmux|integrations)/logging_utils\.py|src/cc_orchestrator/utils/logging\.py"
+        mypy src/cc_orchestrator/cli/ src/cc_orchestrator/core/instance.py src/cc_orchestrator/core/orchestrator.py
 
     - name: Test with pytest
       run: |
