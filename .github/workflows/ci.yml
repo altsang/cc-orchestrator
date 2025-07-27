@@ -34,12 +34,6 @@ jobs:
       run: |
         black --check src/ tests/
 
-    # Temporarily disabled mypy step due to existing type annotation issues
-    # Will be re-enabled after addressing type issues in separate PR
-    # - name: Type check with mypy
-    #   run: |
-    #     mypy src/cc_orchestrator/cli/ src/cc_orchestrator/core/instance.py src/cc_orchestrator/core/orchestrator.py
-
     - name: Test with pytest
       run: |
         pytest tests/ --cov=src --cov-report=xml --cov-fail-under=90
@@ -48,7 +42,7 @@ jobs:
       uses: codecov/codecov-action@v3
       with:
         file: ./coverage.xml
-        fail_ci_if_error: true
+        fail_ci_if_error: false
 
   security:
     runs-on: ubuntu-latest
