@@ -1,7 +1,5 @@
 """Main CLI entry point for CC-Orchestrator."""
 
-from typing import Optional
-
 import click
 
 
@@ -10,7 +8,7 @@ import click
 @click.option("--config", "-c", help="Configuration file path")
 @click.option("--verbose", "-v", is_flag=True, help="Enable verbose output")
 @click.pass_context
-def main(ctx: click.Context, config: Optional[str], verbose: bool) -> None:
+def main(ctx: click.Context, config: str | None, verbose: bool) -> None:
     """Claude Code Orchestrator - Manage multiple Claude instances through git worktrees."""
     ctx.ensure_object(dict)
     ctx.obj["config"] = config

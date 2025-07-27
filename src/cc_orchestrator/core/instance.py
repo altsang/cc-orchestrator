@@ -3,7 +3,7 @@
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 
 class InstanceStatus(Enum):
@@ -21,9 +21,9 @@ class ClaudeInstance:
     def __init__(
         self,
         issue_id: str,
-        workspace_path: Optional[Path] = None,
-        branch_name: Optional[str] = None,
-        tmux_session: Optional[str] = None,
+        workspace_path: Path | None = None,
+        branch_name: str | None = None,
+        tmux_session: str | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialize a Claude instance.
@@ -45,7 +45,7 @@ class ClaudeInstance:
         self.status = InstanceStatus.INITIALIZING
         self.created_at = datetime.now()
         self.last_activity = self.created_at
-        self.process_id: Optional[int] = None
+        self.process_id: int | None = None
         self.metadata: dict[str, Any] = kwargs
 
     async def initialize(self) -> None:
