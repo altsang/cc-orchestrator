@@ -1,0 +1,71 @@
+name: 📋 Epic
+description: Major project phase or milestone
+title: "[EPIC] "
+labels: ["epic"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Epic Template
+        Use this template for major project phases or milestones that contain multiple features.
+
+  - type: input
+    id: phase
+    attributes:
+      label: Phase
+      description: Which implementation phase does this epic represent?
+      placeholder: "Phase 1: Core Infrastructure"
+    validations:
+      required: true
+
+  - type: textarea
+    id: overview
+    attributes:
+      label: Phase Overview
+      description: Brief description of what this phase accomplishes
+      placeholder: "This phase builds the foundational infrastructure..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: success_criteria
+    attributes:
+      label: Success Criteria
+      description: What defines completion of this epic?
+      placeholder: |
+        - [ ] Criterion 1
+        - [ ] Criterion 2
+        - [ ] Criterion 3
+    validations:
+      required: true
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies
+      description: What must be completed before this epic can start?
+      placeholder: |
+        - Depends on: #issue-number
+        - Blocks: #issue-number
+
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Acceptance Criteria
+      description: Detailed acceptance criteria for epic completion
+      placeholder: |
+        - [ ] All sub-issues completed and closed
+        - [ ] Tests passing for all features
+        - [ ] Documentation updated
+        - [ ] Code review completed
+
+  - type: textarea
+    id: sub_issues
+    attributes:
+      label: Sub-Issues
+      description: List of related feature/task issues (will be updated as issues are created)
+      placeholder: |
+        - [ ] #issue-1
+        - [ ] #issue-2
+        - [ ] #issue-3

@@ -1,0 +1,122 @@
+name: 🏗️ Feature
+description: New feature or component implementation
+title: "[FEATURE] "
+labels: ["feature"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Feature Template
+        Use this template for implementing new features or components.
+
+  - type: dropdown
+    id: phase
+    attributes:
+      label: Phase
+      description: Which implementation phase does this feature belong to?
+      options:
+        - "Phase 1: Core Infrastructure"
+        - "Phase 2: Git & Process Management"
+        - "Phase 3: Web Interface"
+        - "Phase 4: External Integrations"
+        - "Phase 5: Advanced Features"
+        - "Phase 6: Documentation & Release"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which component area does this feature affect?
+      options:
+        - CLI
+        - Database
+        - Configuration
+        - Git/Worktrees
+        - Process Management
+        - Tmux Integration
+        - Web Backend
+        - Web Frontend
+        - GitHub Integration
+        - Jira Integration
+        - Notifications
+        - Documentation
+        - Testing
+        - DevOps
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: What is the priority of this feature?
+      options:
+        - High
+        - Medium
+        - Low
+    validations:
+      required: true
+
+  - type: dropdown
+    id: effort
+    attributes:
+      label: Effort Estimate
+      description: Estimated effort to complete this feature
+      options:
+        - "S (< 4 hours)"
+        - "M (4-8 hours)"
+        - "L (1-2 days)"
+        - "XL (2+ days)"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What needs to be implemented?
+      placeholder: "Clear description of the feature requirements..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: technical_requirements
+    attributes:
+      label: Technical Requirements
+      description: Technical specifications and constraints
+      placeholder: |
+        - Requirement 1
+        - Requirement 2
+        - Requirement 3
+
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Acceptance Criteria
+      description: How will we know this feature is complete?
+      placeholder: |
+        - [ ] Criteria 1
+        - [ ] Criteria 2
+        - [ ] Criteria 3
+    validations:
+      required: true
+
+  - type: textarea
+    id: implementation_notes
+    attributes:
+      label: Implementation Notes
+      description: Technical approach, considerations, or constraints
+      placeholder: "Technical approach and implementation details..."
+
+  - type: textarea
+    id: related_issues
+    attributes:
+      label: Related Issues
+      description: Link to related issues, epics, or dependencies
+      placeholder: |
+        - Part of epic: #issue-number
+        - Depends on: #issue-number
+        - Blocks: #issue-number
