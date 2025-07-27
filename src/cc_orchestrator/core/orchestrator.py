@@ -1,6 +1,6 @@
 """Main orchestrator class for managing Claude instances."""
 
-from typing import Any, Optional
+from typing import Any
 
 from .instance import ClaudeInstance
 
@@ -8,7 +8,7 @@ from .instance import ClaudeInstance
 class Orchestrator:
     """Main orchestrator for managing multiple Claude Code instances."""
 
-    def __init__(self, config_path: Optional[str] = None) -> None:
+    def __init__(self, config_path: str | None = None) -> None:
         """Initialize the orchestrator.
 
         Args:
@@ -25,7 +25,7 @@ class Orchestrator:
         # TODO: Set up logging
         self._initialized = True
 
-    def get_instance(self, issue_id: str) -> Optional[ClaudeInstance]:
+    def get_instance(self, issue_id: str) -> ClaudeInstance | None:
         """Get a Claude instance by issue ID.
 
         Args:
