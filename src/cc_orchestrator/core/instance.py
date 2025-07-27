@@ -24,7 +24,7 @@ class ClaudeInstance:
         workspace_path: Optional[Path] = None,
         branch_name: Optional[str] = None,
         tmux_session: Optional[str] = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         """Initialize a Claude instance.
 
