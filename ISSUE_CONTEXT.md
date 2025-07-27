@@ -1,5 +1,5 @@
-# Issue #11: Basic logging and error handling setup  
-See: https://github.com/altsang/cc-orchestrator/issues/11
+# Issue #12: Unit test framework setup
+See: https://github.com/altsang/cc-orchestrator/issues/12
 
-Focus: Set up comprehensive logging system and error handling framework 
-for the orchestrator.
+Focus: Configure comprehensive testing framework with pytest, coverage 
+reporting, and test utilities.
