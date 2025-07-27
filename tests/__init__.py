@@ -1,1 +1,1 @@
-"""Test suite for CC-Orchestrator."""
+# Test package

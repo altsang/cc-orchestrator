@@ -1,5 +1,5 @@
-# Issue #7: Project setup with pyproject.toml and dependencies
-See: https://github.com/altsang/cc-orchestrator/issues/7
+# Issue #11: Basic logging and error handling setup  
+See: https://github.com/altsang/cc-orchestrator/issues/11
 
-Focus: Set up Python project structure with modern tooling including pyproject.toml, 
-dependency management, and development tools.
+Focus: Set up comprehensive logging system and error handling framework 
+for the orchestrator.
