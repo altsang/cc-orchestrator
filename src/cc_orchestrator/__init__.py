@@ -4,7 +4,7 @@ __version__ = "0.1.0"
 __author__ = "CC-Orchestrator Team"
 __email__ = "team@cc-orchestrator.dev"
 
-from .core.orchestrator import Orchestrator
 from .core.instance import ClaudeInstance
+from .core.orchestrator import Orchestrator
 
 __all__ = ["Orchestrator", "ClaudeInstance", "__version__"]
