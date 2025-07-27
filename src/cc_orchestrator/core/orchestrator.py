@@ -1,6 +1,6 @@
 """Main orchestrator class for managing Claude instances."""
 
-from typing import Optional
+from typing import Any, Optional
 
 from .instance import ClaudeInstance
 
@@ -44,7 +44,7 @@ class Orchestrator:
         """
         return list(self.instances.values())
 
-    async def create_instance(self, issue_id: str, **kwargs) -> ClaudeInstance:
+    async def create_instance(self, issue_id: str, **kwargs: Any) -> ClaudeInstance:
         """Create a new Claude instance for an issue.
 
         Args:
