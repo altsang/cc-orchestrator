@@ -169,3 +169,50 @@ def sample_issue_data():
         "assignee": "test-user",
         "labels": ["feature", "priority-high"],
     }
+
+
+@pytest.fixture
+def sample_log_record():
+    """Provide a sample log record for testing."""
+    record = logging.LogRecord(
+        name="test_logger",
+        level=logging.INFO,
+        pathname="/test/path.py",
+        lineno=42,
+        msg="Test message",
+        args=(),
+        exc_info=None,
+        func="test_function"
+    )
+    record.context = "test_context"
+    record.instance_id = "test-instance-001"
+    record.task_id = "TEST-123"
+    return record
+
+
+@pytest.fixture(autouse=True)
+def reset_logging():
+    """Reset logging configuration before each test."""
+    # Store original state
+    root_logger = logging.getLogger()
+    original_handlers = root_logger.handlers[:]
+    original_level = root_logger.level
+    
+    # Clear all existing handlers
+    for handler in root_logger.handlers[:]:
+        root_logger.removeHandler(handler)
+    
+    # Reset to a clean state
+    root_logger.setLevel(logging.NOTSET)
+    
+    yield
+    
+    # Cleanup after test - remove any handlers added during test
+    for handler in root_logger.handlers[:]:
+        handler.close()
+        root_logger.removeHandler(handler)
+    
+    # Restore original state
+    root_logger.setLevel(original_level)
+    for handler in original_handlers:
+        root_logger.addHandler(handler)
