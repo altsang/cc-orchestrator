@@ -103,10 +103,14 @@ def get_table_counts(engine: Engine) -> dict[str, int]:
             try:
                 # Use parameterized query to avoid SQL injection
                 # Note: Table names cannot be parameterized, but we validate against known model table names
-                if table_name not in [table.__tablename__ for table in get_model_classes()]:
+                if table_name not in [
+                    table.__tablename__ for table in get_model_classes()
+                ]:
                     counts[table_name] = "Error: Invalid table name"
                     continue
-                result = conn.execute(text(f"SELECT COUNT(*) FROM {table_name}"))  # nosec B608
+                result = conn.execute(
+                    text(f"SELECT COUNT(*) FROM {table_name}")
+                )  # nosec B608
                 counts[table_name] = result.scalar() or 0
             except Exception as e:
                 counts[table_name] = f"Error: {e}"
@@ -137,6 +141,7 @@ def create_sample_data(engine: Engine) -> None:
     with Session(engine) as session:
         # Create sample instance
         import tempfile
+
         temp_dir = tempfile.gettempdir()
         workspace_path = f"{temp_dir}/cc-orchestrator-issue-123"
 
