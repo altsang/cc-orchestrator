@@ -109,8 +109,8 @@ def get_table_counts(engine: Engine) -> dict[str, int]:
                     counts[table_name] = "Error: Invalid table name"
                     continue
                 result = conn.execute(
-                    text(f"SELECT COUNT(*) FROM {table_name}")
-                )  # nosec B608
+                    text(f"SELECT COUNT(*) FROM {table_name}")  # nosec B608
+                )
                 counts[table_name] = result.scalar() or 0
             except Exception as e:
                 counts[table_name] = f"Error: {e}"
