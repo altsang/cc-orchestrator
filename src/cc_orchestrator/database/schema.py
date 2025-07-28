@@ -1,8 +1,7 @@
 """Database schema definitions and utilities."""
 
-from typing import Dict, List
 
-from sqlalchemy import MetaData, Table
+from sqlalchemy import MetaData
 from sqlalchemy.engine import Engine
 
 from .models import Base, Configuration, Instance, Task, Worktree
@@ -13,9 +12,9 @@ def get_schema_version() -> str:
     return "1.0.0"
 
 
-def get_table_info() -> Dict[str, Dict[str, str]]:
+def get_table_info() -> dict[str, dict[str, str]]:
     """Get information about all database tables.
-    
+
     Returns:
         Dictionary with table names as keys and table info as values.
     """
@@ -48,58 +47,58 @@ def get_table_info() -> Dict[str, Dict[str, str]]:
     }
 
 
-def get_model_classes() -> List[type]:
+def get_model_classes() -> list[type]:
     """Get all SQLAlchemy model classes.
-    
+
     Returns:
         List of model classes.
     """
     return [Instance, Task, Worktree, Configuration]
 
 
-def validate_schema(engine: Engine) -> Dict[str, bool]:
+def validate_schema(engine: Engine) -> dict[str, bool]:
     """Validate that the database schema matches the expected structure.
-    
+
     Args:
         engine: Database engine to check.
-    
+
     Returns:
         Dictionary with validation results for each table.
     """
     metadata = MetaData()
     metadata.reflect(bind=engine)
-    
+
     expected_tables = {table.__tablename__ for table in get_model_classes()}
     actual_tables = set(metadata.tables.keys())
-    
+
     results = {}
-    
+
     # Check if all expected tables exist
     for table_name in expected_tables:
         results[table_name] = table_name in actual_tables
-    
+
     # Check for unexpected tables
     unexpected_tables = actual_tables - expected_tables
     if unexpected_tables:
         results["unexpected_tables"] = list(unexpected_tables)
-    
+
     return results
 
 
-def get_table_counts(engine: Engine) -> Dict[str, int]:
+def get_table_counts(engine: Engine) -> dict[str, int]:
     """Get record counts for all tables.
-    
+
     Args:
         engine: Database engine.
-    
+
     Returns:
         Dictionary with table names as keys and counts as values.
     """
     from sqlalchemy import text
-    
+
     counts = {}
     table_names = [table.__tablename__ for table in get_model_classes()]
-    
+
     with engine.connect() as conn:
         for table_name in table_names:
             try:
@@ -107,19 +106,18 @@ def get_table_counts(engine: Engine) -> Dict[str, int]:
                 counts[table_name] = result.scalar() or 0
             except Exception as e:
                 counts[table_name] = f"Error: {e}"
-    
+
     return counts
 
 
 def create_sample_data(engine: Engine) -> None:
     """Create sample data for testing and development.
-    
+
     Args:
         engine: Database engine.
     """
-    from datetime import datetime
     from sqlalchemy.orm import Session
-    
+
     from .models import (
         ConfigScope,
         Configuration,
@@ -131,7 +129,7 @@ def create_sample_data(engine: Engine) -> None:
         Worktree,
         WorktreeStatus,
     )
-    
+
     with Session(engine) as session:
         # Create sample instance
         instance = Instance(
@@ -144,7 +142,7 @@ def create_sample_data(engine: Engine) -> None:
         )
         session.add(instance)
         session.flush()  # Get the ID
-        
+
         # Create sample worktree
         worktree = Worktree(
             name="issue-123-worktree",
@@ -159,7 +157,7 @@ def create_sample_data(engine: Engine) -> None:
         )
         session.add(worktree)
         session.flush()
-        
+
         # Create sample tasks
         tasks = [
             Task(
@@ -190,10 +188,10 @@ def create_sample_data(engine: Engine) -> None:
                 estimated_duration=30,  # 30 minutes
             ),
         ]
-        
+
         for task in tasks:
             session.add(task)
-        
+
         # Create sample configurations
         configs = [
             Configuration(
@@ -216,28 +214,28 @@ def create_sample_data(engine: Engine) -> None:
                 description="Instance timeout in seconds",
             ),
         ]
-        
+
         for config in configs:
             session.add(config)
-        
+
         session.commit()
 
 
 def export_schema_sql(engine: Engine) -> str:
     """Export the database schema as SQL DDL statements.
-    
+
     Args:
         engine: Database engine.
-    
+
     Returns:
         SQL DDL statements as a string.
     """
     from sqlalchemy.schema import CreateTable
-    
+
     ddl_statements = []
-    
+
     for table in Base.metadata.sorted_tables:
         create_table = CreateTable(table)
         ddl_statements.append(str(create_table.compile(engine)).strip())
-    
+
     return ";\n\n".join(ddl_statements) + ";"

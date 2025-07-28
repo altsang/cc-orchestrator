@@ -1,9 +1,9 @@
 """Database connection and session management."""
 
 import os
+from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Generator, Optional
 
 from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
@@ -18,12 +18,12 @@ class DatabaseManager:
 
     def __init__(
         self,
-        database_url: Optional[str] = None,
+        database_url: str | None = None,
         echo: bool = False,
         pool_pre_ping: bool = True,
     ) -> None:
         """Initialize database manager.
-        
+
         Args:
             database_url: Database connection URL. If None, uses default SQLite.
             echo: Whether to echo SQL statements to stdout.
@@ -32,20 +32,20 @@ class DatabaseManager:
         self.database_url = database_url or self._get_default_database_url()
         self.echo = echo
         self.pool_pre_ping = pool_pre_ping
-        
-        self._engine: Optional[Engine] = None
-        self._session_factory: Optional[sessionmaker[Session]] = None
+
+        self._engine: Engine | None = None
+        self._session_factory: sessionmaker[Session] | None = None
 
     def _get_default_database_url(self) -> str:
         """Get default SQLite database URL."""
         # Use environment variable if set
         if db_url := os.getenv("CC_ORCHESTRATOR_DATABASE_URL"):
             return db_url
-        
+
         # Default to SQLite in user's home directory
         db_path = Path.home() / ".cc-orchestrator" / "database.db"
         db_path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         return f"sqlite:///{db_path}"
 
     @property
@@ -68,28 +68,33 @@ class DatabaseManager:
             "echo": self.echo,
             "pool_pre_ping": self.pool_pre_ping,
         }
-        
+
         # Special configuration for SQLite
         if self.database_url.startswith("sqlite"):
-            engine_kwargs.update({
-                "poolclass": StaticPool,
-                "connect_args": {
-                    "check_same_thread": False,  # Allow multi-threading
-                    "timeout": 30,  # 30 second timeout
-                },
-            })
-        
+            engine_kwargs.update(
+                {
+                    "poolclass": StaticPool,
+                    "connect_args": {
+                        "check_same_thread": False,  # Allow multi-threading
+                        "timeout": 30,  # 30 second timeout
+                    },
+                }
+            )
+
         engine = create_engine(self.database_url, **engine_kwargs)
-        
+
         # Enable foreign key constraints for SQLite
         if self.database_url.startswith("sqlite"):
+
             @event.listens_for(engine, "connect")
             def set_sqlite_pragma(dbapi_connection, connection_record) -> None:
                 cursor = dbapi_connection.cursor()
                 cursor.execute("PRAGMA foreign_keys=ON")
-                cursor.execute("PRAGMA journal_mode=WAL")  # Enable WAL mode for better concurrency
+                cursor.execute(
+                    "PRAGMA journal_mode=WAL"
+                )  # Enable WAL mode for better concurrency
                 cursor.close()
-        
+
         return engine
 
     def create_tables(self) -> None:
@@ -108,7 +113,7 @@ class DatabaseManager:
     @contextmanager
     def get_session(self) -> Generator[Session, None, None]:
         """Get a database session with automatic cleanup.
-        
+
         Yields:
             Database session that will be automatically committed/rolled back.
         """
@@ -124,10 +129,10 @@ class DatabaseManager:
 
     def create_session(self) -> Session:
         """Create a new database session.
-        
+
         Note: The caller is responsible for managing the session lifecycle.
         Consider using get_session() context manager instead.
-        
+
         Returns:
             New database session.
         """
@@ -150,45 +155,45 @@ class DatabaseManager:
 
 
 # Global database manager instance
-_db_manager: Optional[DatabaseManager] = None
+_db_manager: DatabaseManager | None = None
 
 
 def get_database_manager(
-    database_url: Optional[str] = None,
+    database_url: str | None = None,
     echo: bool = False,
     reset: bool = False,
 ) -> DatabaseManager:
     """Get the global database manager instance.
-    
+
     Args:
         database_url: Database connection URL.
         echo: Whether to echo SQL statements.
         reset: Whether to recreate the database manager.
-    
+
     Returns:
         Database manager instance.
     """
     global _db_manager
-    
+
     if _db_manager is None or reset:
         if _db_manager is not None:
             _db_manager.close()
-        
+
         _db_manager = DatabaseManager(
             database_url=database_url,
             echo=echo,
         )
-        
+
         # Create tables if they don't exist
         _db_manager.create_tables()
-    
+
     return _db_manager
 
 
 @contextmanager
 def get_db_session() -> Generator[Session, None, None]:
     """Convenience function to get a database session.
-    
+
     Yields:
         Database session.
     """
@@ -197,9 +202,9 @@ def get_db_session() -> Generator[Session, None, None]:
         yield session
 
 
-def initialize_database(database_url: Optional[str] = None, echo: bool = False) -> None:
+def initialize_database(database_url: str | None = None, echo: bool = False) -> None:
     """Initialize the database with tables.
-    
+
     Args:
         database_url: Database connection URL.
         echo: Whether to echo SQL statements.

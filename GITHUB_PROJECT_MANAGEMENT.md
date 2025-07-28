@@ -18,7 +18,7 @@ The CC-Orchestrator project uses GitHub Projects for tracking all development wo
    - **URL**: https://github.com/altsang/cc-orchestrator/issues/7
 
 2. **Issue #11: Basic logging and error handling setup**
-   - **Status**: In Progress (manually update on GitHub)  
+   - **Status**: In Progress (manually update on GitHub)
    - **Priority**: High - needed by all components
    - **Instance**: claude-issue-11
    - **Branch**: feature/logging-system
@@ -45,7 +45,7 @@ The project board has three status columns that MUST be updated at specific poin
 
 #### 🟡 START OF WORK: Move to "In Progress"
 **WHEN**: Before starting any implementation work
-**HOW**: 
+**HOW**:
 ```bash
 # Via GitHub CLI (preferred):
 gh project item-edit --id <ITEM_ID> --project-id PVT_kwHOACKAcc4A-64R --field-id PVTSSF_lAHOACKAcc4A-64RzgyLaOg --single-select-option-id 47fc9ee4
@@ -55,12 +55,39 @@ gh project item-edit --id <ITEM_ID> --project-id PVT_kwHOACKAcc4A-64R --field-id
 # 2. Find the issue and drag to "In Progress" column
 ```
 
-#### 🔄 DURING WORK: Keep as "In Progress"  
+#### 🔄 DURING WORK: Keep as "In Progress"
 **WHEN**: Throughout implementation, testing, debugging
 **STATUS**: Remains "In Progress" even when code is complete locally
 **IMPORTANT**: Do NOT move to "Done" when implementation is finished
 
-#### ✅ END OF WORK: Move to "Done"
+#### 🔗 PULL REQUEST CREATION: Follow Standard Format
+**WHEN**: When implementation is complete and ready for review
+**MANDATORY FORMAT**:
+
+**PR Title**: `Issue #<NUMBER>: <Brief description of implementation>`
+**PR Body**: Must include `Resolves: #<ISSUE_NUMBER>` for automatic linking
+
+```bash
+# Example PR creation:
+gh pr create --title "Issue #9: Implement SQLite database schema and models" --body "$(cat <<'EOF'
+## Summary
+Complete database system implementation for CC-Orchestrator.
+
+Resolves: #9
+
+<Implementation details>
+
+## Test Plan
+- [x] All acceptance criteria met
+- [x] Tests passing with adequate coverage
+- [x] Code quality checks pass
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+EOF
+)"
+```
+
+#### ✅ END OF WORK: Move to "Done" 
 **WHEN**: ONLY after Pull Request is created, reviewed, and merged
 **HOW**:
 ```bash
@@ -71,9 +98,14 @@ gh project item-edit --id <ITEM_ID> --project-id PVT_kwHOACKAcc4A-64R --field-id
 ### 🚫 Common Workflow Violations (DO NOT DO)
 
 ❌ **Never move to "Done" when code is complete locally**
-❌ **Never skip the "In Progress" status when starting work**  
+❌ **Never skip the "In Progress" status when starting work**
 ❌ **Never leave issues in "Todo" while actively working**
 ❌ **Never move to "Done" before PR is merged**
+❌ **Never use inconsistent PR title formats**:
+   - ❌ `Implement CLI framework (Issue #8)`
+   - ❌ `Fix issues - Issue #12`
+   - ✅ `Issue #8: Implement CLI framework`
+❌ **Never omit `Resolves: #<NUMBER>` in PR body**
 
 ### 📖 Project Board Field IDs (For CLI Usage)
 
@@ -81,7 +113,7 @@ gh project item-edit --id <ITEM_ID> --project-id PVT_kwHOACKAcc4A-64R --field-id
 - **Status Field ID**: `PVTSSF_lAHOACKAcc4A-64RzgyLaOg`
 - **Status Options**:
   - Todo: `f75ad846`
-  - In Progress: `47fc9ee4`  
+  - In Progress: `47fc9ee4`
   - Done: `98236657`
 
 ### 🔧 Finding Item IDs
@@ -100,7 +132,7 @@ gh project item-list 1 --owner altsang --format json | jq '.items[] | select(.co
 
 After current 3 issues complete, next parallel batch:
 - **Issue #8**: CLI framework implementation (depends on #7)
-- **Issue #9**: SQLite database schema (depends on #7) 
+- **Issue #9**: SQLite database schema (depends on #7)
 - **Issue #10**: Configuration management (depends on #8)
 
 ## Automation Future

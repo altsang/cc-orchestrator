@@ -25,7 +25,61 @@ Claude Code orchestrator managing multiple instances through git worktrees with 
 3. Update progress in DEVELOPMENT_LOG.md
 4. Reference ARCHITECTURE.md for technical decisions
 5. Follow PROJECT_PLAN.md phases
-6. **MANDATORY**: Only move project board to "Done" after PR is merged
+6. **MANDATORY**: Create PR following standardized format (see PR Protocol below)
+7. **MANDATORY**: Only move project board to "Done" after PR is merged
+
+## 🔗 Pull Request Protocol (MANDATORY)
+
+**CRITICAL**: All Pull Requests MUST follow this exact format for consistency:
+
+### PR Title Format
+```
+Issue #<NUMBER>: <Brief description of implementation>
+```
+
+**Examples:**
+- ✅ `Issue #9: Implement SQLite database schema and models`
+- ✅ `Issue #8: Implement CLI framework with Click command groups`
+- ✅ `Issue #12: Fix unit test framework issues`
+- ❌ `Implement CLI framework with Click command groups (Issue #8)`
+- ❌ `Fix unit test framework issues - Issue #12`
+
+### PR Body Format
+```markdown
+## Summary
+<Brief overview linking to the issue>
+
+Resolves: #<ISSUE_NUMBER>
+
+<Implementation details>
+
+## Test Plan
+- [x] All acceptance criteria met
+- [x] Tests passing with adequate coverage
+- [x] Code quality checks pass
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+```
+
+### PR Creation Commands
+```bash
+gh pr create --title "Issue #<NUMBER>: <Brief description>" --body "$(cat <<'EOF'
+## Summary
+<Implementation summary>
+
+Resolves: #<ISSUE_NUMBER>
+
+<Details>
+
+## Test Plan
+- [x] All acceptance criteria met
+- [x] Tests passing
+- [x] Code quality checks pass
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+EOF
+)"
+```
 
 ## Quick Start for New Sessions
 1. Check TODO.md for current task status

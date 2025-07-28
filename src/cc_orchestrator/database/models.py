@@ -2,18 +2,20 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from sqlalchemy import (
+    JSON,
     Boolean,
     DateTime,
-    Enum as SQLEnum,
     ForeignKey,
+    Index,
     Integer,
-    JSON,
     String,
     Text,
-    create_engine,
+)
+from sqlalchemy import (
+    Enum as SQLEnum,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -80,11 +82,11 @@ class Instance(Base):
     status: Mapped[InstanceStatus] = mapped_column(
         SQLEnum(InstanceStatus), nullable=False, default=InstanceStatus.INITIALIZING
     )
-    workspace_path: Mapped[Optional[str]] = mapped_column(String(500))
-    branch_name: Mapped[Optional[str]] = mapped_column(String(255))
-    tmux_session: Mapped[Optional[str]] = mapped_column(String(255))
-    process_id: Mapped[Optional[int]] = mapped_column(Integer)
-    
+    workspace_path: Mapped[str | None] = mapped_column(String(500))
+    branch_name: Mapped[str | None] = mapped_column(String(255))
+    tmux_session: Mapped[str | None] = mapped_column(String(255))
+    process_id: Mapped[int | None] = mapped_column(Integer)
+
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, default=datetime.now
@@ -92,11 +94,11 @@ class Instance(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, default=datetime.now, onupdate=datetime.now
     )
-    last_activity: Mapped[Optional[datetime]] = mapped_column(DateTime)
-    
+    last_activity: Mapped[datetime | None] = mapped_column(DateTime)
+
     # JSON metadata for flexible additional data
-    extra_metadata: Mapped[Dict[str, Any]] = mapped_column(JSON, default=dict)
-    
+    extra_metadata: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+
     # Relationships
     tasks: Mapped[list["Task"]] = relationship(
         "Task", back_populates="instance", cascade="all, delete-orphan"
@@ -119,22 +121,22 @@ class Task(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
-    description: Mapped[Optional[str]] = mapped_column(Text)
+    description: Mapped[str | None] = mapped_column(Text)
     status: Mapped[TaskStatus] = mapped_column(
         SQLEnum(TaskStatus), nullable=False, default=TaskStatus.PENDING
     )
     priority: Mapped[TaskPriority] = mapped_column(
         SQLEnum(TaskPriority), nullable=False, default=TaskPriority.MEDIUM
     )
-    
+
     # Foreign keys
-    instance_id: Mapped[Optional[int]] = mapped_column(
+    instance_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("instances.id"), nullable=True
     )
-    worktree_id: Mapped[Optional[int]] = mapped_column(
+    worktree_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("worktrees.id"), nullable=True
     )
-    
+
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, default=datetime.now
@@ -142,19 +144,19 @@ class Task(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, default=datetime.now, onupdate=datetime.now
     )
-    started_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
-    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
-    due_date: Mapped[Optional[datetime]] = mapped_column(DateTime)
-    
+    started_at: Mapped[datetime | None] = mapped_column(DateTime)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime)
+    due_date: Mapped[datetime | None] = mapped_column(DateTime)
+
     # Task properties
-    estimated_duration: Mapped[Optional[int]] = mapped_column(Integer)  # minutes
-    actual_duration: Mapped[Optional[int]] = mapped_column(Integer)  # minutes
-    
+    estimated_duration: Mapped[int | None] = mapped_column(Integer)  # minutes
+    actual_duration: Mapped[int | None] = mapped_column(Integer)  # minutes
+
     # JSON fields
-    requirements: Mapped[Dict[str, Any]] = mapped_column(JSON, default=dict)
-    results: Mapped[Dict[str, Any]] = mapped_column(JSON, default=dict)
-    extra_metadata: Mapped[Dict[str, Any]] = mapped_column(JSON, default=dict)
-    
+    requirements: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    results: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    extra_metadata: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+
     # Relationships
     instance: Mapped[Optional["Instance"]] = relationship(
         "Instance", back_populates="tasks"
@@ -164,7 +166,9 @@ class Task(Base):
     )
 
     def __repr__(self) -> str:
-        return f"<Task(id={self.id}, title='{self.title}', status='{self.status.value}')>"
+        return (
+            f"<Task(id={self.id}, title='{self.title}', status='{self.status.value}')>"
+        )
 
 
 class Worktree(Base):
@@ -176,20 +180,20 @@ class Worktree(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     path: Mapped[str] = mapped_column(String(500), nullable=False, unique=True)
     branch_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    repository_url: Mapped[Optional[str]] = mapped_column(String(500))
+    repository_url: Mapped[str | None] = mapped_column(String(500))
     status: Mapped[WorktreeStatus] = mapped_column(
         SQLEnum(WorktreeStatus), nullable=False, default=WorktreeStatus.ACTIVE
     )
-    
+
     # Foreign key
-    instance_id: Mapped[Optional[int]] = mapped_column(
+    instance_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("instances.id"), nullable=True
     )
-    
+
     # Git information
-    current_commit: Mapped[Optional[str]] = mapped_column(String(40))
+    current_commit: Mapped[str | None] = mapped_column(String(40))
     has_uncommitted_changes: Mapped[bool] = mapped_column(Boolean, default=False)
-    
+
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, default=datetime.now
@@ -197,22 +201,22 @@ class Worktree(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, default=datetime.now, onupdate=datetime.now
     )
-    last_sync: Mapped[Optional[datetime]] = mapped_column(DateTime)
-    
+    last_sync: Mapped[datetime | None] = mapped_column(DateTime)
+
     # JSON metadata
-    git_config: Mapped[Dict[str, Any]] = mapped_column(JSON, default=dict)
-    extra_metadata: Mapped[Dict[str, Any]] = mapped_column(JSON, default=dict)
-    
+    git_config: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    extra_metadata: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+
     # Relationships
     instance: Mapped[Optional["Instance"]] = relationship(
         "Instance", back_populates="worktree"
     )
-    tasks: Mapped[list["Task"]] = relationship(
-        "Task", back_populates="worktree"
-    )
+    tasks: Mapped[list["Task"]] = relationship("Task", back_populates="worktree")
 
     def __repr__(self) -> str:
-        return f"<Worktree(id={self.id}, name='{self.name}', branch='{self.branch_name}')>"
+        return (
+            f"<Worktree(id={self.id}, name='{self.name}', branch='{self.branch_name}')>"
+        )
 
 
 class Configuration(Base):
@@ -226,17 +230,17 @@ class Configuration(Base):
     scope: Mapped[ConfigScope] = mapped_column(
         SQLEnum(ConfigScope), nullable=False, default=ConfigScope.GLOBAL
     )
-    
+
     # Optional foreign keys for scoped configurations
-    instance_id: Mapped[Optional[int]] = mapped_column(
+    instance_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("instances.id"), nullable=True
     )
-    
+
     # Configuration metadata
-    description: Mapped[Optional[str]] = mapped_column(Text)
+    description: Mapped[str | None] = mapped_column(Text)
     is_secret: Mapped[bool] = mapped_column(Boolean, default=False)
     is_readonly: Mapped[bool] = mapped_column(Boolean, default=False)
-    
+
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, default=datetime.now
@@ -244,10 +248,10 @@ class Configuration(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, default=datetime.now, onupdate=datetime.now
     )
-    
+
     # JSON metadata
-    extra_metadata: Mapped[Dict[str, Any]] = mapped_column(JSON, default=dict)
-    
+    extra_metadata: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+
     # Relationships
     instance: Mapped[Optional["Instance"]] = relationship(
         "Instance", back_populates="configurations"
@@ -258,7 +262,6 @@ class Configuration(Base):
 
 
 # Create indexes for performance
-from sqlalchemy import Index
 
 # Instance indexes
 Index("idx_instances_issue_id", Instance.issue_id)
