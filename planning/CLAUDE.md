@@ -31,9 +31,44 @@ Claude Code orchestrator managing multiple instances through git worktrees with 
 3. Continue with Phase 1 implementation if not yet complete
 4. Update documentation as you work
 
+## GitHub Issue Progress Tracking Protocol
+
+When working on issues in git worktrees:
+
+### Progress Updates
+- Post structured progress comments on GitHub issues at major milestones
+- Include: ✅ Completed, 🔧 Implementation Approach, 🧪 Testing, 🚀 Next Steps
+- Document key architectural decisions with rationale
+- Update when acceptance criteria are met
+- Provide final summary comment when closing issues
+
+### Comment Structure Template
+```markdown
+## Progress Update - [Date]
+
+### ✅ Completed
+- [Specific features/tasks completed]
+
+### 🔧 Implementation Approach
+- [Key technical decisions and patterns used]
+
+### 🧪 Testing
+- [Testing approach and coverage]
+
+### 🚀 Next Steps
+- [Immediate next actions]
+```
+
+### Guidelines
+- Keep GitHub issues as system of record for high-level planning and progress
+- Focus on decisions and context that will help future development
+- Update at completion of major milestones, not every small change
+- Include links to relevant commits when posting final summaries
+
 ## Session Continuity Notes
 - This project builds a control plane for managing multiple Claude Code instances
 - Each instance runs in isolated git worktrees for parallel development
 - Web dashboard provides real-time monitoring and control
 - Tmux integration ensures session persistence across disconnections
 - External integrations pull tasks from GitHub/Jira automatically
+- Note: Claude executable is `claude` not `claude-code`
