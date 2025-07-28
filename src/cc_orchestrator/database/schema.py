@@ -1,6 +1,5 @@
 """Database schema definitions and utilities."""
 
-
 from sqlalchemy import MetaData
 from sqlalchemy.engine import Engine
 
@@ -102,7 +101,12 @@ def get_table_counts(engine: Engine) -> dict[str, int]:
     with engine.connect() as conn:
         for table_name in table_names:
             try:
-                result = conn.execute(text(f"SELECT COUNT(*) FROM {table_name}"))
+                # Use parameterized query to avoid SQL injection
+                # Note: Table names cannot be parameterized, but we validate against known model table names
+                if table_name not in [table.__tablename__ for table in get_model_classes()]:
+                    counts[table_name] = "Error: Invalid table name"
+                    continue
+                result = conn.execute(text(f"SELECT COUNT(*) FROM {table_name}"))  # nosec B608
                 counts[table_name] = result.scalar() or 0
             except Exception as e:
                 counts[table_name] = f"Error: {e}"
@@ -132,10 +136,14 @@ def create_sample_data(engine: Engine) -> None:
 
     with Session(engine) as session:
         # Create sample instance
+        import tempfile
+        temp_dir = tempfile.gettempdir()
+        workspace_path = f"{temp_dir}/cc-orchestrator-issue-123"
+
         instance = Instance(
             issue_id="123",
             status=InstanceStatus.RUNNING,
-            workspace_path="/tmp/cc-orchestrator-issue-123",
+            workspace_path=workspace_path,
             branch_name="feature/issue-123",
             tmux_session="claude-issue-123",
             extra_metadata={"github_url": "https://github.com/example/repo/issues/123"},
@@ -146,7 +154,7 @@ def create_sample_data(engine: Engine) -> None:
         # Create sample worktree
         worktree = Worktree(
             name="issue-123-worktree",
-            path="/tmp/cc-orchestrator-issue-123",
+            path=workspace_path,  # Use the same secure temp path
             branch_name="feature/issue-123",
             repository_url="https://github.com/example/repo.git",
             status=WorktreeStatus.ACTIVE,

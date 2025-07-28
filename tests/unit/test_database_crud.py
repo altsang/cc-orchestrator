@@ -1,6 +1,5 @@
 """Unit tests for database CRUD operations."""
 
-
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
@@ -268,9 +267,7 @@ class TestTaskCRUD:
             instance_id=instance.id,
             priority=TaskPriority.LOW,
         )
-        TaskCRUD.create(
-            session=db_session, title="Task 3"
-        )  # Different instance
+        TaskCRUD.create(session=db_session, title="Task 3")  # Different instance
         db_session.commit()
 
         tasks = TaskCRUD.list_by_instance(session=db_session, instance_id=instance.id)

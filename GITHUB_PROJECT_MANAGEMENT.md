@@ -87,7 +87,7 @@ EOF
 )"
 ```
 
-#### ✅ END OF WORK: Move to "Done" 
+#### ✅ END OF WORK: Move to "Done"
 **WHEN**: ONLY after Pull Request is created, reviewed, and merged
 **HOW**:
 ```bash
