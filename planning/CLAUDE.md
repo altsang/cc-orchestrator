@@ -21,9 +21,11 @@ Claude Code orchestrator managing multiple instances through git worktrees with 
 
 ## Development Workflow
 1. Read current TODO.md for active tasks
-2. Update progress in DEVELOPMENT_LOG.md
-3. Reference ARCHITECTURE.md for technical decisions
-4. Follow PROJECT_PLAN.md phases
+2. **MANDATORY**: Update GitHub project board status to "In Progress" before starting work
+3. Update progress in DEVELOPMENT_LOG.md
+4. Reference ARCHITECTURE.md for technical decisions
+5. Follow PROJECT_PLAN.md phases
+6. **MANDATORY**: Only move project board to "Done" after PR is merged
 
 ## Quick Start for New Sessions
 1. Check TODO.md for current task status
@@ -72,3 +74,29 @@ When working on issues in git worktrees:
 - Tmux integration ensures session persistence across disconnections
 - External integrations pull tasks from GitHub/Jira automatically
 - Note: Claude executable is `claude` not `claude-code`
+
+## 🚨 GitHub Project Board Protocol (MANDATORY)
+
+**CRITICAL**: All GitHub issues MUST follow this exact workflow:
+
+### Status Transitions
+1. **Todo** → 2. **In Progress** → 3. **Done**
+
+### When to Update Status
+- **"In Progress"**: Move BEFORE starting any work (never work on "Todo" items)
+- **"In Progress"**: Keep throughout implementation, even when code is complete locally
+- **"Done"**: Move ONLY after Pull Request is created, reviewed, and merged
+
+### Quick CLI Commands
+```bash
+# Move to "In Progress" (before starting work):
+gh project item-edit --id <ITEM_ID> --project-id PVT_kwHOACKAcc4A-64R --field-id PVTSSF_lAHOACKAcc4A-64RzgyLaOg --single-select-option-id 47fc9ee4
+
+# Find item ID:
+gh project item-list 1 --owner altsang --format json | jq '.items[] | select(.content.number == <ISSUE_NUMBER>) | .id'
+
+# Move to "Done" (only after PR merged):
+gh project item-edit --id <ITEM_ID> --project-id PVT_kwHOACKAcc4A-64R --field-id PVTSSF_lAHOACKAcc4A-64RzgyLaOg --single-select-option-id 98236657
+```
+
+**See GITHUB_PROJECT_MANAGEMENT.md for complete protocol details.**

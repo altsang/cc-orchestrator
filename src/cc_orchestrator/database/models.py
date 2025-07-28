@@ -1,0 +1,282 @@
+"""SQLAlchemy database models for cc-orchestrator."""
+
+from datetime import datetime
+from enum import Enum
+from typing import Any, Dict, Optional
+
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    Enum as SQLEnum,
+    ForeignKey,
+    Integer,
+    JSON,
+    String,
+    Text,
+    create_engine,
+)
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
+
+class Base(DeclarativeBase):
+    """Base class for all database models."""
+
+    pass
+
+
+class InstanceStatus(Enum):
+    """Status of a Claude Code instance."""
+
+    INITIALIZING = "initializing"
+    RUNNING = "running"
+    STOPPED = "stopped"
+    ERROR = "error"
+
+
+class TaskStatus(Enum):
+    """Status of a task."""
+
+    PENDING = "pending"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
+class TaskPriority(Enum):
+    """Priority level of a task."""
+
+    LOW = 1
+    MEDIUM = 2
+    HIGH = 3
+    URGENT = 4
+
+
+class WorktreeStatus(Enum):
+    """Status of a git worktree."""
+
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+    DIRTY = "dirty"
+    ERROR = "error"
+
+
+class ConfigScope(Enum):
+    """Configuration scope."""
+
+    GLOBAL = "global"
+    USER = "user"
+    PROJECT = "project"
+    INSTANCE = "instance"
+
+
+class Instance(Base):
+    """Claude Code instance model."""
+
+    __tablename__ = "instances"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    issue_id: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    status: Mapped[InstanceStatus] = mapped_column(
+        SQLEnum(InstanceStatus), nullable=False, default=InstanceStatus.INITIALIZING
+    )
+    workspace_path: Mapped[Optional[str]] = mapped_column(String(500))
+    branch_name: Mapped[Optional[str]] = mapped_column(String(255))
+    tmux_session: Mapped[Optional[str]] = mapped_column(String(255))
+    process_id: Mapped[Optional[int]] = mapped_column(Integer)
+    
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=datetime.now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=datetime.now, onupdate=datetime.now
+    )
+    last_activity: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    
+    # JSON metadata for flexible additional data
+    extra_metadata: Mapped[Dict[str, Any]] = mapped_column(JSON, default=dict)
+    
+    # Relationships
+    tasks: Mapped[list["Task"]] = relationship(
+        "Task", back_populates="instance", cascade="all, delete-orphan"
+    )
+    worktree: Mapped[Optional["Worktree"]] = relationship(
+        "Worktree", back_populates="instance", uselist=False
+    )
+    configurations: Mapped[list["Configuration"]] = relationship(
+        "Configuration", back_populates="instance"
+    )
+
+    def __repr__(self) -> str:
+        return f"<Instance(id={self.id}, issue_id='{self.issue_id}', status='{self.status.value}')>"
+
+
+class Task(Base):
+    """Task model for work items."""
+
+    __tablename__ = "tasks"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text)
+    status: Mapped[TaskStatus] = mapped_column(
+        SQLEnum(TaskStatus), nullable=False, default=TaskStatus.PENDING
+    )
+    priority: Mapped[TaskPriority] = mapped_column(
+        SQLEnum(TaskPriority), nullable=False, default=TaskPriority.MEDIUM
+    )
+    
+    # Foreign keys
+    instance_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("instances.id"), nullable=True
+    )
+    worktree_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("worktrees.id"), nullable=True
+    )
+    
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=datetime.now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=datetime.now, onupdate=datetime.now
+    )
+    started_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    due_date: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    
+    # Task properties
+    estimated_duration: Mapped[Optional[int]] = mapped_column(Integer)  # minutes
+    actual_duration: Mapped[Optional[int]] = mapped_column(Integer)  # minutes
+    
+    # JSON fields
+    requirements: Mapped[Dict[str, Any]] = mapped_column(JSON, default=dict)
+    results: Mapped[Dict[str, Any]] = mapped_column(JSON, default=dict)
+    extra_metadata: Mapped[Dict[str, Any]] = mapped_column(JSON, default=dict)
+    
+    # Relationships
+    instance: Mapped[Optional["Instance"]] = relationship(
+        "Instance", back_populates="tasks"
+    )
+    worktree: Mapped[Optional["Worktree"]] = relationship(
+        "Worktree", back_populates="tasks"
+    )
+
+    def __repr__(self) -> str:
+        return f"<Task(id={self.id}, title='{self.title}', status='{self.status.value}')>"
+
+
+class Worktree(Base):
+    """Git worktree model."""
+
+    __tablename__ = "worktrees"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    path: Mapped[str] = mapped_column(String(500), nullable=False, unique=True)
+    branch_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    repository_url: Mapped[Optional[str]] = mapped_column(String(500))
+    status: Mapped[WorktreeStatus] = mapped_column(
+        SQLEnum(WorktreeStatus), nullable=False, default=WorktreeStatus.ACTIVE
+    )
+    
+    # Foreign key
+    instance_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("instances.id"), nullable=True
+    )
+    
+    # Git information
+    current_commit: Mapped[Optional[str]] = mapped_column(String(40))
+    has_uncommitted_changes: Mapped[bool] = mapped_column(Boolean, default=False)
+    
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=datetime.now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=datetime.now, onupdate=datetime.now
+    )
+    last_sync: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    
+    # JSON metadata
+    git_config: Mapped[Dict[str, Any]] = mapped_column(JSON, default=dict)
+    extra_metadata: Mapped[Dict[str, Any]] = mapped_column(JSON, default=dict)
+    
+    # Relationships
+    instance: Mapped[Optional["Instance"]] = relationship(
+        "Instance", back_populates="worktree"
+    )
+    tasks: Mapped[list["Task"]] = relationship(
+        "Task", back_populates="worktree"
+    )
+
+    def __repr__(self) -> str:
+        return f"<Worktree(id={self.id}, name='{self.name}', branch='{self.branch_name}')>"
+
+
+class Configuration(Base):
+    """Configuration settings model."""
+
+    __tablename__ = "configurations"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    key: Mapped[str] = mapped_column(String(255), nullable=False)
+    value: Mapped[str] = mapped_column(Text, nullable=False)
+    scope: Mapped[ConfigScope] = mapped_column(
+        SQLEnum(ConfigScope), nullable=False, default=ConfigScope.GLOBAL
+    )
+    
+    # Optional foreign keys for scoped configurations
+    instance_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("instances.id"), nullable=True
+    )
+    
+    # Configuration metadata
+    description: Mapped[Optional[str]] = mapped_column(Text)
+    is_secret: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_readonly: Mapped[bool] = mapped_column(Boolean, default=False)
+    
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=datetime.now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=datetime.now, onupdate=datetime.now
+    )
+    
+    # JSON metadata
+    extra_metadata: Mapped[Dict[str, Any]] = mapped_column(JSON, default=dict)
+    
+    # Relationships
+    instance: Mapped[Optional["Instance"]] = relationship(
+        "Instance", back_populates="configurations"
+    )
+
+    def __repr__(self) -> str:
+        return f"<Configuration(id={self.id}, key='{self.key}', scope='{self.scope.value}')>"
+
+
+# Create indexes for performance
+from sqlalchemy import Index
+
+# Instance indexes
+Index("idx_instances_issue_id", Instance.issue_id)
+Index("idx_instances_status", Instance.status)
+Index("idx_instances_created_at", Instance.created_at)
+
+# Task indexes
+Index("idx_tasks_status", Task.status)
+Index("idx_tasks_priority", Task.priority)
+Index("idx_tasks_instance_id", Task.instance_id)
+Index("idx_tasks_created_at", Task.created_at)
+Index("idx_tasks_due_date", Task.due_date)
+
+# Worktree indexes
+Index("idx_worktrees_path", Worktree.path)
+Index("idx_worktrees_branch", Worktree.branch_name)
+Index("idx_worktrees_status", Worktree.status)
+
+# Configuration indexes
+Index("idx_configurations_key_scope", Configuration.key, Configuration.scope)
+Index("idx_configurations_instance_id", Configuration.instance_id)
