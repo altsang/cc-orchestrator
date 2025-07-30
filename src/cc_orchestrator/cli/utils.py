@@ -42,14 +42,14 @@ def output_table(headers: list[str], rows: list[list[str]]) -> None:
 
 def handle_error(message: str, exit_code: int = 1) -> None:
     """Handle errors with consistent formatting."""
-    click.echo(f"Error: {message}", err=True, color="red")
+    click.echo(click.style(f"Error: {message}", fg="red"), err=True)
     sys.exit(exit_code)
 
 
 def verbose_echo(ctx: click.Context, message: str) -> None:
     """Echo message only if verbose mode is enabled."""
     if ctx.obj and ctx.obj.get("verbose"):
-        click.echo(f"[VERBOSE] {message}", err=True, color="blue")
+        click.echo(click.style(f"[VERBOSE] {message}", fg="blue"), err=True)
 
 
 def quiet_echo(ctx: click.Context, message: str) -> None:
@@ -59,7 +59,7 @@ def quiet_echo(ctx: click.Context, message: str) -> None:
 
 
 def format_output(
-    ctx: click.Context, data: dict[str, Any], human_format_func=None
+    ctx: click.Context, data: dict[str, Any], human_format_func: Any = None
 ) -> None:
     """Format output based on context (JSON or human-readable)."""
     if ctx.obj and ctx.obj.get("json"):

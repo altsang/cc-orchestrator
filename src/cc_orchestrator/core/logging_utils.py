@@ -8,6 +8,7 @@ This module provides specialized logging functions for:
 - Database operations
 """
 
+from collections.abc import Callable
 from typing import Any
 
 from ..utils.logging import (
@@ -127,17 +128,19 @@ def log_resource_usage(
 
 
 # Decorator functions for common operations
-def log_instance_operation(operation_name: str):
+def log_instance_operation(operation_name: str) -> Callable[..., Any]:
     """Decorator for instance operations with automatic logging."""
     return audit_log(f"instance_{operation_name}", LogContext.INSTANCE)
 
 
-def log_task_operation(operation_name: str):
+def log_task_operation(operation_name: str) -> Callable[..., Any]:
     """Decorator for task operations with automatic logging."""
     return audit_log(f"task_{operation_name}", LogContext.TASK)
 
 
-def handle_instance_errors(recovery_strategy=None):
+def handle_instance_errors(
+    recovery_strategy: Callable[..., Any] | None = None,
+) -> Callable[..., Any]:
     """Decorator for instance error handling."""
     return handle_errors(
         recovery_strategy=recovery_strategy,
@@ -146,14 +149,18 @@ def handle_instance_errors(recovery_strategy=None):
     )
 
 
-def handle_task_errors(recovery_strategy=None):
+def handle_task_errors(
+    recovery_strategy: Callable[..., Any] | None = None,
+) -> Callable[..., Any]:
     """Decorator for task error handling."""
     return handle_errors(
         recovery_strategy=recovery_strategy, log_context=LogContext.TASK, reraise=True
     )
 
 
-def handle_database_errors(recovery_strategy=None):
+def handle_database_errors(
+    recovery_strategy: Callable[..., Any] | None = None,
+) -> Callable[..., Any]:
     """Decorator for database error handling."""
     return handle_errors(
         recovery_strategy=recovery_strategy,
@@ -162,6 +169,6 @@ def handle_database_errors(recovery_strategy=None):
     )
 
 
-def track_performance(component_name: str):
+def track_performance(component_name: str) -> Callable[..., Any]:
     """Decorator for performance tracking of core operations."""
     return log_performance(LogContext.ORCHESTRATOR)

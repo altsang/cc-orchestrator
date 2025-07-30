@@ -7,7 +7,7 @@ A Claude Code orchestrator that manages multiple Claude instances through git wo
 CC-Orchestrator acts as a control plane for managing multiple Claude Code instances, enabling:
 
 - **Parallel Development**: Run multiple Claude instances in isolated git worktrees
-- **Session Persistence**: Tmux integration for disconnection-proof sessions  
+- **Session Persistence**: Tmux integration for disconnection-proof sessions
 - **Visual Monitoring**: Real-time web dashboard for instance oversight
 - **Task Coordination**: Automated task assignment and progress tracking
 - **External Integration**: GitHub/Jira synchronization for workflow automation
@@ -96,6 +96,68 @@ integrations:
 ## Development Status
 
 🚧 **Currently in development** - See `planning/` directory for detailed implementation plan.
+
+## Development Methodology
+
+This project follows **production-ready development standards** to ensure all components are robust, type-safe, and maintainable from day one.
+
+### 🚀 Quick Development Setup
+
+```bash
+# 1. Clone and setup development environment
+git clone https://github.com/yourusername/cc-orchestrator
+cd cc-orchestrator
+make setup
+
+# 2. Before every commit (MANDATORY)
+make quality-check
+
+# 3. Before creating PR
+make pr-ready
+```
+
+### 🎯 Production-Ready Standards
+
+Every component must meet these quality gates before merge:
+
+- ✅ **Type Safety**: mypy passes with zero errors
+- ✅ **Code Quality**: ruff/black formatting and linting clean
+- ✅ **Test Coverage**: Minimum 90% coverage for new code
+- ✅ **Functionality**: All tests pass, manual verification complete
+- ✅ **Security**: Security scans pass, no vulnerabilities
+
+### 📋 Development Commands
+
+```bash
+# Core workflow commands
+make quality-check    # MANDATORY before every commit
+make commit-ready     # Verify readiness to commit
+make pr-ready         # Verify readiness for pull request
+
+# Individual quality checks
+make type-check       # Run mypy type checking
+make lint-fix         # Fix linting issues automatically
+make format           # Apply black code formatting
+make test             # Run all tests
+make test-cov         # Run tests with coverage report
+make security-scan    # Run security analysis
+
+# Configuration-specific testing
+make test-config      # Test configuration management
+make test-cli         # Test CLI functionality
+```
+
+### 📖 Complete Standards
+
+For complete development methodology, code standards, and quality requirements, see:
+- **[DEVELOPMENT_METHODOLOGY.md](./DEVELOPMENT_METHODOLOGY.md)** - Complete development standards
+- **Makefile** - Automated quality checks and workflows
+
+### 🔄 Zero Technical Debt Policy
+
+- No code merges with known type errors, linting issues, or test failures
+- All components must meet production standards before PR approval
+- Quality gates are enforced automatically through pre-commit hooks and CI/CD
 
 - **Phase 1**: Core Infrastructure (In Progress)
 - **Phase 2**: Git & Process Management (Planned)

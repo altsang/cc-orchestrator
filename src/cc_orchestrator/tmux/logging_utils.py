@@ -8,6 +8,7 @@ This module provides specialized logging for tmux operations including:
 - Session cleanup
 """
 
+from collections.abc import Callable
 from typing import Any
 
 from ..utils.logging import LogContext, audit_log, get_logger, handle_errors
@@ -110,13 +111,15 @@ def log_orphaned_sessions(orphaned: list[str]) -> None:
 
 
 # Decorator functions for tmux operations
-def handle_tmux_errors(recovery_strategy=None):
+def handle_tmux_errors(
+    recovery_strategy: Callable[..., Any] | None = None,
+) -> Callable[..., Any]:
     """Decorator for tmux error handling."""
     return handle_errors(
         recovery_strategy=recovery_strategy, log_context=LogContext.TMUX, reraise=True
     )
 
 
-def log_tmux_operation(operation_name: str):
+def log_tmux_operation(operation_name: str) -> Callable[..., Any]:
     """Decorator for tmux operations with automatic logging."""
     return audit_log(f"tmux_{operation_name}", LogContext.TMUX)

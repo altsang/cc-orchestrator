@@ -1,11 +1,15 @@
 """Configuration loading and management."""
 
 import os
+import warnings
 from pathlib import Path
 from typing import Any
 
 import yaml
 from pydantic import BaseModel, Field
+
+# Suppress Pydantic serialization warnings globally for config operations
+warnings.filterwarnings("ignore", message=".*Pydantic serializer warnings.*")
 
 
 class OrchestratorConfig(BaseModel):
@@ -41,6 +45,14 @@ class OrchestratorConfig(BaseModel):
     # Output formatting
     default_output_format: str = Field(
         default="human", description="Default output format"
+    )
+
+    # Performance settings (for testing float and Union types)
+    cpu_threshold: float = Field(
+        default=80.0, description="CPU usage threshold percentage"
+    )
+    memory_limit: int | None = Field(
+        default=None, description="Memory limit in MB (None for unlimited)"
     )
 
 
@@ -80,7 +92,7 @@ def load_config_file(config_path: Path) -> dict[str, Any]:
 
 def load_env_vars() -> dict[str, Any]:
     """Load configuration from environment variables."""
-    config = {}
+    config: dict[str, Any] = {}
     prefix = "CC_ORCHESTRATOR_"
 
     # Map environment variables to config keys
@@ -101,38 +113,59 @@ def load_env_vars() -> dict[str, Any]:
 
     for env_var, config_key in env_mappings.items():
         if env_var in os.environ:
-            value = os.environ[env_var]
+            env_value = os.environ[env_var]
             # Convert to appropriate types
             if config_key in ["max_instances", "instance_timeout", "web_port"]:
                 try:
-                    value = int(value)
+                    config[config_key] = int(env_value)
                 except ValueError:
                     continue
             elif config_key == "auto_cleanup":
-                value = value.lower() in ("true", "1", "yes", "on")
-
-            config[config_key] = value
+                config[config_key] = env_value.lower() in ("true", "1", "yes", "on")
+            else:
+                config[config_key] = env_value
 
     return config
 
 
-def load_config(config_path: str | None = None) -> OrchestratorConfig:
+def load_config(
+    config_path: str | None = None,
+    profile: str | None = None,
+    cli_overrides: dict[str, Any] | None = None,
+) -> OrchestratorConfig:
     """Load configuration from file and environment variables.
 
     Precedence order (highest to lowest):
-    1. Environment variables
-    2. Configuration file
-    3. Default values
+    1. CLI flag overrides
+    2. Environment variables
+    3. Configuration file (with profile support)
+    4. Default values
     """
     config_data = {}
 
     # Load from file if available
     config_file = find_config_file(config_path)
     if config_file:
-        config_data.update(load_config_file(config_file))
+        file_data = load_config_file(config_file)
+
+        # Handle profile-specific configuration
+        if profile and "profiles" in file_data and profile in file_data["profiles"]:
+            # Merge base config with profile-specific overrides
+            profile_data = file_data["profiles"][profile]
+            # Remove profiles section from base data
+            base_data = {k: v for k, v in file_data.items() if k != "profiles"}
+            config_data.update(base_data)
+            config_data.update(profile_data)
+        else:
+            # Remove profiles section if present
+            config_data.update({k: v for k, v in file_data.items() if k != "profiles"})
 
     # Override with environment variables
     config_data.update(load_env_vars())
+
+    # Override with CLI flags (highest precedence)
+    if cli_overrides:
+        config_data.update(cli_overrides)
 
     # Create and validate configuration
     try:
@@ -152,7 +185,10 @@ def save_config(config: OrchestratorConfig, config_path: str | None = None) -> P
         path = config_dir / "config.yaml"
 
     # Convert to dict and save as YAML
-    config_dict = config.model_dump()
+    # Suppress Pydantic serialization warnings for expected type conversions
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", message=".*Pydantic serializer warnings.*")
+        config_dict = config.model_dump()
     with open(path, "w") as f:
         yaml.dump(config_dict, f, default_flow_style=False, sort_keys=True)
 

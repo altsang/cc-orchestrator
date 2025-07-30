@@ -8,6 +8,7 @@ This module provides specialized logging for:
 - External service rate limiting
 """
 
+from collections.abc import Callable
 from typing import Any
 
 from ..utils.logging import (
@@ -130,7 +131,7 @@ def log_webhook_processing(
     event_type: str,
     tasks_created: int,
     tasks_updated: int,
-    errors: list[str] = None,
+    errors: list[str] | None = None,
 ) -> None:
     """Log webhook processing results."""
     webhook_logger.info(
@@ -215,7 +216,9 @@ def log_task_sync_status(
 
 
 # Decorator functions for integration operations
-def handle_integration_errors(service: str, recovery_strategy=None):
+def handle_integration_errors(
+    service: str, recovery_strategy: Callable[..., Any] | None = None
+) -> Callable[..., Any]:
     """Decorator for integration error handling."""
     return handle_errors(
         recovery_strategy=recovery_strategy,
@@ -224,6 +227,6 @@ def handle_integration_errors(service: str, recovery_strategy=None):
     )
 
 
-def log_integration_operation(service: str, operation_name: str):
+def log_integration_operation(service: str, operation_name: str) -> Callable[..., Any]:
     """Decorator for integration operations with automatic logging."""
     return audit_log(f"{service}_{operation_name}", LogContext.INTEGRATION)
