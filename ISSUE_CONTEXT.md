@@ -72,10 +72,48 @@ Focus: Design and implement SQLite database schema for storing instances, tasks,
 - Hierarchical configuration system with scope precedence
 - Data integrity with foreign key constraints and cascade deletes
 
+# Issue #10: Configuration management system
+See: https://github.com/altsang/cc-orchestrator/issues/10
+
+Focus: Implement hierarchical configuration management with validation, file generation, and enhanced environment variable support.
+
+## Current Status
+- **Issue**: #10 - Configuration management system
+- **Status**: 🚧 IN PROGRESS (GitHub project board updated)
+- **Branch**: feature/issue-10-configuration-management
+- **Worktree**: ~/workspace/cc-orchestrator-issue-10
+- **Priority**: High (Phase 1)
+- **Dependencies**: Project setup (#7) ✅ COMPLETED, CLI framework (#8) ✅ COMPLETED, Database schema (#9) ✅ COMPLETED
+
+## Technical Requirements (Issue #10)
+- Hierarchical configuration loading (Global → User → Project → Instance)
+- Enhanced validation with detailed error messages
+- Configuration file generation and initialization via CLI
+- Improved environment variable handling and documentation
+- Configuration schema validation with Pydantic
+- Support for configuration inheritance and overrides
+
+## Acceptance Criteria (Issue #10)
+- [ ] Hierarchical config loading with proper precedence
+- [ ] CLI commands for config init, validate, show, and get
+- [ ] Enhanced error messages for configuration issues
+- [ ] Environment variable documentation and validation
+- [ ] Configuration file templates and generation
+- [ ] Comprehensive test suite for config management
+
+## Current State (Issue #10)
+🚧 **IN PROGRESS** - Setting up development environment:
+- Git worktree created at ~/workspace/cc-orchestrator-issue-10
+- GitHub project board updated to "In Progress" status
+- Basic configuration loading exists in config/loader.py
+- Ready to enhance and expand configuration management system
+
 ## Related Issues
 - Part of epic: Phase 1 Epic (#1)
 - Depends on: Project setup (#7) ✅ COMPLETED
-- Issue #8 blocks: Configuration management system (#10)
+- Depends on: CLI framework (#8) ✅ COMPLETED
+- Depends on: Database schema (#9) ✅ COMPLETED
+- Issue #8 blocks: Configuration management system (#10) 🚧 IN PROGRESS
 - Issue #9 blocks: Instance and task management features
 
 ## Development Plan (Issue #8)

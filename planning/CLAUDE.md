@@ -21,12 +21,116 @@ Claude Code orchestrator managing multiple instances through git worktrees with 
 
 ## Development Workflow
 1. Read current TODO.md for active tasks
-2. **MANDATORY**: Update GitHub project board status to "In Progress" before starting work
-3. Update progress in DEVELOPMENT_LOG.md
-4. Reference ARCHITECTURE.md for technical decisions
-5. Follow PROJECT_PLAN.md phases
-6. **MANDATORY**: Create PR following standardized format (see PR Protocol below)
-7. **MANDATORY**: Only move project board to "Done" after PR is merged
+2. **MANDATORY**: Complete full worker terminal setup (see Worker Terminal Setup Protocol below)
+3. **MANDATORY**: Update GitHub project board status to "In Progress" AND assign issue to yourself before starting work
+4. Update progress in DEVELOPMENT_LOG.md
+5. Reference ARCHITECTURE.md for technical decisions
+6. Follow PROJECT_PLAN.md phases
+7. **MANDATORY**: Create PR following standardized format (see PR Protocol below)
+8. **MANDATORY**: Only move project board to "Done" after PR is merged
+
+## 🔧 Worker Terminal Setup Protocol (MANDATORY)
+
+**Purpose**: Create isolated development environment for each GitHub issue to enable parallel development streams.
+
+### Complete Setup Sequence (Run as Control Tower)
+
+For each new issue, the control tower MUST execute all of these steps:
+
+```bash
+# 1. Create git worktree with feature branch
+git worktree add -b feature/issue-<NUMBER>-<description> ../cc-orchestrator-issue-<NUMBER>
+
+# 2. Create dedicated tmux session in the worktree directory
+tmux new-session -d -s "cc-orchestrator-issue-<NUMBER>" -c "~/workspace/cc-orchestrator-issue-<NUMBER>"
+
+# 3. Update GitHub project board to "In Progress" AND assign work
+gh project item-list 1 --owner altsang --format json | jq '.items[] | select(.content.number == <NUMBER>) | .id'
+gh project item-edit --id <ITEM_ID> --project-id PVT_kwHOACKAcc4A-64R --field-id PVTSSF_lAHOACKAcc4A-64RzgyLaOg --single-select-option-id 47fc9ee4
+gh issue edit <NUMBER> --assignee @me
+
+# 4. Update ISSUE_CONTEXT.md with issue details
+# (Manual edit to add issue section)
+```
+
+### User Action After Setup
+```bash
+# User attaches to prepared session and invokes Claude Code
+tmux attach-session -t "cc-orchestrator-issue-<NUMBER>"
+claude  # or claude-code depending on installation
+```
+
+### Benefits of This Protocol
+- **Isolation**: Each issue has dedicated worktree + tmux session
+- **Persistence**: Sessions survive disconnections and terminal crashes
+- **Parallelization**: Multiple issues can be developed simultaneously
+- **Consistency**: Standardized environment for all development work
+- **Tracking**: GitHub project board accurately reflects active work
+
+## 🧹 Cleanup Protocol (MANDATORY)
+
+**CRITICAL**: All development work MUST follow strict cleanup practices to prevent repository pollution.
+
+### During Development
+- **Never commit temporary files**: test scripts, debug outputs, manual testing artifacts
+- **Use .gitignore**: Ensure temporary files are ignored automatically
+- **Clean as you go**: Remove debugging code and temporary scripts immediately after use
+
+### Before PR Creation (MANDATORY Checklist)
+```bash
+# 1. Rebase on latest main to prevent conflicts
+git fetch origin
+git rebase origin/main
+# Resolve any conflicts if they arise
+# git add <resolved-files>
+# git rebase --continue
+
+# 2. Check for stray files
+git status
+git ls-files --others --exclude-standard
+
+# 3. Remove any temporary artifacts
+rm -f test_*.py debug_*.py manual_*.py temp_*.* *.tmp
+
+# 4. Verify clean state
+git status  # Should show only intended changes
+
+# 5. Run final tests to ensure nothing broke
+python -m pytest
+
+# 6. Only then create PR
+```
+
+### Common Artifacts to Avoid
+- ❌ `test_database_manual.py` - Use automated tests instead
+- ❌ `debug_*.py` - Remove after debugging
+- ❌ `temp_*.py` - Clean up temporary scripts
+- ❌ `.DS_Store` - Should be in .gitignore
+- ❌ `*.pyc`, `__pycache__/` - Should be in .gitignore
+- ❌ Log files, database files - Should be in .gitignore
+- ❌ IDE configuration files - Should be in .gitignore
+
+### Critical Rebase Requirement
+**MANDATORY**: When working on a new issue after other issues have been merged to main:
+- **Always rebase** your feature branch on the latest main before creating PR
+- **Never merge** without rebasing first - this prevents conflicts and maintains clean history
+- **Resolve conflicts** during rebase, not during merge
+- **Test after rebase** to ensure integration works correctly
+
+### Enforcement
+- **Control tower responsibility**: Verify clean state and proper rebase before approving PRs
+- **Worker responsibility**: Rebase on main, clean up artifacts, and test before requesting review
+- **Automated checks**: Pre-commit hooks should catch common artifacts and ensure linear history
+
+### Session Naming Convention
+- **Tmux session**: `cc-orchestrator-issue-<NUMBER>`
+- **Worktree path**: `~/workspace/cc-orchestrator-issue-<NUMBER>`
+- **Branch name**: `feature/issue-<NUMBER>-<description>`
+
+**Example for Issue #10:**
+- Session: `cc-orchestrator-issue-10`
+- Path: `~/workspace/cc-orchestrator-issue-10`
+- Branch: `feature/issue-10-configuration-management`
 
 ## 🔗 Pull Request Protocol (MANDATORY)
 

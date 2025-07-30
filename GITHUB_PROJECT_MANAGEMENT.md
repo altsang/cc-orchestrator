@@ -43,16 +43,21 @@ The project board has three status columns that MUST be updated at specific poin
 
 ### 📋 Mandatory Status Update Points
 
-#### 🟡 START OF WORK: Move to "In Progress"
+#### 🟡 START OF WORK: Move to "In Progress" AND Assign
 **WHEN**: Before starting any implementation work
 **HOW**:
 ```bash
 # Via GitHub CLI (preferred):
+# 1. Update project board status
 gh project item-edit --id <ITEM_ID> --project-id PVT_kwHOACKAcc4A-64R --field-id PVTSSF_lAHOACKAcc4A-64RzgyLaOg --single-select-option-id 47fc9ee4
+
+# 2. Assign issue to yourself
+gh issue edit <ISSUE_NUMBER> --assignee @me
 
 # Via Web UI (alternative):
 # 1. Go to https://github.com/users/altsang/projects/1
 # 2. Find the issue and drag to "In Progress" column
+# 3. Go to the issue page and assign yourself
 ```
 
 #### 🔄 DURING WORK: Keep as "In Progress"
@@ -101,6 +106,7 @@ gh project item-edit --id <ITEM_ID> --project-id PVT_kwHOACKAcc4A-64R --field-id
 ❌ **Never skip the "In Progress" status when starting work**
 ❌ **Never leave issues in "Todo" while actively working**
 ❌ **Never move to "Done" before PR is merged**
+❌ **Never start work without assigning the issue to yourself**
 ❌ **Never use inconsistent PR title formats**:
    - ❌ `Implement CLI framework (Issue #8)`
    - ❌ `Fix issues - Issue #12`
