@@ -8,6 +8,9 @@ This module provides specialized logging for:
 - Real-time event streaming
 """
 
+from collections.abc import Callable
+from typing import Any
+
 from ..utils.logging import LogContext, get_logger, handle_errors, log_performance
 
 # Web component loggers
@@ -164,13 +167,15 @@ def log_dashboard_access(
 
 
 # Decorator functions for web operations
-def handle_api_errors(recovery_strategy=None):
+def handle_api_errors(
+    recovery_strategy: Callable[..., Any] | None = None,
+) -> Callable[..., Any]:
     """Decorator for API error handling."""
     return handle_errors(
         recovery_strategy=recovery_strategy, log_context=LogContext.WEB, reraise=True
     )
 
 
-def track_api_performance():
+def track_api_performance() -> Callable[..., Any]:
     """Decorator for API performance tracking."""
     return log_performance(LogContext.WEB)
