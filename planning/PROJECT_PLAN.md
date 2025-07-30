@@ -91,10 +91,17 @@
 - Jira integration works similarly
 - Webhooks trigger appropriate actions
 
-### Phase 5: Advanced Features (Week 5-6)
-**Goal**: Coordination, optimization, and polish
+### Phase 5: Extended Integrations (Week 5-6)
+**Goal**: Additional issue tracking systems and advanced features
+**Status**: Under consideration - priorities may be adjusted based on user feedback
 
-#### Tasks:
+#### Extended Integration Tasks:
+- [ ] Azure DevOps integration (work items, boards, repos)
+- [ ] GitLab Issues integration (issues, merge requests)
+- [ ] Linear integration (issues, projects)
+- [ ] Custom API framework for proprietary systems
+
+#### Advanced Feature Tasks:
 - [ ] Inter-instance coordination and dependencies
 - [ ] Resource management and optimization
 - [ ] Backup/recovery for session state
@@ -102,15 +109,20 @@
 - [ ] Notification system (Slack/Discord)
 
 #### Deliverables:
+- Support for Azure DevOps and GitLab (top priority integrations)
 - Smart task coordination
 - Resource optimization
 - Comprehensive monitoring
 
 #### Acceptance Criteria:
+- Azure DevOps work items can be pulled and synced
+- GitLab issues integrate similarly to GitHub
 - Can handle task dependencies intelligently
 - Resource usage stays within limits
 - State can be backed up and restored
 - Notifications work for key events
+
+**Note**: Extended integrations beyond GitHub/Jira are still under evaluation. Azure DevOps and GitLab are the top considerations for additional system support.
 
 ### Phase 6: Documentation & Release (Week 6)
 **Goal**: Production-ready release

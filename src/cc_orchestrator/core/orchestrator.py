@@ -2,7 +2,11 @@
 
 from typing import Any
 
+from ..utils.logging import LogContext, get_logger
+from ..utils.process import cleanup_process_manager
 from .instance import ClaudeInstance
+
+logger = get_logger(__name__, LogContext.ORCHESTRATOR)
 
 
 class Orchestrator:
@@ -79,6 +83,14 @@ class Orchestrator:
 
     async def cleanup(self) -> None:
         """Clean up all instances and resources."""
+        logger.info("Cleaning up orchestrator", instance_count=len(self.instances))
+
+        # Clean up all instances
         for instance in self.instances.values():
             await instance.cleanup()
         self.instances.clear()
+
+        # Clean up the global process manager
+        await cleanup_process_manager()
+
+        logger.info("Orchestrator cleanup completed")
