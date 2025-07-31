@@ -151,35 +151,79 @@ class TestWorktreeCommands:
 
     def test_worktrees_list(self):
         """Test worktrees list command."""
-        result = self.runner.invoke(main, ["worktrees", "list"])
-        assert result.exit_code == 0
-        assert "Worktree list command - to be implemented" in result.output
+        with patch("cc_orchestrator.cli.worktrees.WorktreeService") as mock_service:
+            mock_service.return_value.list_worktrees.return_value = []
+
+            result = self.runner.invoke(main, ["worktrees", "list"])
+            assert result.exit_code == 0
+            assert "No worktrees found." in result.output
 
     def test_worktrees_create(self):
         """Test worktrees create command."""
-        result = self.runner.invoke(main, ["worktrees", "create", "feature-branch"])
-        assert result.exit_code == 0
-        assert "Creating worktree for feature-branch" in result.output
+        with patch("cc_orchestrator.cli.worktrees.WorktreeService") as mock_service:
+            mock_service.return_value.create_worktree.return_value = {
+                "id": 1,
+                "name": "test-name",
+                "path": "/test/path",
+                "branch": "feature-branch",
+                "commit": "abcd1234",
+                "instance_id": None,
+            }
+
+            result = self.runner.invoke(
+                main, ["worktrees", "create", "test-name", "feature-branch"]
+            )
+            assert result.exit_code == 0
+            assert "Created worktree 'test-name'" in result.output
 
     def test_worktrees_create_with_path(self):
         """Test worktrees create command with custom path."""
-        result = self.runner.invoke(
-            main, ["worktrees", "create", "feature-branch", "--path", "/custom/path"]
-        )
-        assert result.exit_code == 0
-        assert "Creating worktree for feature-branch at /custom/path" in result.output
+        with patch("cc_orchestrator.cli.worktrees.WorktreeService") as mock_service:
+            mock_service.return_value.create_worktree.return_value = {
+                "id": 1,
+                "name": "test-name",
+                "path": "/custom/path",
+                "branch": "feature-branch",
+                "commit": "abcd1234",
+                "instance_id": None,
+            }
+
+            result = self.runner.invoke(
+                main,
+                [
+                    "worktrees",
+                    "create",
+                    "test-name",
+                    "feature-branch",
+                    "--path",
+                    "/custom/path",
+                ],
+            )
+            assert result.exit_code == 0
+            assert "Created worktree 'test-name'" in result.output
 
     def test_worktrees_remove(self):
         """Test worktrees remove command."""
-        result = self.runner.invoke(main, ["worktrees", "remove", "/path/to/worktree"])
-        assert result.exit_code == 0
-        assert "Removing worktree /path/to/worktree" in result.output
+        with patch("cc_orchestrator.cli.worktrees.WorktreeService") as mock_service:
+            mock_service.return_value.remove_worktree.return_value = True
+
+            result = self.runner.invoke(
+                main, ["worktrees", "remove", "/path/to/worktree"]
+            )
+            assert result.exit_code == 0
+            assert "Successfully removed worktree: /path/to/worktree" in result.output
 
     def test_worktrees_cleanup(self):
         """Test worktrees cleanup command."""
-        result = self.runner.invoke(main, ["worktrees", "cleanup"])
-        assert result.exit_code == 0
-        assert "Worktree cleanup - to be implemented" in result.output
+        with patch("cc_orchestrator.cli.worktrees.WorktreeService") as mock_service:
+            mock_service.return_value.cleanup_worktrees.return_value = {
+                "git_cleaned": [],
+                "db_cleaned": [],
+            }
+
+            result = self.runner.invoke(main, ["worktrees", "cleanup"])
+            assert result.exit_code == 0
+            assert "No cleanup needed - all worktrees are up to date" in result.output
 
 
 class TestWebCommands:
