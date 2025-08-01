@@ -426,16 +426,28 @@ class TestProcessIntegration:
             process_infos.append(process_info)
 
         # Mock methods for all instances
-        with patch("cc_orchestrator.utils.process.ProcessManager.spawn_claude_process") as mock_spawn, \
-             patch("cc_orchestrator.utils.process.ProcessManager.terminate_process") as mock_terminate, \
-             patch("cc_orchestrator.utils.process.ProcessManager.get_process_info") as mock_get_info, \
-             patch("cc_orchestrator.utils.process.ProcessManager.list_processes") as mock_list:
+        with (
+            patch(
+                "cc_orchestrator.utils.process.ProcessManager.spawn_claude_process"
+            ) as mock_spawn,
+            patch(
+                "cc_orchestrator.utils.process.ProcessManager.terminate_process"
+            ) as mock_terminate,
+            patch(
+                "cc_orchestrator.utils.process.ProcessManager.get_process_info"
+            ) as mock_get_info,
+            patch(
+                "cc_orchestrator.utils.process.ProcessManager.list_processes"
+            ) as mock_list,
+        ):
 
             # Set up mock returns
             mock_spawn.side_effect = process_infos
             mock_terminate.return_value = True
             mock_get_info.side_effect = process_infos
-            mock_list.return_value = {f"concurrent-{i}": process_infos[i] for i in range(instance_count)}
+            mock_list.return_value = {
+                f"concurrent-{i}": process_infos[i] for i in range(instance_count)
+            }
 
             # Start all instances concurrently
             start_tasks = [instance.start() for instance in instances]

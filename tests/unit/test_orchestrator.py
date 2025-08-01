@@ -139,7 +139,9 @@ class TestOrchestrator:
         }
 
         # Mock cleanup_process_manager to avoid affecting global state
-        with patch("cc_orchestrator.core.orchestrator.cleanup_process_manager") as mock_cleanup:
+        with patch(
+            "cc_orchestrator.core.orchestrator.cleanup_process_manager"
+        ) as mock_cleanup:
             await orchestrator.cleanup()
 
         assert orchestrator.instances == {}

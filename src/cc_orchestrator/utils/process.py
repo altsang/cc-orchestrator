@@ -2,7 +2,7 @@
 
 import asyncio
 import os
-import subprocess
+import subprocess  # nosec B404
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
@@ -322,7 +322,7 @@ class ProcessManager:
         )
 
         # Create subprocess
-        process = subprocess.Popen(
+        process = subprocess.Popen(  # nosec B603
             command,
             cwd=working_directory,
             env=environment,

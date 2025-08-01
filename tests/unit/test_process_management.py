@@ -1,6 +1,5 @@
 """Unit tests for process management functionality."""
 
-import asyncio
 import os
 import subprocess
 import tempfile
@@ -162,11 +161,11 @@ class TestProcessManager:
         # This functionality is comprehensively tested in integration tests
         # with proper process lifecycle management. This unit test verifies
         # the basic behavior without complex async mocking.
-        
+
         # Test terminating non-existent process returns False
         result = await process_manager.terminate_process("nonexistent-id")
         assert result is False
-        
+
         # Test that the method accepts timeout parameter
         result = await process_manager.terminate_process("nonexistent-id", timeout=1.0)
         assert result is False
@@ -247,10 +246,10 @@ class TestProcessManager:
         """Test cleaning up all processes."""
         # Test cleanup with no processes - should not fail
         await process_manager.cleanup_all()
-        
+
         # Verify manager is in shutdown state
         assert process_manager._shutdown_event.is_set()
-        
+
         # Verify cleanup sets internal structures correctly
         assert len(process_manager._processes) == 0
         assert len(process_manager._subprocess_map) == 0
@@ -307,9 +306,9 @@ class TestProcessManager:
         # This functionality is complex to unit test due to async monitoring loops.
         # It's comprehensively tested in integration tests. Here we test basic
         # monitoring data structures and state management.
-        
+
         instance_id = "test-instance-1"
-        
+
         # Test that monitoring data structures work correctly
         process_info = ProcessInfo(
             pid=12345,
@@ -320,7 +319,7 @@ class TestProcessManager:
             started_at=0.0,
         )
         process_manager._processes[instance_id] = process_info
-        
+
         # Verify initial state and data integrity
         assert process_info.status == ProcessStatus.STARTING
         assert process_info.pid == 12345
@@ -401,12 +400,12 @@ class TestProcessManager:
 
         # Test cleanup works correctly - calling the private method
         await process_manager._cleanup_process(instance_id)
-        
+
         # Verify cleanup worked
         assert instance_id not in process_manager._subprocess_map
         assert instance_id not in process_manager._monitoring_tasks
 
-        # Process info should still exist but status updated  
+        # Process info should still exist but status updated
         assert instance_id in process_manager._processes
         assert process_info.status == ProcessStatus.STOPPED
 

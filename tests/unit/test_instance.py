@@ -72,9 +72,10 @@ class TestClaudeInstance:
         instance.status = InstanceStatus.STOPPED
 
         # Mock ProcessManager to simulate successful process start
-        from cc_orchestrator.utils.process import ProcessInfo, ProcessStatus
         from unittest.mock import patch
-        
+
+        from cc_orchestrator.utils.process import ProcessInfo, ProcessStatus
+
         process_info = ProcessInfo(
             pid=12345,
             status=ProcessStatus.RUNNING,
@@ -88,7 +89,9 @@ class TestClaudeInstance:
             error_message=None,
         )
 
-        with patch.object(instance._process_manager, 'spawn_claude_process', return_value=process_info):
+        with patch.object(
+            instance._process_manager, "spawn_claude_process", return_value=process_info
+        ):
             result = await instance.start()
 
         assert result is True
@@ -129,7 +132,9 @@ class TestClaudeInstance:
         instance.process_id = 12345
 
         # Mock ProcessManager to simulate successful process termination
-        with patch.object(instance._process_manager, 'terminate_process', return_value=True):
+        with patch.object(
+            instance._process_manager, "terminate_process", return_value=True
+        ):
             result = await instance.stop()
 
         assert result is True
