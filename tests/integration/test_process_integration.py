@@ -44,22 +44,28 @@ class TestProcessIntegration:
         assert instance.status == InstanceStatus.STOPPED
         assert instance.process_id is None
 
-        # Mock the Claude process spawning to avoid actual Claude execution
-        with patch(
-            "cc_orchestrator.utils.process.ProcessManager._start_process"
-        ) as mock_start:
-            # Create a mock process that simulates successful startup
-            mock_process = type(
-                "MockProcess",
-                (),
-                {
-                    "pid": 12345,
-                    "poll": lambda: None,  # Process is running
-                    "terminate": lambda: None,
-                    "kill": lambda: None,
-                },
-            )()
-            mock_start.return_value = mock_process
+        # Mock ProcessManager methods directly
+        from cc_orchestrator.utils.process import ProcessInfo, ProcessStatus
+        with patch.object(instance._process_manager, 'spawn_claude_process') as mock_spawn, \
+             patch.object(instance._process_manager, 'terminate_process') as mock_terminate, \
+             patch.object(instance._process_manager, 'get_process_info') as mock_get_info:
+            
+            # Mock successful process spawning
+            process_info = ProcessInfo(
+                pid=12345,
+                status=ProcessStatus.RUNNING,
+                command=["claude", "--continue"],
+                working_directory=temp_dir,
+                environment={},
+                started_at=1672531200.0,  # 2023-01-01T00:00:00 as timestamp
+                cpu_percent=0.0,
+                memory_mb=100.0,
+                return_code=None,
+                error_message=None
+            )
+            mock_spawn.return_value = process_info
+            mock_terminate.return_value = True
+            mock_get_info.return_value = process_info
 
             # Start the instance
             success = await instance.start()
@@ -83,13 +89,10 @@ class TestProcessIntegration:
             assert instance.is_running()
 
             # Stop the instance
-            with patch(
-                "cc_orchestrator.utils.process.ProcessManager._wait_for_process"
-            ):
-                success = await instance.stop()
-                assert success is True
-                assert instance.status == InstanceStatus.STOPPED
-                assert instance.process_id is None
+            success = await instance.stop()
+            assert success is True
+            assert instance.status == InstanceStatus.STOPPED
+            assert instance.process_id is None
 
         # Clean up instance
         await instance.cleanup()
@@ -103,7 +106,7 @@ class TestProcessIntegration:
 
         # Mock process spawning failure
         with patch(
-            "cc_orchestrator.utils.process.ProcessManager._start_process",
+            "subprocess.Popen",
             side_effect=OSError("Failed to start process"),
         ):
             success = await instance.start()
@@ -139,8 +142,8 @@ class TestProcessIntegration:
         instance_ids = ["issue-1", "issue-2", "issue-3"]
 
         with patch(
-            "cc_orchestrator.utils.process.ProcessManager._start_process"
-        ) as mock_start:
+            "subprocess.Popen"
+        ) as mock_popen:
             # Mock successful process creation
             mock_processes = []
             for i, _issue_id in enumerate(instance_ids):
@@ -152,11 +155,12 @@ class TestProcessIntegration:
                         "poll": lambda: None,
                         "terminate": lambda: None,
                         "kill": lambda: None,
+                        "returncode": None,
                     },
                 )()
                 mock_processes.append(mock_process)
 
-            mock_start.side_effect = mock_processes
+            mock_popen.side_effect = mock_processes
 
             # Create instances through orchestrator
             instances = []
@@ -181,10 +185,7 @@ class TestProcessIntegration:
             assert len(all_processes) == 3
 
             # Stop all instances through orchestrator cleanup
-            with patch(
-                "cc_orchestrator.utils.process.ProcessManager._wait_for_process"
-            ):
-                await orchestrator.cleanup()
+            await orchestrator.cleanup()
 
             # Verify cleanup
             assert len(orchestrator.instances) == 0
@@ -209,8 +210,8 @@ class TestProcessIntegration:
         await instance2.initialize()
 
         with patch(
-            "cc_orchestrator.utils.process.ProcessManager._start_process"
-        ) as mock_start:
+            "subprocess.Popen"
+        ) as mock_popen:
             # Mock different processes
             mock_process1 = type(
                 "MockProcess",
@@ -219,6 +220,7 @@ class TestProcessIntegration:
                     "pid": 11111,
                     "poll": lambda: None,
                     "terminate": lambda: None,
+                    "returncode": None,
                 },
             )()
 
@@ -229,10 +231,11 @@ class TestProcessIntegration:
                     "pid": 22222,
                     "poll": lambda: None,
                     "terminate": lambda: None,
+                    "returncode": None,
                 },
             )()
 
-            mock_start.side_effect = [mock_process1, mock_process2]
+            mock_popen.side_effect = [mock_process1, mock_process2]
 
             # Start both instances
             success1 = await instance1.start()
@@ -258,11 +261,8 @@ class TestProcessIntegration:
             assert "issue-isolation-2" in processes
 
             # Clean up
-            with patch(
-                "cc_orchestrator.utils.process.ProcessManager._wait_for_process"
-            ):
-                await instance1.cleanup()
-                await instance2.cleanup()
+            await instance1.cleanup()
+            await instance2.cleanup()
 
     @pytest.mark.asyncio
     async def test_process_recovery_after_crash(self, temp_dir):
@@ -272,8 +272,8 @@ class TestProcessIntegration:
         await instance.initialize()
 
         with patch(
-            "cc_orchestrator.utils.process.ProcessManager._start_process"
-        ) as mock_start:
+            "subprocess.Popen"
+        ) as mock_popen:
             # Create a process that will "crash"
             mock_process = type(
                 "MockProcess",
@@ -282,10 +282,11 @@ class TestProcessIntegration:
                     "pid": 99999,
                     "poll": lambda: 1,  # Crashed with exit code 1
                     "terminate": lambda: None,
+                    "returncode": 1,
                 },
             )()
 
-            mock_start.return_value = mock_process
+            mock_popen.return_value = mock_process
 
             # Start instance
             success = await instance.start()
@@ -309,19 +310,17 @@ class TestProcessIntegration:
                     "pid": 88888,
                     "poll": lambda: None,  # Running again
                     "terminate": lambda: None,
+                    "returncode": None,
                 },
             )()
-            mock_start.return_value = mock_process2
+            mock_popen.return_value = mock_process2
 
             success = await instance.start()
             assert success is True
             assert instance.process_id == 88888
 
             # Clean up
-            with patch(
-                "cc_orchestrator.utils.process.ProcessManager._wait_for_process"
-            ):
-                await instance.cleanup()
+            await instance.cleanup()
 
     @pytest.mark.asyncio
     async def test_resource_monitoring_integration(self, temp_dir):
@@ -331,8 +330,8 @@ class TestProcessIntegration:
         await instance.initialize()
 
         with patch(
-            "cc_orchestrator.utils.process.ProcessManager._start_process"
-        ) as mock_start:
+            "subprocess.Popen"
+        ) as mock_popen:
             mock_process = type(
                 "MockProcess",
                 (),
@@ -340,9 +339,10 @@ class TestProcessIntegration:
                     "pid": 12345,
                     "poll": lambda: None,
                     "terminate": lambda: None,
+                    "returncode": None,
                 },
             )()
-            mock_start.return_value = mock_process
+            mock_popen.return_value = mock_process
 
             # Mock resource monitoring
             with patch("psutil.Process") as mock_psutil:
@@ -365,10 +365,7 @@ class TestProcessIntegration:
                     assert process_info.memory_mb >= 0
 
                 # Clean up
-                with patch(
-                    "cc_orchestrator.utils.process.ProcessManager._wait_for_process"
-                ):
-                    await instance.cleanup()
+                await instance.cleanup()
 
     @pytest.mark.asyncio
     async def test_concurrent_instance_operations(self, temp_dir):
@@ -385,8 +382,8 @@ class TestProcessIntegration:
             instances.append(instance)
 
         with patch(
-            "cc_orchestrator.utils.process.ProcessManager._start_process"
-        ) as mock_start:
+            "subprocess.Popen"
+        ) as mock_popen:
             # Mock process creation for all instances
             mock_processes = []
             for i in range(instance_count):
@@ -397,11 +394,12 @@ class TestProcessIntegration:
                         "pid": 50000 + i,
                         "poll": lambda: None,
                         "terminate": lambda: None,
+                        "returncode": None,
                     },
                 )()
                 mock_processes.append(mock_process)
 
-            mock_start.side_effect = mock_processes
+            mock_popen.side_effect = mock_processes
 
             # Start all instances concurrently
             start_tasks = [instance.start() for instance in instances]
@@ -417,15 +415,12 @@ class TestProcessIntegration:
             assert len(processes) == instance_count
 
             # Stop all instances concurrently
-            with patch(
-                "cc_orchestrator.utils.process.ProcessManager._wait_for_process"
-            ):
-                stop_tasks = [instance.stop() for instance in instances]
-                results = await asyncio.gather(*stop_tasks)
+            stop_tasks = [instance.stop() for instance in instances]
+            results = await asyncio.gather(*stop_tasks)
 
-                # Verify all stopped successfully
-                assert all(results)
-                assert all(not instance.is_running() for instance in instances)
+            # Verify all stopped successfully
+            assert all(results)
+            assert all(not instance.is_running() for instance in instances)
 
         # Clean up all instances
         cleanup_tasks = [instance.cleanup() for instance in instances]
