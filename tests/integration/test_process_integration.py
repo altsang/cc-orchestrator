@@ -405,23 +405,37 @@ class TestProcessIntegration:
             await instance.initialize()
             instances.append(instance)
 
-        with patch("subprocess.Popen") as mock_popen:
-            # Mock process creation for all instances
-            mock_processes = []
-            for i in range(instance_count):
-                mock_process = type(
-                    "MockProcess",
-                    (),
-                    {
-                        "pid": 50000 + i,
-                        "poll": lambda: None,
-                        "terminate": lambda: None,
-                        "returncode": None,
-                    },
-                )()
-                mock_processes.append(mock_process)
+        # Mock ProcessManager methods for all instances
+        from cc_orchestrator.utils.process import ProcessInfo, ProcessStatus
 
-            mock_popen.side_effect = mock_processes
+        # Create process info for each instance
+        process_infos = []
+        for i in range(instance_count):
+            process_info = ProcessInfo(
+                pid=50000 + i,
+                status=ProcessStatus.RUNNING,
+                command=["claude", "--continue"],
+                working_directory=temp_dir / f"workspace-{i}",
+                environment={},
+                started_at=1672531200.0 + i,
+                cpu_percent=0.0,
+                memory_mb=100.0,
+                return_code=None,
+                error_message=None,
+            )
+            process_infos.append(process_info)
+
+        # Mock methods for all instances
+        with patch("cc_orchestrator.utils.process.ProcessManager.spawn_claude_process") as mock_spawn, \
+             patch("cc_orchestrator.utils.process.ProcessManager.terminate_process") as mock_terminate, \
+             patch("cc_orchestrator.utils.process.ProcessManager.get_process_info") as mock_get_info, \
+             patch("cc_orchestrator.utils.process.ProcessManager.list_processes") as mock_list:
+
+            # Set up mock returns
+            mock_spawn.side_effect = process_infos
+            mock_terminate.return_value = True
+            mock_get_info.side_effect = process_infos
+            mock_list.return_value = {f"concurrent-{i}": process_infos[i] for i in range(instance_count)}
 
             # Start all instances concurrently
             start_tasks = [instance.start() for instance in instances]
