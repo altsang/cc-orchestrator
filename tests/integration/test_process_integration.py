@@ -46,10 +46,19 @@ class TestProcessIntegration:
 
         # Mock ProcessManager methods directly
         from cc_orchestrator.utils.process import ProcessInfo, ProcessStatus
-        with patch.object(instance._process_manager, 'spawn_claude_process') as mock_spawn, \
-             patch.object(instance._process_manager, 'terminate_process') as mock_terminate, \
-             patch.object(instance._process_manager, 'get_process_info') as mock_get_info:
-            
+
+        with (
+            patch.object(
+                instance._process_manager, "spawn_claude_process"
+            ) as mock_spawn,
+            patch.object(
+                instance._process_manager, "terminate_process"
+            ) as mock_terminate,
+            patch.object(
+                instance._process_manager, "get_process_info"
+            ) as mock_get_info,
+        ):
+
             # Mock successful process spawning
             process_info = ProcessInfo(
                 pid=12345,
@@ -61,7 +70,7 @@ class TestProcessIntegration:
                 cpu_percent=0.0,
                 memory_mb=100.0,
                 return_code=None,
-                error_message=None
+                error_message=None,
             )
             mock_spawn.return_value = process_info
             mock_terminate.return_value = True
@@ -141,9 +150,7 @@ class TestProcessIntegration:
         # Create multiple instances
         instance_ids = ["issue-1", "issue-2", "issue-3"]
 
-        with patch(
-            "subprocess.Popen"
-        ) as mock_popen:
+        with patch("subprocess.Popen") as mock_popen:
             # Mock successful process creation
             mock_processes = []
             for i, _issue_id in enumerate(instance_ids):
@@ -209,9 +216,7 @@ class TestProcessIntegration:
         await instance1.initialize()
         await instance2.initialize()
 
-        with patch(
-            "subprocess.Popen"
-        ) as mock_popen:
+        with patch("subprocess.Popen") as mock_popen:
             # Mock different processes
             mock_process1 = type(
                 "MockProcess",
@@ -271,30 +276,60 @@ class TestProcessIntegration:
 
         await instance.initialize()
 
-        with patch(
-            "subprocess.Popen"
-        ) as mock_popen:
-            # Create a process that will "crash"
-            mock_process = type(
-                "MockProcess",
-                (),
-                {
-                    "pid": 99999,
-                    "poll": lambda: 1,  # Crashed with exit code 1
-                    "terminate": lambda: None,
-                    "returncode": 1,
-                },
-            )()
+        # Mock ProcessManager methods directly for more reliable testing
+        from cc_orchestrator.utils.process import ProcessInfo, ProcessStatus
 
-            mock_popen.return_value = mock_process
+        # Mock initial process that will "crash"
+        crashed_process_info = ProcessInfo(
+            pid=99999,
+            status=ProcessStatus.CRASHED,
+            command=["claude", "--continue"],
+            working_directory=temp_dir,
+            environment={},
+            started_at=1672531200.0,
+            cpu_percent=0.0,
+            memory_mb=100.0,
+            return_code=1,
+            error_message="Process crashed",
+        )
+
+        # Mock recovered process
+        recovered_process_info = ProcessInfo(
+            pid=88888,
+            status=ProcessStatus.RUNNING,
+            command=["claude", "--continue"],
+            working_directory=temp_dir,
+            environment={},
+            started_at=1672531300.0,
+            cpu_percent=0.0,
+            memory_mb=100.0,
+            return_code=None,
+            error_message=None,
+        )
+
+        with (
+            patch.object(
+                instance._process_manager, "spawn_claude_process"
+            ) as mock_spawn,
+            patch.object(
+                instance._process_manager, "terminate_process"
+            ) as mock_terminate,
+            patch.object(
+                instance._process_manager, "get_process_info"
+            ) as mock_get_info,
+        ):
+
+            # First start - process starts successfully
+            mock_spawn.return_value = crashed_process_info
+            mock_terminate.return_value = True
+            mock_get_info.return_value = crashed_process_info
 
             # Start instance
             success = await instance.start()
             assert success is True
 
-            # Simulate process monitoring detecting crash
-            process_manager = get_process_manager()
-            process_info = await process_manager.get_process_info("crash-test")
+            # Simulate process detection
+            process_info = await instance.get_process_status()
             assert process_info is not None
 
             # Stop the "crashed" instance
@@ -303,17 +338,8 @@ class TestProcessIntegration:
             assert instance.status == InstanceStatus.STOPPED
 
             # Restart the instance (simulating recovery)
-            mock_process2 = type(
-                "MockProcess",
-                (),
-                {
-                    "pid": 88888,
-                    "poll": lambda: None,  # Running again
-                    "terminate": lambda: None,
-                    "returncode": None,
-                },
-            )()
-            mock_popen.return_value = mock_process2
+            mock_spawn.return_value = recovered_process_info
+            mock_get_info.return_value = recovered_process_info
 
             success = await instance.start()
             assert success is True
@@ -329,9 +355,7 @@ class TestProcessIntegration:
 
         await instance.initialize()
 
-        with patch(
-            "subprocess.Popen"
-        ) as mock_popen:
+        with patch("subprocess.Popen") as mock_popen:
             mock_process = type(
                 "MockProcess",
                 (),
@@ -381,9 +405,7 @@ class TestProcessIntegration:
             await instance.initialize()
             instances.append(instance)
 
-        with patch(
-            "subprocess.Popen"
-        ) as mock_popen:
+        with patch("subprocess.Popen") as mock_popen:
             # Mock process creation for all instances
             mock_processes = []
             for i in range(instance_count):
