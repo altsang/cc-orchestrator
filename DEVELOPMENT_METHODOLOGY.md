@@ -170,12 +170,36 @@ repos:
 ### **Before Every PR:**
 ```markdown
 - [ ] All quality gates passed
+- [ ] **ALL CI/CD TESTS MUST PASS** - NO EXCEPTIONS
+- [ ] Security scans clean (bandit, safety)
 - [ ] Integration tests with existing components
 - [ ] Backwards compatibility maintained
 - [ ] Migration path documented (if breaking changes)
 - [ ] Security implications reviewed
 - [ ] Performance impact assessed
 - [ ] Monitoring/logging instrumentation added
+```
+
+### **🚨 MANDATORY CI/CD REQUIREMENTS**
+```markdown
+**ABSOLUTE REQUIREMENTS FOR PR APPROVAL:**
+- [ ] ALL CI/CD pipeline jobs MUST be GREEN ✅
+- [ ] 100% test pass rate across all Python versions
+- [ ] Zero security warnings (or properly justified with # nosec)
+- [ ] No runtime errors or exceptions in test suite
+- [ ] All linting and formatting checks pass
+
+**❌ NEVER APPROVE IF:**
+- Any CI/CD job shows red/failed status
+- Tests are failing (regardless of code quality)
+- Security warnings are unaddressed
+- Pipeline shows any errors or exceptions
+
+**✅ ONLY APPROVE WHEN:**
+- All pipeline jobs show green checkmarks
+- Test coverage meets requirements
+- Security scans are clean
+- No outstanding CI/CD issues
 ```
 
 ---
@@ -341,9 +365,23 @@ def complex_operation(
 
 ### **Review Response Standards**
 - **All feedback must be addressed** before merge
+- **ALL CI/CD TESTS MUST PASS** before any approval consideration
 - **Explanations required** for any standards deviations
 - **Follow-up issues created** for any deferred improvements
 - **Knowledge sharing** encouraged through review comments
+
+### **🚫 PR APPROVAL BLOCKING CONDITIONS**
+```markdown
+**AUTOMATIC REJECTION IF:**
+- [ ] Any CI/CD job failing (red status)
+- [ ] Test failures in any environment
+- [ ] Security scan warnings unaddressed
+- [ ] Linting or formatting issues
+- [ ] Runtime errors in test execution
+- [ ] Coverage below minimum thresholds
+
+**NO EXCEPTIONS** - Technical quality gates cannot be bypassed
+```
 
 ---
 
@@ -411,8 +449,8 @@ make security-scan
 
 ### **Quality Gate Failures**
 1. **Automated Rejection**: CI/CD blocks merge if quality gates fail
-2. **Manual Override**: Requires senior engineer approval + technical debt issue
-3. **Emergency Fixes**: Hotfix process with immediate follow-up remediation
+2. **NO MANUAL OVERRIDES**: Failed CI/CD tests cannot be bypassed
+3. **Emergency Fixes**: Hotfix process with immediate follow-up remediation AND full CI/CD validation
 
 ### **Standards Violations**
 1. **First Violation**: Educational guidance and re-review
@@ -431,12 +469,15 @@ make security-scan
 A component is **production-ready** when:
 
 ```markdown
-✅ **Quality Gates**
+✅ **Quality Gates - ALL MUST PASS**
+- [ ] **CI/CD PIPELINE FULLY GREEN** ✅
 - [ ] Zero mypy errors
 - [ ] Zero linting issues
-- [ ] 100% test pass rate
+- [ ] 100% test pass rate across ALL environments
+- [ ] Zero security warnings (or properly justified)
 - [ ] ≥90% test coverage
 - [ ] Performance benchmarks met
+- [ ] No runtime errors or exceptions
 
 ✅ **Functionality**
 - [ ] All acceptance criteria met
@@ -461,7 +502,7 @@ A component is **production-ready** when:
 - [ ] Support procedures documented
 ```
 
-**Remember**: If any criterion is not met, the component is **not production-ready** and should not be merged.
+**🚨 CRITICAL REMINDER**: If any criterion is not met, especially **CI/CD test failures**, the component is **not production-ready** and **MUST NOT be merged**. Failed CI/CD tests indicate real issues that must be resolved.
 
 ---
 
