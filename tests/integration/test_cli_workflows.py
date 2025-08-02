@@ -2,6 +2,7 @@
 
 import tempfile
 from pathlib import Path
+from unittest.mock import patch
 
 import yaml
 from click.testing import CliRunner
@@ -183,17 +184,35 @@ class TestCommandGroupWorkflows:
 
     def test_worktree_management_workflow(self):
         """Test worktree management command workflow."""
-        # List worktrees
-        result = self.runner.invoke(main, ["worktrees", "list"])
-        assert result.exit_code == 0
+        with patch("cc_orchestrator.cli.worktrees.WorktreeService") as mock_service:
+            # Mock service responses
+            mock_service.return_value.list_worktrees.return_value = []
+            mock_service.return_value.create_worktree.return_value = {
+                "id": 1,
+                "name": "test-feature",
+                "path": "/test/path",
+                "branch": "feature-branch",
+                "commit": "abcd1234",
+                "instance_id": None,
+            }
+            mock_service.return_value.cleanup_worktrees.return_value = {
+                "git_cleaned": [],
+                "db_cleaned": [],
+            }
 
-        # Create worktree (simulated)
-        result = self.runner.invoke(main, ["worktrees", "create", "feature-branch"])
-        assert result.exit_code == 0
+            # List worktrees
+            result = self.runner.invoke(main, ["worktrees", "list"])
+            assert result.exit_code == 0
 
-        # Cleanup worktrees
-        result = self.runner.invoke(main, ["worktrees", "cleanup"])
-        assert result.exit_code == 0
+            # Create worktree with correct syntax (name and branch required)
+            result = self.runner.invoke(
+                main, ["worktrees", "create", "test-feature", "feature-branch"]
+            )
+            assert result.exit_code == 0
+
+            # Cleanup worktrees
+            result = self.runner.invoke(main, ["worktrees", "cleanup"])
+            assert result.exit_code == 0
 
     def test_task_management_workflow(self):
         """Test task management command workflow."""

@@ -15,6 +15,7 @@ from .models import (
     TaskPriority,
     TaskStatus,
     Worktree,
+    WorktreeStatus,
 )
 
 
@@ -460,6 +461,113 @@ class WorktreeCRUD:
         if not worktree:
             raise NotFoundError(f"Worktree with path '{path}' not found")
         return worktree
+
+    @staticmethod
+    def get_by_id(session: Session, worktree_id: int) -> Worktree:
+        """Get worktree by ID.
+
+        Args:
+            session: Database session.
+            worktree_id: Worktree ID.
+
+        Returns:
+            Worktree object.
+
+        Raises:
+            NotFoundError: If worktree not found.
+        """
+        worktree = session.get(Worktree, worktree_id)
+        if not worktree:
+            raise NotFoundError(f"Worktree with ID {worktree_id} not found")
+        return worktree
+
+    @staticmethod
+    def list_all(session: Session) -> list[Worktree]:
+        """List all worktrees.
+
+        Args:
+            session: Database session.
+
+        Returns:
+            List of all worktrees.
+        """
+        return session.query(Worktree).order_by(Worktree.created_at).all()
+
+    @staticmethod
+    def list_by_status(session: Session, status: WorktreeStatus) -> list[Worktree]:
+        """List worktrees by status.
+
+        Args:
+            session: Database session.
+            status: Worktree status to filter by.
+
+        Returns:
+            List of worktrees with the specified status.
+        """
+        return (
+            session.query(Worktree)
+            .filter(Worktree.status == status)
+            .order_by(Worktree.created_at)
+            .all()
+        )
+
+    @staticmethod
+    def update_status(
+        session: Session,
+        worktree_id: int,
+        status: WorktreeStatus,
+        current_commit: str | None = None,
+        has_uncommitted_changes: bool | None = None,
+    ) -> Worktree:
+        """Update worktree status and git information.
+
+        Args:
+            session: Database session.
+            worktree_id: Worktree ID.
+            status: New status.
+            current_commit: Current commit SHA.
+            has_uncommitted_changes: Whether there are uncommitted changes.
+
+        Returns:
+            Updated worktree.
+
+        Raises:
+            NotFoundError: If worktree not found.
+        """
+        worktree = WorktreeCRUD.get_by_id(session, worktree_id)
+
+        worktree.status = status
+        if current_commit is not None:
+            worktree.current_commit = current_commit
+        if has_uncommitted_changes is not None:
+            worktree.has_uncommitted_changes = has_uncommitted_changes
+
+        # Update last_sync timestamp
+        from datetime import datetime
+
+        worktree.last_sync = datetime.now()
+
+        session.flush()
+        return worktree
+
+    @staticmethod
+    def delete(session: Session, worktree_id: int) -> bool:
+        """Delete a worktree record.
+
+        Args:
+            session: Database session.
+            worktree_id: Worktree ID.
+
+        Returns:
+            True if deleted successfully.
+
+        Raises:
+            NotFoundError: If worktree not found.
+        """
+        worktree = WorktreeCRUD.get_by_id(session, worktree_id)
+        session.delete(worktree)
+        session.flush()
+        return True
 
 
 class ConfigurationCRUD:
