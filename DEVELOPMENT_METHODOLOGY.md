@@ -330,8 +330,8 @@ The manual development methodology uses tmux sessions to enable parallel develop
 
 **When already in a tmux session** (Worker 1, Worker 2):
 ```bash
-# ✅ CORRECT: Switch to target session (no nesting)
-tmux switch-session -t "cc-orchestrator-issue-15"
+# ✅ CORRECT: Switch client to target session (no nesting)
+tmux switch-client -t "cc-orchestrator-issue-15"
 
 # ❌ INCORRECT: Cannot nest tmux sessions
 tmux attach-session -t "cc-orchestrator-issue-15"  # Will fail with nesting error
@@ -351,7 +351,7 @@ tmux attach-session -t "cc-orchestrator-issue-15"
 
 # Option 2: List and switch
 tmux list-sessions  # See available sessions
-tmux switch-session -t "target-session"
+tmux switch-client -t "target-session"
 ```
 
 ### **Claude Code Launch Options for Maximum Velocity**
@@ -393,7 +393,7 @@ gh issue edit <NUMBER> --assignee @me
 **Worker Activation Commands:**
 ```bash
 # From existing tmux session (Worker 1, Worker 2)
-tmux switch-session -t "cc-orchestrator-issue-<NUMBER>"
+tmux switch-client -t "cc-orchestrator-issue-<NUMBER>"
 claude --dangerously-bypass-permissions
 
 # From fresh terminal
@@ -414,7 +414,7 @@ claude --dangerously-bypass-permissions
 tmux list-sessions
 
 # Switch between sessions quickly
-tmux switch-session -t <session-name>
+tmux switch-client -t <session-name>
 
 # Create new session for emergency work
 tmux new-session -d -s "hotfix-session" -c "~/workspace/cc-orchestrator"
