@@ -315,6 +315,129 @@ stages:
 
 ---
 
+## 🖥️ **Manual Development Methodology (Tmux Multi-Session)**
+
+### **Tmux Session Management for Parallel Development**
+
+The manual development methodology uses tmux sessions to enable parallel development across multiple issues with complete isolation.
+
+#### **Session Architecture**
+- **Control Tower**: Main coordination session (typically where you start)
+- **Worker Sessions**: Issue-specific development sessions (Worker 1, Worker 2, etc.)
+- **Issue Sessions**: Auto-created sessions for each GitHub issue
+
+#### **Session Switching Protocol**
+
+**When already in a tmux session** (Worker 1, Worker 2):
+```bash
+# ✅ CORRECT: Switch to target session (no nesting)
+tmux switch-session -t "cc-orchestrator-issue-15"
+
+# ❌ INCORRECT: Cannot nest tmux sessions
+tmux attach-session -t "cc-orchestrator-issue-15"  # Will fail with nesting error
+```
+
+**When outside tmux** (fresh terminal):
+```bash
+# ✅ CORRECT: Attach to target session
+tmux attach-session -t "cc-orchestrator-issue-15"
+```
+
+#### **Alternative Session Management**
+```bash
+# Option 1: Detach and reattach
+tmux detach-client
+tmux attach-session -t "cc-orchestrator-issue-15"
+
+# Option 2: List and switch
+tmux list-sessions  # See available sessions
+tmux switch-session -t "target-session"
+```
+
+### **Claude Code Launch Options for Maximum Velocity**
+
+#### **Available Launch Modes**
+```bash
+# 1. Plan Mode (default) - Asks permission for each action
+claude
+
+# 2. No Plan Mode - Executes immediately with full visibility
+claude --no-plan-mode
+
+# 3. Maximum Speed Mode - Executes with minimal prompting
+claude --dangerously-bypass-permissions
+```
+
+#### **Mode Selection Guidelines**
+- **Plan Mode**: Complex architectural changes, unfamiliar codebases
+- **No Plan Mode**: Regular development with oversight
+- **Bypass Permissions**: Routine tasks, maximum development velocity
+
+### **Worker Environment Setup Protocol**
+
+**Control Tower Preparation Steps:**
+```bash
+# 1. Create isolated git worktree
+git worktree add -b feature/issue-<NUMBER>-<description> ../cc-orchestrator-issue-<NUMBER>
+
+# 2. Create dedicated tmux session
+tmux new-session -d -s "cc-orchestrator-issue-<NUMBER>" -c "~/workspace/cc-orchestrator-issue-<NUMBER>"
+
+# 3. Update GitHub project board status
+gh project item-edit --id <ITEM_ID> --field-id <STATUS_FIELD> --single-select-option-id <IN_PROGRESS_ID>
+
+# 4. Assign GitHub issue
+gh issue edit <NUMBER> --assignee @me
+```
+
+**Worker Activation Commands:**
+```bash
+# From existing tmux session (Worker 1, Worker 2)
+tmux switch-session -t "cc-orchestrator-issue-<NUMBER>"
+claude --dangerously-bypass-permissions
+
+# From fresh terminal
+tmux attach-session -t "cc-orchestrator-issue-<NUMBER>"
+claude --dangerously-bypass-permissions
+```
+
+### **Multi-Session Coordination Best Practices**
+
+#### **Session Naming Convention**
+- **Issue Sessions**: `cc-orchestrator-issue-<NUMBER>`
+- **Worker Sessions**: `worker-1`, `worker-2`, `worker-3`
+- **Control Tower**: `control-tower` or default session
+
+#### **Session Management Commands**
+```bash
+# List all active sessions
+tmux list-sessions
+
+# Switch between sessions quickly
+tmux switch-session -t <session-name>
+
+# Create new session for emergency work
+tmux new-session -d -s "hotfix-session" -c "~/workspace/cc-orchestrator"
+
+# Kill completed issue sessions
+tmux kill-session -t "cc-orchestrator-issue-13"  # After PR merged
+```
+
+#### **Development Flow**
+1. **Control Tower**: Coordinates and prepares environments
+2. **Workers**: Execute focused development in isolated environments
+3. **Session Persistence**: All work survives disconnections and crashes
+4. **Parallel Development**: Multiple issues can progress simultaneously
+5. **Clean Isolation**: No cross-contamination between issue work
+
+### **Performance Optimization**
+- **Tmux Configuration**: Optimize for responsiveness and session management
+- **Claude Code Settings**: Use bypass permissions for routine development
+- **Git Worktree Benefits**: Complete isolation without repository duplication
+- **Resource Management**: Each session has dedicated working directory
+
+---
+
 ## 📚 **Documentation Standards**
 
 ### **Code Documentation**
