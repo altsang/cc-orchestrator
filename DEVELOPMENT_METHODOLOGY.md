@@ -365,13 +365,13 @@ claude
 claude --no-plan-mode
 
 # 3. Maximum Speed Mode - Executes with minimal prompting
-claude --dangerously-bypass-permissions
+claude --dangerously-skip-permissions
 ```
 
 #### **Mode Selection Guidelines**
 - **Plan Mode**: Complex architectural changes, unfamiliar codebases
 - **No Plan Mode**: Regular development with oversight
-- **Bypass Permissions**: Routine tasks, maximum development velocity
+- **Skip Permissions**: Routine tasks, maximum development velocity
 
 ### **Worker Environment Setup Protocol**
 
@@ -394,11 +394,11 @@ gh issue edit <NUMBER> --assignee @me
 ```bash
 # From existing tmux session (Worker 1, Worker 2)
 tmux switch-client -t "cc-orchestrator-issue-<NUMBER>"
-claude --dangerously-bypass-permissions
+claude --dangerously-skip-permissions
 
 # From fresh terminal
 tmux attach-session -t "cc-orchestrator-issue-<NUMBER>"
-claude --dangerously-bypass-permissions
+claude --dangerously-skip-permissions
 ```
 
 ### **Multi-Session Coordination Best Practices**
@@ -432,7 +432,7 @@ tmux kill-session -t "cc-orchestrator-issue-13"  # After PR merged
 
 ### **Performance Optimization**
 - **Tmux Configuration**: Optimize for responsiveness and session management
-- **Claude Code Settings**: Use bypass permissions for routine development
+- **Claude Code Settings**: Use skip permissions for routine development
 - **Git Worktree Benefits**: Complete isolation without repository duplication
 - **Resource Management**: Each session has dedicated working directory
 
