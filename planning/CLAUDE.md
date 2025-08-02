@@ -4,8 +4,9 @@
 Claude Code orchestrator managing multiple instances through git worktrees with CLI + Web dashboard + Tmux integration.
 
 ## Current Status
-- Phase: Planning Complete, Ready for Implementation
-- Next: Phase 1 - Core Infrastructure
+- Phase: Phase 1 ✅ COMPLETE, Phase 2 🚧 IN PROGRESS
+- Current: Phase 2 - Git & Process Management (Week 2-3)
+- Next Phase 2 Issues: #16 (health monitoring), #15 (tmux integration), #17 (worktree isolation)
 
 ## Key Context
 - Dual interface: CLI (tmux) + Web control tower
@@ -20,14 +21,68 @@ Claude Code orchestrator managing multiple instances through git worktrees with 
 - REQUIREMENTS.md: Feature specifications
 
 ## Development Workflow
-1. Read current TODO.md for active tasks
-2. **MANDATORY**: Complete full worker terminal setup (see Worker Terminal Setup Protocol below)
-3. **MANDATORY**: Update GitHub project board status to "In Progress" AND assign issue to yourself before starting work
-4. Update progress in DEVELOPMENT_LOG.md
-5. Reference ARCHITECTURE.md for technical decisions
-6. Follow PROJECT_PLAN.md phases
-7. **MANDATORY**: Create PR following standardized format (see PR Protocol below)
-8. **MANDATORY**: Only move project board to "Done" after PR is merged
+1. **MANDATORY**: Sync repository and project status first (see Repository Sync Protocol below)
+2. Read current TODO.md for active tasks
+3. **MANDATORY**: Complete full worker terminal setup (see Worker Terminal Setup Protocol below)
+4. **MANDATORY**: Update GitHub project board status to "In Progress" AND assign issue to yourself before starting work
+5. Update progress in DEVELOPMENT_LOG.md
+6. Reference ARCHITECTURE.md for technical decisions
+7. Follow PROJECT_PLAN.md phases
+8. **MANDATORY**: Create PR following standardized format (see PR Protocol below)
+9. **MANDATORY**: Only move project board to "Done" after PR is merged
+
+## 📡 Repository Sync Protocol (MANDATORY)
+
+**CRITICAL**: Always sync with actual repository state before providing status or making decisions. Other worker threads may have completed work that changes the current context.
+
+### Status Check Sequence (MANDATORY for all status requests)
+
+```bash
+# 1. Sync with remote repository
+git fetch origin
+git status
+
+# 2. Check PROJECT PHASE from PROJECT_PLAN.md to understand current work context
+grep -A 5 "Phase.*COMPLETE\|Phase.*IN PROGRESS" planning/PROJECT_PLAN.md
+
+# 3. Check actual completed issues (not documentation)
+gh issue list --state closed --limit 20
+gh pr list --state merged --limit 10
+
+# 4. Get CURRENT PHASE issues only (critical for accurate status)
+gh issue list --label "phase-2" --state open  # Replace phase-2 with current phase
+
+# 5. Run current test suite to verify system state
+python -m pytest --tb=short
+
+# 6. Check current git log for recent completions
+git log --oneline -10
+
+# 7. Verify project board reflects actual status
+gh project item-list 1 --owner altsang --format json | jq '.items[] | select(.content.state == "CLOSED") | {number: .content.number, title: .content.title}'
+```
+
+### When to Use This Protocol
+- **ALWAYS** when user asks "what's the status?"
+- **ALWAYS** before planning next work
+- **ALWAYS** before setting up new worker environments
+- **ALWAYS** when resuming work after time gap
+- **ALWAYS** when multiple workers are active
+
+### Why This Protocol is Critical
+- **Parallel Development**: Multiple workers complete issues simultaneously
+- **Context Accuracy**: Documentation may lag behind actual progress
+- **Decision Making**: Work assignments depend on actual completion status
+- **Resource Efficiency**: Avoid duplicate work on completed issues
+- **Phase Awareness**: Must filter issues by current project phase, not just priority
+
+### Critical Phase Awareness Requirements
+- **ALWAYS** check current phase from PROJECT_PLAN.md before listing "next issues"
+- **NEVER** list issues from future phases when asked "what's next to work on"
+- **FILTER** issue lists by current phase label (e.g., `--label "phase-2"`)
+- **UNDERSTAND** that high-priority issues from Phase 5/6 are NOT current work if we're in Phase 2
+
+**NEVER** rely solely on documentation for current status - always verify with actual repository state first.
 
 ## 🔧 Worker Terminal Setup Protocol (MANDATORY)
 

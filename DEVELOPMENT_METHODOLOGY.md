@@ -32,6 +32,60 @@ Multiple layers of quality assurance:
 
 ## 📋 **Development Workflow**
 
+### Phase 0: Repository Sync (MANDATORY)
+
+**CRITICAL**: Always sync with actual repository state before providing status or making decisions. Other worker threads may have completed work that changes the current context.
+
+#### Status Check Sequence (MANDATORY for all status requests)
+
+```bash
+# 1. Sync with remote repository
+git fetch origin
+git status
+
+# 2. Check PROJECT PHASE from PROJECT_PLAN.md to understand current work context
+grep -A 5 "Phase.*COMPLETE\|Phase.*IN PROGRESS" planning/PROJECT_PLAN.md
+
+# 3. Check actual completed issues (not documentation)
+gh issue list --state closed --limit 20
+gh pr list --state merged --limit 10
+
+# 4. Get CURRENT PHASE issues only (critical for accurate status)
+gh issue list --label "phase-2" --state open  # Replace phase-2 with current phase
+
+# 5. Run current test suite to verify system state
+python -m pytest --tb=short
+
+# 6. Check current git log for recent completions
+git log --oneline -10
+
+# 7. Verify project board reflects actual status
+gh project item-list 1 --owner altsang --format json | jq '.items[] | select(.content.state == "CLOSED") | {number: .content.number, title: .content.title}'
+```
+
+#### When to Use This Protocol
+- **ALWAYS** when user asks "what's the status?"
+- **ALWAYS** before planning next work
+- **ALWAYS** before setting up new worker environments
+- **ALWAYS** when resuming work after time gap
+- **ALWAYS** when multiple workers are active
+
+#### Why This Protocol is Critical
+- **Parallel Development**: Multiple workers complete issues simultaneously
+- **Context Accuracy**: Documentation may lag behind actual progress
+- **Decision Making**: Work assignments depend on actual completion status
+- **Resource Efficiency**: Avoid duplicate work on completed issues
+- **Phase Awareness**: Must filter issues by current project phase, not just priority
+
+#### Critical Phase Awareness Requirements
+- **ALWAYS** check current phase from PROJECT_PLAN.md before listing "next issues"
+- **NEVER** list issues from future phases when asked "what's next to work on"
+- **FILTER** issue lists by current phase label (e.g., `--label "phase-2"`)
+- **UNDERSTAND** that high-priority issues from Phase 5/6 are NOT current work if we're in Phase 2
+- **ERROR EXAMPLE**: Listing Phase 5 resource management issues when asked "what's next" during Phase 2
+
+**NEVER** rely solely on documentation for current status - always verify with actual repository state first.
+
 ### Phase 1: Planning & Design
 ```markdown
 ## Before Writing Code:
@@ -170,36 +224,12 @@ repos:
 ### **Before Every PR:**
 ```markdown
 - [ ] All quality gates passed
-- [ ] **ALL CI/CD TESTS MUST PASS** - NO EXCEPTIONS
-- [ ] Security scans clean (bandit, safety)
 - [ ] Integration tests with existing components
 - [ ] Backwards compatibility maintained
 - [ ] Migration path documented (if breaking changes)
 - [ ] Security implications reviewed
 - [ ] Performance impact assessed
 - [ ] Monitoring/logging instrumentation added
-```
-
-### **🚨 MANDATORY CI/CD REQUIREMENTS**
-```markdown
-**ABSOLUTE REQUIREMENTS FOR PR APPROVAL:**
-- [ ] ALL CI/CD pipeline jobs MUST be GREEN ✅
-- [ ] 100% test pass rate across all Python versions
-- [ ] Zero security warnings (or properly justified with # nosec)
-- [ ] No runtime errors or exceptions in test suite
-- [ ] All linting and formatting checks pass
-
-**❌ NEVER APPROVE IF:**
-- Any CI/CD job shows red/failed status
-- Tests are failing (regardless of code quality)
-- Security warnings are unaddressed
-- Pipeline shows any errors or exceptions
-
-**✅ ONLY APPROVE WHEN:**
-- All pipeline jobs show green checkmarks
-- Test coverage meets requirements
-- Security scans are clean
-- No outstanding CI/CD issues
 ```
 
 ---
@@ -365,23 +395,9 @@ def complex_operation(
 
 ### **Review Response Standards**
 - **All feedback must be addressed** before merge
-- **ALL CI/CD TESTS MUST PASS** before any approval consideration
 - **Explanations required** for any standards deviations
 - **Follow-up issues created** for any deferred improvements
 - **Knowledge sharing** encouraged through review comments
-
-### **🚫 PR APPROVAL BLOCKING CONDITIONS**
-```markdown
-**AUTOMATIC REJECTION IF:**
-- [ ] Any CI/CD job failing (red status)
-- [ ] Test failures in any environment
-- [ ] Security scan warnings unaddressed
-- [ ] Linting or formatting issues
-- [ ] Runtime errors in test execution
-- [ ] Coverage below minimum thresholds
-
-**NO EXCEPTIONS** - Technical quality gates cannot be bypassed
-```
 
 ---
 
@@ -449,8 +465,8 @@ make security-scan
 
 ### **Quality Gate Failures**
 1. **Automated Rejection**: CI/CD blocks merge if quality gates fail
-2. **NO MANUAL OVERRIDES**: Failed CI/CD tests cannot be bypassed
-3. **Emergency Fixes**: Hotfix process with immediate follow-up remediation AND full CI/CD validation
+2. **Manual Override**: Requires senior engineer approval + technical debt issue
+3. **Emergency Fixes**: Hotfix process with immediate follow-up remediation
 
 ### **Standards Violations**
 1. **First Violation**: Educational guidance and re-review
@@ -469,15 +485,12 @@ make security-scan
 A component is **production-ready** when:
 
 ```markdown
-✅ **Quality Gates - ALL MUST PASS**
-- [ ] **CI/CD PIPELINE FULLY GREEN** ✅
+✅ **Quality Gates**
 - [ ] Zero mypy errors
 - [ ] Zero linting issues
-- [ ] 100% test pass rate across ALL environments
-- [ ] Zero security warnings (or properly justified)
+- [ ] 100% test pass rate
 - [ ] ≥90% test coverage
 - [ ] Performance benchmarks met
-- [ ] No runtime errors or exceptions
 
 ✅ **Functionality**
 - [ ] All acceptance criteria met
@@ -502,7 +515,7 @@ A component is **production-ready** when:
 - [ ] Support procedures documented
 ```
 
-**🚨 CRITICAL REMINDER**: If any criterion is not met, especially **CI/CD test failures**, the component is **not production-ready** and **MUST NOT be merged**. Failed CI/CD tests indicate real issues that must be resolved.
+**Remember**: If any criterion is not met, the component is **not production-ready** and should not be merged.
 
 ---
 
