@@ -7,6 +7,7 @@ import click
 from .config import config
 from .instances import instances
 from .tasks import tasks
+from .tmux import tmux
 from .web import web
 from .worktrees import worktrees
 
@@ -57,6 +58,7 @@ def main(
     - worktrees: Manage git worktrees
     - config: Manage configuration settings
     - web: Control the web interface
+    - tmux: Manage tmux sessions for persistent environments
     """
     ctx.ensure_object(dict)
     ctx.obj["config"] = config
@@ -91,6 +93,7 @@ main.add_command(tasks)
 main.add_command(worktrees)
 main.add_command(config)
 main.add_command(web)
+main.add_command(tmux)
 
 
 if __name__ == "__main__":
