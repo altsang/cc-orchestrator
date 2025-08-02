@@ -53,7 +53,7 @@ class TestClaudeInstance:
 
         await instance.initialize()
 
-        assert instance.status == InstanceStatus.RUNNING
+        assert instance.status == InstanceStatus.STOPPED
         assert isinstance(instance.last_activity, datetime)
 
     @pytest.mark.asyncio
@@ -71,7 +71,28 @@ class TestClaudeInstance:
         instance = ClaudeInstance(issue_id="test-123")
         instance.status = InstanceStatus.STOPPED
 
-        result = await instance.start()
+        # Mock ProcessManager to simulate successful process start
+        from unittest.mock import patch
+
+        from cc_orchestrator.utils.process import ProcessInfo, ProcessStatus
+
+        process_info = ProcessInfo(
+            pid=12345,
+            status=ProcessStatus.RUNNING,
+            command=["claude", "--continue"],
+            working_directory=Path("/tmp/test"),
+            environment={},
+            started_at=1672531200.0,
+            cpu_percent=0.0,
+            memory_mb=100.0,
+            return_code=None,
+            error_message=None,
+        )
+
+        with patch.object(
+            instance._process_manager, "spawn_claude_process", return_value=process_info
+        ):
+            result = await instance.start()
 
         assert result is True
         assert instance.status == InstanceStatus.RUNNING
@@ -110,7 +131,11 @@ class TestClaudeInstance:
         instance.status = InstanceStatus.RUNNING
         instance.process_id = 12345
 
-        result = await instance.stop()
+        # Mock ProcessManager to simulate successful process termination
+        with patch.object(
+            instance._process_manager, "terminate_process", return_value=True
+        ):
+            result = await instance.stop()
 
         assert result is True
         assert instance.status == InstanceStatus.STOPPED

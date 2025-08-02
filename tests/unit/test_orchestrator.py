@@ -138,8 +138,13 @@ class TestOrchestrator:
             "issue-2": mock_instance2,
         }
 
-        await orchestrator.cleanup()
+        # Mock cleanup_process_manager to avoid affecting global state
+        with patch(
+            "cc_orchestrator.core.orchestrator.cleanup_process_manager"
+        ) as mock_cleanup:
+            await orchestrator.cleanup()
 
         assert orchestrator.instances == {}
         mock_instance1.cleanup.assert_called_once()
         mock_instance2.cleanup.assert_called_once()
+        mock_cleanup.assert_called_once()
