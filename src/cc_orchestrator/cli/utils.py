@@ -2,9 +2,47 @@
 
 import json
 import sys
-from typing import Any
+from functools import wraps
+from typing import Any, Callable
 
 import click
+
+
+class CliError(Exception):
+    """Exception for CLI errors."""
+
+    def __init__(self, message: str, exit_code: int = 1):
+        """Initialize CLI error.
+
+        Args:
+            message: Error message
+            exit_code: Exit code for the CLI
+        """
+        super().__init__(message)
+        self.message = message
+        self.exit_code = exit_code
+
+
+def error_handler(func: Callable) -> Callable:
+    """Decorator for handling CLI errors."""
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except CliError as e:
+            click.echo(click.style(f"Error: {e.message}", fg="red"), err=True)
+            sys.exit(e.exit_code)
+        except Exception as e:
+            click.echo(click.style(f"Unexpected error: {e}", fg="red"), err=True)
+            sys.exit(1)
+
+    return wrapper
+
+
+def success_message(message: str) -> None:
+    """Display a success message."""
+    click.echo(click.style(f"✓ {message}", fg="green"))
 
 
 def output_json(data: dict[str, Any]) -> None:
