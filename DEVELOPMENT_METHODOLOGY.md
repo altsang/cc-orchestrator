@@ -394,11 +394,11 @@ gh issue edit <NUMBER> --assignee @me
 ```bash
 # From existing tmux session (Worker 1, Worker 2)
 tmux switch-client -t "cc-orchestrator-issue-<NUMBER>"
-claude --dangerously-skip-permissions
+claude --dangerously-skip-permissions --conversation-id "issue-<NUMBER>-<description>"
 
 # From fresh terminal
 tmux attach-session -t "cc-orchestrator-issue-<NUMBER>"
-claude --dangerously-skip-permissions
+claude --dangerously-skip-permissions --conversation-id "issue-<NUMBER>-<description>"
 ```
 
 ### **Multi-Session Coordination Best Practices**
@@ -430,11 +430,46 @@ tmux kill-session -t "cc-orchestrator-issue-13"  # After PR merged
 4. **Parallel Development**: Multiple issues can progress simultaneously
 5. **Clean Isolation**: No cross-contamination between issue work
 
+### **Conversation Thread Management**
+
+#### **Problem**: Multiple Claude instances in ~/workspace mix conversation histories
+When all Claude instances start from the same `~/workspace` directory, conversation threads get mixed between instances, making it impossible to stop and resume specific instances without confusion.
+
+#### **Solution**: Unique Conversation IDs
+Use `--conversation-id` flags to maintain separate conversation threads for each role:
+
+```bash
+# Control Tower (coordination and setup)
+claude --conversation-id "control-tower-coordination"
+
+# Worker 1 (Issue #15 example)  
+claude --dangerously-skip-permissions --conversation-id "issue-15-tmux-integration"
+
+# Worker 2 (Issue #16 example)
+claude --dangerously-skip-permissions --conversation-id "issue-16-health-monitoring"
+
+# Reviewer (code review and quality checks)
+claude --conversation-id "code-review-session"
+```
+
+#### **Benefits**
+- **Thread Isolation**: Each instance maintains separate conversation history
+- **Resume Capability**: Stop and restart any instance without mixing threads
+- **Directory Access**: All instances can navigate between sibling worktrees from ~/workspace
+- **Role Clarity**: Conversation IDs clearly identify which instance serves which role
+
+#### **Conversation ID Patterns**
+- **Control Tower**: `control-tower-coordination`
+- **Issue Work**: `issue-<NUMBER>-<description>` (e.g., `issue-15-tmux-integration`)
+- **Code Review**: `code-review-session`
+- **Hotfix/Emergency**: `hotfix-<description>` (e.g., `hotfix-critical-bug`)
+
 ### **Performance Optimization**
 - **Tmux Configuration**: Optimize for responsiveness and session management
 - **Claude Code Settings**: Use skip permissions for routine development
 - **Git Worktree Benefits**: Complete isolation without repository duplication
 - **Resource Management**: Each session has dedicated working directory
+- **Conversation Management**: Unique conversation IDs prevent thread mixing
 
 ---
 
