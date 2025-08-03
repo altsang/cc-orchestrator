@@ -448,11 +448,52 @@ gh issue edit <NUMBER> --assignee @me
 ```bash
 # From existing tmux session (Worker 1, Worker 2)
 tmux switch-client -t "cc-orchestrator-issue-<NUMBER>"
-claude --dangerously-skip-permissions --conversation-id "issue-<NUMBER>-<description>"
+claude --dangerously-skip-permissions
 
 # From fresh terminal
 tmux attach-session -t "cc-orchestrator-issue-<NUMBER>"
-claude --dangerously-skip-permissions --conversation-id "issue-<NUMBER>-<description>"
+claude --dangerously-skip-permissions
+```
+
+### **Issue Completion Cleanup Protocol**
+
+**MANDATORY**: Clean up all test artifacts and scaffolding when issue work is complete.
+
+#### **Environment Cleanup Steps:**
+```bash
+# 1. Verify issue is closed and PR is merged
+gh issue view <NUMBER>
+gh pr list --state merged --limit 5
+
+# 2. Kill the dedicated tmux session
+tmux kill-session -t "cc-orchestrator-issue-<NUMBER>"
+
+# 3. Remove the git worktree
+git worktree remove ../cc-orchestrator-issue-<NUMBER>
+
+# 4. Update project board to "Done"
+gh project item-edit --id <ITEM_ID> --project-id <PROJECT_ID> --field-id <STATUS_FIELD> --single-select-option-id <DONE_ID>
+
+# 5. Clean up local feature branch (after merge)
+git branch -D feature/issue-<NUMBER>-<description>
+```
+
+#### **Test Worktree Policy:**
+- **All test worktrees MUST be removed after testing completion**
+- **No worktrees should persist beyond their active development phase**
+- **Cleanup is mandatory before moving to next issue**
+- **Test branches must be deleted after merge**
+
+#### **Cleanup Verification:**
+```bash
+# Verify no orphaned worktrees
+git worktree list
+
+# Verify no test branches
+git branch -a | grep -E "test|temp|debug"
+
+# Verify clean tmux sessions
+tmux list-sessions | grep cc-orchestrator
 ```
 
 ### **Multi-Session Coordination Best Practices**
@@ -489,41 +530,47 @@ tmux kill-session -t "cc-orchestrator-issue-13"  # After PR merged
 #### **Problem**: Multiple Claude instances in ~/workspace mix conversation histories
 When all Claude instances start from the same `~/workspace` directory, conversation threads get mixed between instances, making it impossible to stop and resume specific instances without confusion.
 
-#### **Solution**: Unique Conversation IDs
-Use `--conversation-id` flags to maintain separate conversation threads for each role:
+#### **Solution**: Fresh Sessions per Issue
+Start fresh Claude sessions for each issue to maintain separate conversation threads:
 
 ```bash
 # Control Tower (coordination and setup)
-claude --conversation-id "control-tower-coordination"
+claude
 
-# Worker 1 (Issue #15 example)  
-claude --dangerously-skip-permissions --conversation-id "issue-15-tmux-integration"
+# Worker 1 (Issue #17 example)  
+claude --dangerously-skip-permissions
 
 # Worker 2 (Issue #16 example)
-claude --dangerously-skip-permissions --conversation-id "issue-16-health-monitoring"
+claude --dangerously-skip-permissions
 
-# Reviewer (code review and quality checks)
-claude --conversation-id "code-review-session"
+# Reviewer (code review and quality checks)  
+claude
+```
+
+**Alternative**: Use `--resume` to choose from previous sessions:
+```bash
+# If you need to resume a specific previous conversation
+claude --resume --dangerously-skip-permissions
 ```
 
 #### **Benefits**
 - **Thread Isolation**: Each instance maintains separate conversation history
 - **Resume Capability**: Stop and restart any instance without mixing threads
 - **Directory Access**: All instances can navigate between sibling worktrees from ~/workspace
-- **Role Clarity**: Conversation IDs clearly identify which instance serves which role
+- **Session Management**: Use `/clear` in Claude to reset context when needed
 
-#### **Conversation ID Patterns**
-- **Control Tower**: `control-tower-coordination`
-- **Issue Work**: `issue-<NUMBER>-<description>` (e.g., `issue-15-tmux-integration`)
-- **Code Review**: `code-review-session`
-- **Hotfix/Emergency**: `hotfix-<description>` (e.g., `hotfix-critical-bug`)
+#### **Session Management Best Practices**
+- **Fresh Sessions**: Start new Claude session for each issue to avoid context mixing
+- **Resume When Needed**: Use `claude --resume` to choose from previous conversations
+- **Clear Context**: Use `/clear` command in Claude to reset conversation when switching tasks
+- **Directory Isolation**: Each issue's tmux session starts in its own worktree directory
 
 ### **Performance Optimization**
 - **Tmux Configuration**: Optimize for responsiveness and session management
 - **Claude Code Settings**: Use skip permissions for routine development
 - **Git Worktree Benefits**: Complete isolation without repository duplication
 - **Resource Management**: Each session has dedicated working directory
-- **Conversation Management**: Unique conversation IDs prevent thread mixing
+- **Conversation Management**: Fresh sessions and `/clear` command prevent thread mixing
 
 ---
 
