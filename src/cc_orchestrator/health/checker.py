@@ -246,7 +246,7 @@ class TmuxHealthCheck(HealthCheck):
                                     ),
                                 }
                             )
-                    except (TimeoutError, OSError):
+                    except Exception:
                         # If display-message fails, we still know session exists
                         logger.debug(
                             "Failed to get tmux session details",
