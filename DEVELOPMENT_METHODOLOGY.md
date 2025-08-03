@@ -435,7 +435,7 @@ claude --dangerously-skip-permissions
 git worktree add -b feature/issue-<NUMBER>-<description> ../cc-orchestrator-issue-<NUMBER>
 
 # 2. Create dedicated tmux session
-tmux new-session -d -s "cc-orchestrator-issue-<NUMBER>" -c "~/workspace/cc-orchestrator-issue-<NUMBER>"
+tmux new-session -d -s "cc-orchestrator-issue-<NUMBER>" -c "/Users/altsang/workspace/cc-orchestrator-issue-<NUMBER>"
 
 # 3. Update GitHub project board status
 gh project item-edit --id <ITEM_ID> --field-id <STATUS_FIELD> --single-select-option-id <IN_PROGRESS_ID>
