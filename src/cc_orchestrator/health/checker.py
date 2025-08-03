@@ -88,7 +88,7 @@ class ProcessHealthCheck(HealthCheck):
             # Check if process exists
             try:
                 process = psutil.Process(process_info.pid)
-                
+
                 # Check process status first to catch zombies
                 status = process.status()
                 if status == psutil.STATUS_ZOMBIE:
@@ -97,7 +97,7 @@ class ProcessHealthCheck(HealthCheck):
                         message=f"Process {process_info.pid} is a zombie",
                         duration_ms=(time.time() - start_time) * 1000,
                     )
-                
+
                 if not process.is_running():
                     return HealthCheckResult(
                         status=HealthStatus.CRITICAL,
