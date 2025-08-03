@@ -349,7 +349,7 @@ class TmuxService:
             return sessions
 
         except Exception as e:
-            tmux_logger.error("Failed to list sessions", error=str(e))
+            tmux_logger.error(f"Failed to list sessions: {e}")
             return []
 
     async def get_session_info(self, session_name: str) -> SessionInfo | None:

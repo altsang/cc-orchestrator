@@ -1,8 +1,10 @@
 """CLI commands for tmux session management."""
 
 import asyncio
+import builtins
 import json
 from pathlib import Path
+from typing import Any
 
 import click
 
@@ -219,7 +221,7 @@ def detach(ctx: click.Context, session_name: str) -> None:
 def list(ctx: click.Context, include_orphaned: bool) -> None:
     """List all tmux sessions."""
 
-    async def _list_sessions() -> list[dict]:
+    async def _list_sessions() -> builtins.list[dict[str, Any]]:
         tmux_service = get_tmux_service()
         sessions = await tmux_service.list_sessions(include_orphaned=include_orphaned)
         return [
