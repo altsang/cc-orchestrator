@@ -1,6 +1,5 @@
 """Unit tests for tmux CLI commands."""
 
-import asyncio
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -118,7 +117,7 @@ class TestTmuxCLI:
 
         async def mock_list_sessions(include_orphaned=False):
             return []
-        
+
         mock_tmux_service.list_sessions.side_effect = mock_list_sessions
 
         result = runner.invoke(tmux, ["list"])
