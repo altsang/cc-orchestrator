@@ -88,19 +88,20 @@ class ProcessHealthCheck(HealthCheck):
             # Check if process exists
             try:
                 process = psutil.Process(process_info.pid)
-                if not process.is_running():
-                    return HealthCheckResult(
-                        status=HealthStatus.CRITICAL,
-                        message=f"Process {process_info.pid} is not running",
-                        duration_ms=(time.time() - start_time) * 1000,
-                    )
-
-                # Check process status
+                
+                # Check process status first to catch zombies
                 status = process.status()
                 if status == psutil.STATUS_ZOMBIE:
                     return HealthCheckResult(
                         status=HealthStatus.CRITICAL,
                         message=f"Process {process_info.pid} is a zombie",
+                        duration_ms=(time.time() - start_time) * 1000,
+                    )
+                
+                if not process.is_running():
+                    return HealthCheckResult(
+                        status=HealthStatus.CRITICAL,
+                        message=f"Process {process_info.pid} is not running",
                         duration_ms=(time.time() - start_time) * 1000,
                     )
 
@@ -153,8 +154,8 @@ class ProcessHealthCheck(HealthCheck):
                 "Process health check failed", instance_id=instance_id, error=str(e)
             )
             return HealthCheckResult(
-                status=HealthStatus.UNKNOWN,
-                message=f"Health check error: {str(e)}",
+                status=HealthStatus.CRITICAL,
+                message=f"Error checking process: {str(e)}",
                 duration_ms=(time.time() - start_time) * 1000,
             )
 
@@ -247,7 +248,7 @@ class TmuxHealthCheck(HealthCheck):
                 "Tmux health check failed", instance_id=instance_id, error=str(e)
             )
             return HealthCheckResult(
-                status=HealthStatus.UNKNOWN,
+                status=HealthStatus.CRITICAL,
                 message=f"Tmux check error: {str(e)}",
                 duration_ms=(time.time() - start_time) * 1000,
             )
@@ -332,7 +333,7 @@ class WorkspaceHealthCheck(HealthCheck):
                 "Workspace health check failed", instance_id=instance_id, error=str(e)
             )
             return HealthCheckResult(
-                status=HealthStatus.UNKNOWN,
+                status=HealthStatus.CRITICAL,
                 message=f"Workspace check error: {str(e)}",
                 duration_ms=(time.time() - start_time) * 1000,
             )
@@ -416,7 +417,7 @@ class ResponseHealthCheck(HealthCheck):
                 "Response health check failed", instance_id=instance_id, error=str(e)
             )
             return HealthCheckResult(
-                status=HealthStatus.UNKNOWN,
+                status=HealthStatus.CRITICAL,
                 message=f"Response check error: {str(e)}",
                 duration_ms=(time.time() - start_time) * 1000,
             )
