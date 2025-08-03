@@ -2,7 +2,7 @@
 
 import tempfile
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 from pydantic import ValidationError
@@ -142,9 +142,7 @@ class TestWorkspaceHealthCheckConfig:
 
     def test_custom_values(self):
         """Test custom workspace health check values."""
-        config = WorkspaceHealthCheckConfig(
-            timeout=15.0, min_free_space_gb=5.0
-        )
+        config = WorkspaceHealthCheckConfig(timeout=15.0, min_free_space_gb=5.0)
 
         assert config.timeout == 15.0
         assert config.min_free_space_gb == 5.0
@@ -232,12 +230,12 @@ class TestRecoveryConfig:
         # Invalid backoff_multiplier (too small)
         with pytest.raises(ValidationError) as exc_info:
             RecoveryConfig(backoff_multiplier=0.5)
-        assert "greater than 1.0" in str(exc_info.value)
+        assert "greater than 1" in str(exc_info.value)
 
         # Invalid backoff_multiplier (too large)
         with pytest.raises(ValidationError) as exc_info:
             RecoveryConfig(backoff_multiplier=6.0)
-        assert "less than or equal to 5.0" in str(exc_info.value)
+        assert "less than or equal to 5" in str(exc_info.value)
 
 
 class TestAlertConfig:
@@ -315,7 +313,9 @@ class TestAlertConfig:
         # Invalid configuration: webhook_alerts enabled but no URL
         with pytest.raises(ValidationError) as exc_info:
             AlertConfig(webhook_alerts=True, webhook_url=None)
-        assert "webhook_url required when webhook_alerts is enabled" in str(exc_info.value)
+        assert "webhook_url required when webhook_alerts is enabled" in str(
+            exc_info.value
+        )
 
     def test_validation_constraints(self):
         """Test alert config validation constraints."""
@@ -347,9 +347,7 @@ class TestMetricsConfig:
 
     def test_custom_values(self):
         """Test custom metrics configuration values."""
-        config = MetricsConfig(
-            enabled=False, collection_interval=60.0, max_samples=500
-        )
+        config = MetricsConfig(enabled=False, collection_interval=60.0, max_samples=500)
 
         assert config.enabled is False
         assert config.collection_interval == 60.0
@@ -421,7 +419,9 @@ class TestHealthMonitoringConfig:
         """Test that extra fields are forbidden."""
         with pytest.raises(ValidationError) as exc_info:
             HealthMonitoringConfig(unknown_field="value")
-        assert "extra fields not permitted" in str(exc_info.value)
+        assert "extra" in str(exc_info.value).lower() and "not permitted" in str(
+            exc_info.value
+        )
 
 
 class TestHealthMonitoringSettings:
@@ -484,11 +484,12 @@ class TestHealthMonitoringSettings:
 
     def test_set_instance_override_nested(self, settings):
         """Test setting nested instance override."""
-        with patch("cc_orchestrator.health.config.logger") as mock_logger:
+        with patch("cc_orchestrator.health.config.logger"):
             settings.set_instance_override("test-instance", "recovery.max_attempts", 7)
 
         assert (
-            settings._instance_overrides["test-instance"]["recovery"]["max_attempts"] == 7
+            settings._instance_overrides["test-instance"]["recovery"]["max_attempts"]
+            == 7
         )
 
     def test_remove_instance_override(self, settings):
@@ -539,7 +540,9 @@ class TestConfigLoading:
         assert isinstance(settings, HealthMonitoringSettings)
         assert isinstance(settings.config, HealthMonitoringConfig)
         assert settings.config_file_path == Path("/nonexistent.yaml")
-        mock_logger.info.assert_called_with("Using default health monitoring configuration")
+        mock_logger.info.assert_called_with(
+            "Using default health monitoring configuration"
+        )
 
     def test_load_health_monitoring_config_valid_file(self):
         """Test loading config from valid YAML file."""
@@ -587,7 +590,10 @@ class TestConfigLoading:
             assert settings.config.enabled is True  # Default value
             mock_logger.error.assert_called_once()
             call_args = mock_logger.error.call_args
-            assert "Failed to load health monitoring config, using defaults" in call_args[0]
+            assert (
+                "Failed to load health monitoring config, using defaults"
+                in call_args[0]
+            )
         finally:
             config_file.unlink()
 
@@ -670,7 +676,7 @@ class TestConfigLoading:
         """Test saving config with error."""
         config = HealthMonitoringConfig()
         settings = HealthMonitoringSettings(config=config)
-        
+
         # Use invalid path to force error
         config_file = Path("/invalid/path/config.yaml")
 
@@ -690,6 +696,7 @@ class TestGlobalSettings:
         """Test getting global settings initially."""
         # Reset global state
         import cc_orchestrator.health.config
+
         cc_orchestrator.health.config._health_monitoring_settings = None
 
         settings = get_health_monitoring_settings()

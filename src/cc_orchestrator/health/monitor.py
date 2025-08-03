@@ -85,7 +85,14 @@ class HealthMonitor:
         # Cancel monitoring task
         task = self._monitoring_tasks.pop(instance_id)
         if not task.done():
-            task.cancel()
+            try:
+                task.cancel()
+            except Exception as e:
+                logger.error(
+                    "Failed to cancel monitoring task",
+                    instance_id=instance_id,
+                    error=str(e),
+                )
             try:
                 await task
             except asyncio.CancelledError:
@@ -293,7 +300,17 @@ class HealthMonitor:
         }
 
         # Run health checks
-        return await self.health_checker.check_health(instance.issue_id, **check_params)
+        try:
+            return await self.health_checker.check_health(
+                instance.issue_id, **check_params
+            )
+        except Exception as e:
+            logger.error(
+                "Health check failed with exception",
+                instance_id=instance.issue_id,
+                error=str(e),
+            )
+            return {}
 
     def _store_health_results(
         self, instance_id: str, results: dict[str, HealthCheckResult]
@@ -422,9 +439,17 @@ class HealthMonitor:
             return
 
         # Send alert
-        await self.alert_manager.send_alert(
-            instance_id=instance_id, level=level, message=message, details=details
-        )
+        try:
+            await self.alert_manager.send_alert(
+                instance_id=instance_id, level=level, message=message, details=details
+            )
+        except Exception as e:
+            logger.error(
+                "Failed to send alert",
+                instance_id=instance_id,
+                level=level.value,
+                error=str(e),
+            )
 
         # Update last alert time
         self._last_alert_time[instance_id] = now

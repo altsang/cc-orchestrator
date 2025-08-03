@@ -105,21 +105,37 @@ class ProcessHealthCheck(HealthCheck):
                         duration_ms=(time.time() - start_time) * 1000,
                     )
 
-                # Check resource usage
-                cpu_percent = process.cpu_percent()
-                memory_mb = process.memory_info().rss / 1024 / 1024
+                # Check resource usage with graceful handling of access errors
+                cpu_percent = None
+                memory_mb = None
+
+                try:
+                    cpu_percent = process.cpu_percent()
+                except (psutil.AccessDenied, psutil.NoSuchProcess):
+                    # Can't access CPU info, but process is still running
+                    pass
+
+                try:
+                    memory_mb = process.memory_info().rss / 1024 / 1024
+                except (psutil.AccessDenied, psutil.NoSuchProcess):
+                    # Can't access memory info, but process is still running
+                    pass
 
                 details = {
                     "pid": process_info.pid,
                     "status": status,
-                    "cpu_percent": cpu_percent,
-                    "memory_mb": memory_mb,
                     "create_time": process.create_time(),
                     "num_threads": process.num_threads(),
                 }
 
-                # Determine health status based on resource usage
-                if cpu_percent > 90:
+                # Add resource info if available
+                if cpu_percent is not None:
+                    details["cpu_percent"] = cpu_percent
+                if memory_mb is not None:
+                    details["memory_mb"] = memory_mb
+
+                # Determine health status based on resource usage (if available)
+                if cpu_percent is not None and cpu_percent > 90:
                     return HealthCheckResult(
                         status=HealthStatus.DEGRADED,
                         message=f"High CPU usage: {cpu_percent:.1f}%",
@@ -127,7 +143,7 @@ class ProcessHealthCheck(HealthCheck):
                         duration_ms=(time.time() - start_time) * 1000,
                     )
 
-                if memory_mb > 2048:  # 2GB threshold
+                if memory_mb is not None and memory_mb > 2048:  # 2GB threshold
                     return HealthCheckResult(
                         status=HealthStatus.DEGRADED,
                         message=f"High memory usage: {memory_mb:.1f} MB",
@@ -193,41 +209,56 @@ class TmuxHealthCheck(HealthCheck):
                 await asyncio.wait_for(process.wait(), timeout=self.timeout)
 
                 if process.returncode == 0:
-                    # Session exists, get session info
-                    info_process = await asyncio.create_subprocess_exec(
-                        "tmux",
-                        "display-message",
-                        "-t",
-                        tmux_session,
-                        "-p",
-                        "#{session_name}:#{session_windows}:#{session_activity}",
-                        stdout=asyncio.subprocess.PIPE,
-                        stderr=asyncio.subprocess.PIPE,
-                    )
+                    # Session exists, try to get session info
+                    details = {"session_name": tmux_session}
 
-                    stdout, stderr = await info_process.communicate()
-                    if info_process.returncode == 0:
-                        session_info = stdout.decode().strip().split(":")
-                        details = {
-                            "session_name": (
-                                session_info[0]
-                                if len(session_info) > 0
-                                else tmux_session
-                            ),
-                            "window_count": (
-                                int(session_info[1]) if len(session_info) > 1 else 0
-                            ),
-                            "last_activity": (
-                                session_info[2] if len(session_info) > 2 else "unknown"
-                            ),
-                        }
-
-                        return HealthCheckResult(
-                            status=HealthStatus.HEALTHY,
-                            message="Tmux session is active",
-                            details=details,
-                            duration_ms=(time.time() - start_time) * 1000,
+                    try:
+                        info_process = await asyncio.create_subprocess_exec(
+                            "tmux",
+                            "display-message",
+                            "-t",
+                            tmux_session,
+                            "-p",
+                            "#{session_name}:#{session_windows}:#{session_activity}",
+                            stdout=asyncio.subprocess.PIPE,
+                            stderr=asyncio.subprocess.PIPE,
                         )
+
+                        stdout, stderr = await info_process.communicate()
+                        if info_process.returncode == 0:
+                            session_info = stdout.decode().strip().split(":")
+                            details.update(
+                                {
+                                    "session_name": (
+                                        session_info[0]
+                                        if len(session_info) > 0
+                                        else tmux_session
+                                    ),
+                                    "window_count": (
+                                        int(session_info[1])
+                                        if len(session_info) > 1
+                                        else 0
+                                    ),
+                                    "last_activity": (
+                                        session_info[2]
+                                        if len(session_info) > 2
+                                        else "unknown"
+                                    ),
+                                }
+                            )
+                    except (TimeoutError, OSError):
+                        # If display-message fails, we still know session exists
+                        logger.debug(
+                            "Failed to get tmux session details",
+                            instance_id=instance_id,
+                        )
+
+                    return HealthCheckResult(
+                        status=HealthStatus.HEALTHY,
+                        message="Tmux session is active",
+                        details=details,
+                        duration_ms=(time.time() - start_time) * 1000,
+                    )
 
                 return HealthCheckResult(
                     status=HealthStatus.DEGRADED,
@@ -239,7 +270,7 @@ class TmuxHealthCheck(HealthCheck):
                 process.kill()
                 return HealthCheckResult(
                     status=HealthStatus.DEGRADED,
-                    message="Tmux health check timed out",
+                    message="Tmux health check timeout",
                     duration_ms=(time.time() - start_time) * 1000,
                 )
 
@@ -249,7 +280,7 @@ class TmuxHealthCheck(HealthCheck):
             )
             return HealthCheckResult(
                 status=HealthStatus.CRITICAL,
-                message=f"Tmux check error: {str(e)}",
+                message=f"Error checking tmux session: {str(e)}",
                 duration_ms=(time.time() - start_time) * 1000,
             )
 
@@ -275,48 +306,81 @@ class WorkspaceHealthCheck(HealthCheck):
 
             workspace = Path(workspace_path)
 
-            # Check if workspace exists
-            if not workspace.exists():
-                return HealthCheckResult(
-                    status=HealthStatus.CRITICAL,
-                    message=f"Workspace directory does not exist: {workspace_path}",
-                    duration_ms=(time.time() - start_time) * 1000,
-                )
+            try:
+                # Check if workspace exists
+                if not workspace.exists():
+                    return HealthCheckResult(
+                        status=HealthStatus.CRITICAL,
+                        message=f"Workspace directory does not exist: {workspace_path}",
+                        duration_ms=(time.time() - start_time) * 1000,
+                    )
 
-            # Check if it's a directory
-            if not workspace.is_dir():
+                # Check if it's a directory
+                if not workspace.is_dir():
+                    return HealthCheckResult(
+                        status=HealthStatus.CRITICAL,
+                        message=f"Workspace path is not a directory: {workspace_path}",
+                        duration_ms=(time.time() - start_time) * 1000,
+                    )
+            except (PermissionError, OSError) as e:
+                # Handle path access errors specifically
                 return HealthCheckResult(
                     status=HealthStatus.CRITICAL,
-                    message=f"Workspace path is not a directory: {workspace_path}",
+                    message=f"Error accessing workspace: {str(e)}",
                     duration_ms=(time.time() - start_time) * 1000,
                 )
 
             # Check if it's a git repository
             git_dir = workspace / ".git"
-            if not git_dir.exists():
+            is_git_repo = git_dir.exists()
+
+            # Check disk space with error handling
+            disk_details = {}
+            try:
+                disk_usage = psutil.disk_usage(str(workspace))
+                free_gb = disk_usage.free / (1024**3)
+                disk_details = {
+                    "disk_free_gb": free_gb,
+                    "disk_total_gb": disk_usage.total / (1024**3),
+                    "disk_used_percent": (disk_usage.used / disk_usage.total) * 100,
+                }
+
+                # Check for low disk space
+                if free_gb < 1.0:  # Less than 1GB free
+                    details = {
+                        "workspace_path": str(workspace_path),
+                        "is_git_repo": is_git_repo,
+                        **disk_details,
+                    }
+                    return HealthCheckResult(
+                        status=HealthStatus.DEGRADED,
+                        message=f"Low disk space: {free_gb:.2f} GB free",
+                        details=details,
+                        duration_ms=(time.time() - start_time) * 1000,
+                    )
+            except Exception as e:
+                # Handle disk usage check errors specifically
                 return HealthCheckResult(
                     status=HealthStatus.DEGRADED,
-                    message="Workspace is not a git repository",
-                    details={"workspace_path": str(workspace_path)},
+                    message=f"Error checking disk space: {str(e)}",
+                    details={
+                        "workspace_path": str(workspace_path),
+                        "is_git_repo": is_git_repo,
+                    },
                     duration_ms=(time.time() - start_time) * 1000,
                 )
 
-            # Check disk space
-            disk_usage = psutil.disk_usage(str(workspace))
-            free_gb = disk_usage.free / (1024**3)
-
+            # Final status determination
             details = {
                 "workspace_path": str(workspace_path),
-                "is_git_repo": git_dir.exists(),
-                "disk_free_gb": free_gb,
-                "disk_total_gb": disk_usage.total / (1024**3),
-                "disk_used_percent": (disk_usage.used / disk_usage.total) * 100,
+                "is_git_repo": is_git_repo,
+                **disk_details,
             }
 
-            if free_gb < 1.0:  # Less than 1GB free
+            if not is_git_repo:
                 return HealthCheckResult(
                     status=HealthStatus.DEGRADED,
-                    message=f"Low disk space: {free_gb:.2f} GB free",
+                    message="Workspace is not a git repository",
                     details=details,
                     duration_ms=(time.time() - start_time) * 1000,
                 )
@@ -334,7 +398,7 @@ class WorkspaceHealthCheck(HealthCheck):
             )
             return HealthCheckResult(
                 status=HealthStatus.CRITICAL,
-                message=f"Workspace check error: {str(e)}",
+                message=f"Error accessing workspace: {str(e)}",
                 duration_ms=(time.time() - start_time) * 1000,
             )
 
@@ -400,7 +464,7 @@ class ResponseHealthCheck(HealthCheck):
                 else:
                     return HealthCheckResult(
                         status=HealthStatus.DEGRADED,
-                        message="Instance did not respond to test command",
+                        message="Instance is not responding to test command",
                         duration_ms=(time.time() - start_time) * 1000,
                     )
 
@@ -418,7 +482,7 @@ class ResponseHealthCheck(HealthCheck):
             )
             return HealthCheckResult(
                 status=HealthStatus.CRITICAL,
-                message=f"Response check error: {str(e)}",
+                message=f"Error testing responsiveness: {str(e)}",
                 duration_ms=(time.time() - start_time) * 1000,
             )
 
@@ -485,7 +549,8 @@ class HealthChecker:
                     error=str(e),
                 )
                 results[check_name] = HealthCheckResult(
-                    status=HealthStatus.CRITICAL, message=f"Check failed: {str(e)}"
+                    status=HealthStatus.CRITICAL,
+                    message=f"Health check error: {str(e)}",
                 )
 
         logger.debug(
@@ -512,8 +577,8 @@ class HealthChecker:
             )
         except TimeoutError:
             return HealthCheckResult(
-                status=HealthStatus.UNKNOWN,
-                message=f"Health check timed out after {check.timeout}s",
+                status=HealthStatus.CRITICAL,
+                message=f"Health check timeout after {check.timeout}s",
             )
 
     def get_overall_status(self, results: dict[str, HealthCheckResult]) -> HealthStatus:
@@ -530,14 +595,24 @@ class HealthChecker:
 
         statuses = [result.status for result in results.values()]
 
+        # Filter out UNKNOWN statuses to avoid them affecting overall status
+        # if there are other meaningful statuses
+        non_unknown_statuses = [s for s in statuses if s != HealthStatus.UNKNOWN]
+
+        # If we have non-unknown statuses, prioritize them
+        if non_unknown_statuses:
+            statuses_to_check = non_unknown_statuses
+        else:
+            statuses_to_check = statuses
+
         # Determine worst status
-        if HealthStatus.CRITICAL in statuses:
+        if HealthStatus.CRITICAL in statuses_to_check:
             return HealthStatus.CRITICAL
-        elif HealthStatus.UNHEALTHY in statuses:
+        elif HealthStatus.UNHEALTHY in statuses_to_check:
             return HealthStatus.UNHEALTHY
-        elif HealthStatus.DEGRADED in statuses:
+        elif HealthStatus.DEGRADED in statuses_to_check:
             return HealthStatus.DEGRADED
-        elif HealthStatus.UNKNOWN in statuses:
+        elif HealthStatus.UNKNOWN in statuses_to_check:
             return HealthStatus.UNKNOWN
         else:
             return HealthStatus.HEALTHY

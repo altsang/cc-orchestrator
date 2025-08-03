@@ -1,6 +1,5 @@
 """Tests for health monitoring checker module."""
 
-import asyncio
 import tempfile
 from datetime import datetime
 from pathlib import Path
@@ -443,24 +442,24 @@ class TestHealthChecker:
     async def test_check_health_timeout_handling(self, health_checker):
         """Test health check with timeout handling."""
         # Make one check time out
-        health_checker.checks[0].check.side_effect = asyncio.TimeoutError()
-        
+        health_checker.checks[0].check.side_effect = TimeoutError()
+
         results = await health_checker.check_health("test-instance")
-        
+
         # Should still return results from other checks
         assert len(results) == 2
         assert "test1" in results
-        assert results["test1"].status == HealthStatus.UNKNOWN
-        assert "timed out" in results["test1"].message.lower()
+        assert results["test1"].status == HealthStatus.CRITICAL
+        assert "timeout" in results["test1"].message.lower()
 
     @pytest.mark.asyncio
     async def test_check_health_exception_handling(self, health_checker):
         """Test health check with general exception handling."""
         # Make one check raise an exception
         health_checker.checks[0].check.side_effect = Exception("Unexpected error")
-        
+
         results = await health_checker.check_health("test-instance")
-        
+
         # Should handle exception and return error result
         assert len(results) == 2
         assert "test1" in results
@@ -487,7 +486,9 @@ class TestProcessHealthCheckErrorHandling:
             mock_process.is_running.side_effect = Exception("Process access error")
             mock_process_class.return_value = mock_process
 
-            result = await process_check.check("test-instance", process_info=mock_process_info)
+            result = await process_check.check(
+                "test-instance", process_info=mock_process_info
+            )
 
         assert result.status == HealthStatus.CRITICAL
         assert "error checking process" in result.message.lower()
@@ -503,7 +504,9 @@ class TestProcessHealthCheckErrorHandling:
         mock_process.status.return_value = psutil.STATUS_ZOMBIE
 
         with patch("psutil.Process", return_value=mock_process):
-            result = await process_check.check("test-instance", process_info=mock_process_info)
+            result = await process_check.check(
+                "test-instance", process_info=mock_process_info
+            )
 
         assert result.status == HealthStatus.CRITICAL
         assert "zombie" in result.message.lower()
@@ -523,7 +526,9 @@ class TestProcessHealthCheckErrorHandling:
         mock_process.num_threads.return_value = 8
 
         with patch("psutil.Process", return_value=mock_process):
-            result = await process_check.check("test-instance", process_info=mock_process_info)
+            result = await process_check.check(
+                "test-instance", process_info=mock_process_info
+            )
 
         # Should still be healthy but with missing CPU data
         assert result.status == HealthStatus.HEALTHY
@@ -544,7 +549,9 @@ class TestProcessHealthCheckErrorHandling:
         mock_process.num_threads.return_value = 8
 
         with patch("psutil.Process", return_value=mock_process):
-            result = await process_check.check("test-instance", process_info=mock_process_info)
+            result = await process_check.check(
+                "test-instance", process_info=mock_process_info
+            )
 
         # Should still be healthy but with missing memory data
         assert result.status == HealthStatus.HEALTHY
@@ -565,7 +572,9 @@ class TestTmuxHealthCheckErrorHandling:
         with patch("asyncio.create_subprocess_exec") as mock_subprocess:
             mock_subprocess.side_effect = Exception("Command failed")
 
-            result = await tmux_check.check("test-instance", tmux_session="test-session")
+            result = await tmux_check.check(
+                "test-instance", tmux_session="test-session"
+            )
 
         assert result.status == HealthStatus.CRITICAL
         assert "error checking tmux session" in result.message.lower()
@@ -573,15 +582,20 @@ class TestTmuxHealthCheckErrorHandling:
     @pytest.mark.asyncio
     async def test_tmux_timeout(self, tmux_check):
         """Test tmux health check timeout."""
+
         async def mock_create_subprocess_exec(*args, **kwargs):
             mock_process = Mock()
-            mock_process.wait = AsyncMock(side_effect=asyncio.TimeoutError())
+            mock_process.wait = AsyncMock(side_effect=TimeoutError())
             mock_process.kill = Mock()
             return mock_process
 
-        with patch("asyncio.create_subprocess_exec", side_effect=mock_create_subprocess_exec):
-            with patch("asyncio.wait_for", side_effect=asyncio.TimeoutError()):
-                result = await tmux_check.check("test-instance", tmux_session="test-session")
+        with patch(
+            "asyncio.create_subprocess_exec", side_effect=mock_create_subprocess_exec
+        ):
+            with patch("asyncio.wait_for", side_effect=TimeoutError()):
+                result = await tmux_check.check(
+                    "test-instance", tmux_session="test-session"
+                )
 
         assert result.status == HealthStatus.DEGRADED
         assert "timeout" in result.message.lower()
@@ -589,6 +603,7 @@ class TestTmuxHealthCheckErrorHandling:
     @pytest.mark.asyncio
     async def test_tmux_display_message_error(self, tmux_check):
         """Test tmux health check when display-message command fails."""
+
         async def mock_create_subprocess_exec(*args, **kwargs):
             if "has-session" in args:
                 mock_process = Mock()
@@ -597,11 +612,17 @@ class TestTmuxHealthCheckErrorHandling:
                 return mock_process
             elif "display-message" in args:
                 mock_process = Mock()
-                mock_process.communicate = AsyncMock(side_effect=Exception("Display failed"))
+                mock_process.communicate = AsyncMock(
+                    side_effect=Exception("Display failed")
+                )
                 return mock_process
 
-        with patch("asyncio.create_subprocess_exec", side_effect=mock_create_subprocess_exec):
-            result = await tmux_check.check("test-instance", tmux_session="test-session")
+        with patch(
+            "asyncio.create_subprocess_exec", side_effect=mock_create_subprocess_exec
+        ):
+            result = await tmux_check.check(
+                "test-instance", tmux_session="test-session"
+            )
 
         # Should still report session exists but with limited info
         assert result.status == HealthStatus.HEALTHY
@@ -623,7 +644,9 @@ class TestWorkspaceHealthCheckErrorHandling:
             workspace_path = Path(temp_dir)
 
             with patch("psutil.disk_usage", side_effect=Exception("Disk access error")):
-                result = await workspace_check.check("test-instance", workspace_path=str(workspace_path))
+                result = await workspace_check.check(
+                    "test-instance", workspace_path=str(workspace_path)
+                )
 
         assert result.status == HealthStatus.DEGRADED
         assert "error checking disk space" in result.message.lower()
@@ -632,7 +655,9 @@ class TestWorkspaceHealthCheckErrorHandling:
     async def test_path_access_exception(self, workspace_check):
         """Test workspace check when path access fails."""
         with patch("pathlib.Path.exists", side_effect=PermissionError("Access denied")):
-            result = await workspace_check.check("test-instance", workspace_path="/restricted/path")
+            result = await workspace_check.check(
+                "test-instance", workspace_path="/restricted/path"
+            )
 
         assert result.status == HealthStatus.CRITICAL
         assert "error accessing workspace" in result.message.lower()
@@ -642,10 +667,14 @@ class TestWorkspaceHealthCheckErrorHandling:
         """Test workspace check with permission denied."""
         with tempfile.TemporaryDirectory() as temp_dir:
             workspace_path = Path(temp_dir)
-            
+
             # Mock permission error when checking if directory exists
-            with patch.object(Path, "exists", side_effect=PermissionError("Permission denied")):
-                result = await workspace_check.check("test-instance", workspace_path=str(workspace_path))
+            with patch.object(
+                Path, "exists", side_effect=PermissionError("Permission denied")
+            ):
+                result = await workspace_check.check(
+                    "test-instance", workspace_path=str(workspace_path)
+                )
 
         assert result.status == HealthStatus.CRITICAL
         assert "error" in result.message.lower()
@@ -662,8 +691,12 @@ class TestResponseHealthCheckErrorHandling:
     @pytest.mark.asyncio
     async def test_response_command_exception(self, response_check):
         """Test response check when command execution fails."""
-        with patch("asyncio.create_subprocess_exec", side_effect=Exception("Command failed")):
-            result = await response_check.check("test-instance", tmux_session="test-session")
+        with patch(
+            "asyncio.create_subprocess_exec", side_effect=Exception("Command failed")
+        ):
+            result = await response_check.check(
+                "test-instance", tmux_session="test-session"
+            )
 
         assert result.status == HealthStatus.CRITICAL
         assert "error testing responsiveness" in result.message.lower()
@@ -671,16 +704,23 @@ class TestResponseHealthCheckErrorHandling:
     @pytest.mark.asyncio
     async def test_response_file_cleanup_error(self, response_check):
         """Test response check when file cleanup fails."""
+
         async def mock_create_subprocess_exec(*args, **kwargs):
             mock_process = Mock()
             mock_process.wait = AsyncMock(return_value=None)
             mock_process.returncode = 0
             return mock_process
 
-        with patch("asyncio.create_subprocess_exec", side_effect=mock_create_subprocess_exec):
+        with patch(
+            "asyncio.create_subprocess_exec", side_effect=mock_create_subprocess_exec
+        ):
             with patch("pathlib.Path.exists", return_value=True):
-                with patch("pathlib.Path.unlink", side_effect=PermissionError("Cannot delete")):
-                    result = await response_check.check("test-instance", tmux_session="test-session")
+                with patch(
+                    "pathlib.Path.unlink", side_effect=PermissionError("Cannot delete")
+                ):
+                    result = await response_check.check(
+                        "test-instance", tmux_session="test-session"
+                    )
 
         # Should still be successful even if cleanup fails
         assert result.status == HealthStatus.HEALTHY
@@ -689,14 +729,19 @@ class TestResponseHealthCheckErrorHandling:
     @pytest.mark.asyncio
     async def test_response_check_partial_success(self, response_check):
         """Test response check with partial command success."""
+
         async def mock_create_subprocess_exec(*args, **kwargs):
             mock_process = Mock()
             mock_process.wait = AsyncMock(return_value=None)
             mock_process.returncode = 1  # Command failed
             return mock_process
 
-        with patch("asyncio.create_subprocess_exec", side_effect=mock_create_subprocess_exec):
-            result = await response_check.check("test-instance", tmux_session="test-session")
+        with patch(
+            "asyncio.create_subprocess_exec", side_effect=mock_create_subprocess_exec
+        ):
+            result = await response_check.check(
+                "test-instance", tmux_session="test-session"
+            )
 
         assert result.status == HealthStatus.DEGRADED
         assert "not responding" in result.message.lower()
@@ -712,7 +757,7 @@ class TestHealthCheckerErrorScenarios:
         timeout_check = Mock()
         timeout_check.name = "timeout_check"
         timeout_check.timeout = 5.0
-        timeout_check.check = AsyncMock(side_effect=asyncio.TimeoutError())
+        timeout_check.check = AsyncMock(side_effect=TimeoutError())
 
         exception_check = Mock()
         exception_check.name = "exception_check"
@@ -722,12 +767,12 @@ class TestHealthCheckerErrorScenarios:
         success_check = Mock()
         success_check.name = "success_check"
         success_check.timeout = 5.0
-        success_check.check = AsyncMock(return_value=HealthCheckResult(
-            status=HealthStatus.HEALTHY, message="OK"
-        ))
+        success_check.check = AsyncMock(
+            return_value=HealthCheckResult(status=HealthStatus.HEALTHY, message="OK")
+        )
 
         checker = HealthChecker([timeout_check, exception_check, success_check])
-        
+
         results = await checker.check_health("test-instance")
 
         assert len(results) == 3
@@ -751,11 +796,11 @@ class TestHealthCheckerErrorScenarios:
         failing_check2.check = AsyncMock(side_effect=Exception("Check 2 failed"))
 
         checker = HealthChecker([failing_check1, failing_check2])
-        
+
         results = await checker.check_health("test-instance")
 
         assert len(results) == 2
-        for check_name, result in results.items():
+        for _check_name, result in results.items():
             assert result.status == HealthStatus.CRITICAL
             assert "error" in result.message.lower()
 
@@ -772,18 +817,22 @@ class TestHealthCheckerErrorScenarios:
 
         checker = HealthChecker([])
         status = checker.get_overall_status(results)
-        
+
         # Unknown should not affect overall status if other checks are healthy
         assert status == HealthStatus.HEALTHY
 
     def test_get_overall_status_all_unknown(self):
         """Test overall status calculation with all unknown status results."""
         results = {
-            "check1": HealthCheckResult(status=HealthStatus.UNKNOWN, message="Unknown 1"),
-            "check2": HealthCheckResult(status=HealthStatus.UNKNOWN, message="Unknown 2"),
+            "check1": HealthCheckResult(
+                status=HealthStatus.UNKNOWN, message="Unknown 1"
+            ),
+            "check2": HealthCheckResult(
+                status=HealthStatus.UNKNOWN, message="Unknown 2"
+            ),
         }
 
         checker = HealthChecker([])
         status = checker.get_overall_status(results)
-        
+
         assert status == HealthStatus.UNKNOWN

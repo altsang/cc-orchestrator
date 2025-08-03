@@ -209,6 +209,11 @@ class HealthMonitoringSettings:
             setting_path: Dot-separated path to setting
         """
         if instance_id not in self._instance_overrides:
+            logger.warning(
+                "Instance override not found",
+                instance_id=instance_id,
+                setting=setting_path,
+            )
             return
 
         parts = setting_path.split(".")
