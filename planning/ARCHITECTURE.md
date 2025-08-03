@@ -18,6 +18,7 @@
 
 ### Process & Session Management
 - **tmux**: Session persistence and terminal management
+- **libtmux**: Python library for tmux automation and control
 - **subprocess**: Claude Code process spawning
 - **watchdog**: File system monitoring
 - **psutil**: System resource monitoring
@@ -33,6 +34,7 @@ cc-orchestrator/
 │   │   ├── tasks.py        # Task management commands
 │   │   ├── instances.py    # Instance management commands
 │   │   ├── worktrees.py    # Worktree management commands
+│   │   ├── tmux.py         # Tmux session management commands
 │   │   └── config.py       # Configuration commands
 │   ├── core/                # Core orchestration logic
 │   │   ├── __init__.py
@@ -47,11 +49,10 @@ cc-orchestrator/
 │   │   ├── websockets.py   # WebSocket handlers
 │   │   ├── models.py       # Pydantic models
 │   │   └── dependencies.py # FastAPI dependencies
-│   ├── tmux/                # Tmux integration
+│   ├── tmux/                # Tmux session management
 │   │   ├── __init__.py
-│   │   ├── manager.py      # Tmux session management
-│   │   ├── layouts.py      # Predefined layouts
-│   │   └── utils.py        # Tmux utilities
+│   │   ├── service.py       # Core tmux service implementation
+│   │   └── logging_utils.py # Tmux-specific logging utilities
 │   ├── integrations/        # External APIs
 │   │   ├── __init__.py
 │   │   ├── github.py       # GitHub API client
@@ -109,8 +110,46 @@ cc-orchestrator/
 ### 2. Tmux for Session Persistence
 **Rationale**: Battle-tested, survives disconnections, team collaboration
 - **Layout**: Main session + per-instance sessions
-- **Integration**: Python tmux library for programmatic control
+- **Integration**: Python libtmux library for programmatic control
 - **Naming**: Consistent session naming with cc-orchestrator prefix
+
+#### Tmux Session Management Architecture
+The tmux integration provides comprehensive session lifecycle management:
+
+**Core Components:**
+- **TmuxService**: Main service class for session operations
+- **SessionConfig**: Configuration object for session creation
+- **LayoutTemplate**: Configurable window and pane layouts
+- **Session Discovery**: Automatic detection of orphaned sessions
+
+**Session Naming Convention:**
+- Format: `cc-orchestrator-{instance-id}`
+- Example: `cc-orchestrator-issue-15-worker`
+- Prefix ensures easy identification and filtering
+
+**Layout Templates:**
+- **default**: Single window with shell
+- **development**: Multi-window setup (editor, terminal, monitoring)
+- **claude**: Optimized for Claude Code usage
+- **custom**: User-defined layouts via CLI
+
+**Lifecycle Management:**
+1. **Creation**: Session with configured layout and environment
+2. **Attachment**: Connect clients to persistent sessions
+3. **Detachment**: Preserve sessions across disconnections
+4. **Discovery**: Find and reconnect to existing sessions
+5. **Cleanup**: Graceful termination and resource cleanup
+
+**Multi-User Support:**
+- Shared sessions for team collaboration
+- Client tracking and management
+- Concurrent access handling
+
+**Integration Points:**
+- **Process Manager**: Spawns Claude instances in tmux sessions
+- **CLI Commands**: Full session management via command line
+- **Web Interface**: Session status and control (future)
+- **Database**: Session metadata persistence
 
 ### 3. FastAPI + WebSockets for Web Interface
 **Rationale**: Modern async framework, automatic OpenAPI docs, WebSocket support

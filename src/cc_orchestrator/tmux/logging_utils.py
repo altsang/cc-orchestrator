@@ -1,125 +1,71 @@
-"""
-Logging utilities for tmux session management.
+"""Logging utilities for tmux operations."""
 
-This module provides specialized logging for tmux operations including:
-- Session creation and management
-- Window and pane operations
-- Layout management
-- Session cleanup
-"""
-
-from collections.abc import Callable
+import logging
 from typing import Any
 
-from ..utils.logging import LogContext, audit_log, get_logger, handle_errors
-
-# Tmux component logger
-tmux_logger = get_logger(__name__, LogContext.TMUX)
+# Create tmux logger
+tmux_logger = logging.getLogger("cc_orchestrator.tmux")
 
 
 def log_session_operation(
     operation: str,
     session_name: str,
-    status: str = "success",
-    details: dict[str, Any] | None = None,
+    status: str,
+    context: dict[str, Any] | None = None,
 ) -> None:
-    """Log tmux session operations."""
+    """Log session operation."""
+    message = f"Session {operation} {status} - {session_name}"
+    if context:
+        message += f" - {context}"
+
     if status == "success":
-        tmux_logger.info(
-            f"Tmux session {operation} completed",
-            operation=operation,
-            session_name=session_name,
-            details=details or {},
-        )
+        tmux_logger.info(message)
     elif status == "error":
-        tmux_logger.error(
-            f"Tmux session {operation} failed",
-            operation=operation,
-            session_name=session_name,
-            details=details or {},
-        )
+        tmux_logger.error(message)
     else:
-        tmux_logger.info(
-            f"Tmux session {operation} in progress",
-            operation=operation,
-            session_name=session_name,
-            status=status,
-            details=details or {},
-        )
-
-
-def log_session_list(sessions: list[dict[str, Any]]) -> None:
-    """Log current tmux sessions."""
-    tmux_logger.debug(
-        "Tmux sessions listed",
-        session_count=len(sessions),
-        sessions=[s.get("name", "unknown") for s in sessions],
-    )
+        tmux_logger.info(message)
 
 
 def log_session_attach(session_name: str, instance_id: str | None = None) -> None:
     """Log session attachment."""
-    logger = get_logger(__name__, LogContext.TMUX)
+    message = f"Session attached - {session_name}"
     if instance_id:
-        logger.set_instance_id(instance_id)
-
-    logger.info("Attached to tmux session", session_name=session_name)
+        message += f" (instance: {instance_id})"
+    tmux_logger.info(message)
 
 
 def log_session_detach(session_name: str, instance_id: str | None = None) -> None:
     """Log session detachment."""
-    logger = get_logger(__name__, LogContext.TMUX)
+    message = f"Session detached - {session_name}"
     if instance_id:
-        logger.set_instance_id(instance_id)
-
-    logger.info("Detached from tmux session", session_name=session_name)
-
-
-def log_layout_setup(session_name: str, layout_name: str, windows: list[str]) -> None:
-    """Log tmux layout configuration."""
-    tmux_logger.info(
-        "Tmux layout configured",
-        session_name=session_name,
-        layout_name=layout_name,
-        window_count=len(windows),
-        windows=windows,
-    )
+        message += f" (instance: {instance_id})"
+    tmux_logger.info(message)
 
 
-def log_session_cleanup(
-    session_name: str, force: bool = False, reason: str = "normal"
-) -> None:
-    """Log session cleanup operations."""
-    tmux_logger.info(
-        "Tmux session cleanup initiated",
-        session_name=session_name,
-        force=force,
-        reason=reason,
-    )
+def log_session_cleanup(session_name: str, force: bool, cleanup_type: str) -> None:
+    """Log session cleanup."""
+    message = f"Session cleanup initiated - {session_name} (force: {force}, type: {cleanup_type})"
+    tmux_logger.info(message)
+
+
+def log_session_list(sessions: list[dict[str, Any]]) -> None:
+    """Log session listing."""
+    message = f"Sessions listed - count: {len(sessions)}"
+    tmux_logger.debug(message)
 
 
 def log_orphaned_sessions(orphaned: list[str]) -> None:
-    """Log discovery of orphaned tmux sessions."""
+    """Log orphaned sessions detected."""
     if orphaned:
-        tmux_logger.warning(
-            "Orphaned tmux sessions detected",
-            session_count=len(orphaned),
-            sessions=orphaned,
+        message = (
+            f"Orphaned sessions detected - count: {len(orphaned)}, sessions: {orphaned}"
         )
+        tmux_logger.warning(message)
     else:
-        tmux_logger.debug("No orphaned tmux sessions found")
+        tmux_logger.debug("No orphaned sessions found")
 
 
-# Decorator functions for tmux operations
-def handle_tmux_errors(
-    recovery_strategy: Callable[..., Any] | None = None,
-) -> Callable[..., Any]:
-    """Decorator for tmux error handling."""
-    return handle_errors(
-        recovery_strategy=recovery_strategy, log_context=LogContext.TMUX, reraise=True
-    )
-
-
-def log_tmux_operation(operation_name: str) -> Callable[..., Any]:
-    """Decorator for tmux operations with automatic logging."""
-    return audit_log(f"tmux_{operation_name}", LogContext.TMUX)
+def log_layout_setup(session_name: str, template_name: str, windows: list[str]) -> None:
+    """Log layout template setup."""
+    message = f"Layout template applied - {session_name} (template: {template_name}, windows: {windows})"
+    tmux_logger.info(message)
