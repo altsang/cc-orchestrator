@@ -1,6 +1,7 @@
 """Git worktree management commands."""
 
 import json
+import tempfile
 
 import click
 
@@ -298,7 +299,9 @@ def check_conflicts(path_or_branch: str, from_branch: str | None, format: str) -
         else:
             # Looks like a branch name
             branch = path_or_branch
-            path = f"/tmp/worktree-check-{hash(path_or_branch) % 10000}"
+            # Use secure temporary directory
+            temp_dir = tempfile.gettempdir()
+            path = f"{temp_dir}/worktree-check-{hash(path_or_branch) % 10000}"
 
         conflicts = service.check_worktree_conflicts(path, branch, from_branch)
 
