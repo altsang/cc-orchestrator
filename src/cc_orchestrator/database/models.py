@@ -61,6 +61,18 @@ class WorktreeStatus(Enum):
     INACTIVE = "inactive"
     DIRTY = "dirty"
     ERROR = "error"
+    STALE = "stale"
+    CONFLICTED = "conflicted"
+
+
+class BranchStrategy(Enum):
+    """Branch naming strategies for worktrees."""
+
+    FEATURE = "feature"
+    HOTFIX = "hotfix"
+    BUGFIX = "bugfix"
+    RELEASE = "release"
+    EXPERIMENT = "experiment"
 
 
 class ConfigScope(Enum):
@@ -184,6 +196,9 @@ class Worktree(Base):
     status: Mapped[WorktreeStatus] = mapped_column(
         SQLEnum(WorktreeStatus), nullable=False, default=WorktreeStatus.ACTIVE
     )
+    branch_strategy: Mapped[BranchStrategy | None] = mapped_column(
+        SQLEnum(BranchStrategy), nullable=True
+    )
 
     # Foreign key
     instance_id: Mapped[int | None] = mapped_column(
@@ -192,7 +207,10 @@ class Worktree(Base):
 
     # Git information
     current_commit: Mapped[str | None] = mapped_column(String(40))
+    base_commit: Mapped[str | None] = mapped_column(String(40))
     has_uncommitted_changes: Mapped[bool] = mapped_column(Boolean, default=False)
+    commits_ahead: Mapped[int] = mapped_column(Integer, default=0)
+    commits_behind: Mapped[int] = mapped_column(Integer, default=0)
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
@@ -279,6 +297,8 @@ Index("idx_tasks_due_date", Task.due_date)
 Index("idx_worktrees_path", Worktree.path)
 Index("idx_worktrees_branch", Worktree.branch_name)
 Index("idx_worktrees_status", Worktree.status)
+Index("idx_worktrees_strategy", Worktree.branch_strategy)
+Index("idx_worktrees_instance", Worktree.instance_id)
 
 # Configuration indexes
 Index("idx_configurations_key_scope", Configuration.key, Configuration.scope)

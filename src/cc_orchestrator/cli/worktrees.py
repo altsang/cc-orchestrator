@@ -4,6 +4,7 @@ import json
 
 import click
 
+from ..core.git_operations import BranchStrategy
 from ..core.worktree_service import WorktreeService, WorktreeServiceError
 from ..utils.logging import LogContext, get_logger
 
@@ -69,6 +70,12 @@ def list(format: str, sync: bool) -> None:
 @click.option("--instance-id", type=int, help="Associate with instance ID")
 @click.option("--force", is_flag=True, help="Force creation even if path exists")
 @click.option(
+    "--strategy",
+    type=click.Choice([s.value for s in BranchStrategy]),
+    help="Branch naming strategy to enforce",
+)
+@click.option("--no-conflict-check", is_flag=True, help="Skip conflict detection")
+@click.option(
     "--format",
     default="table",
     type=click.Choice(["table", "json"]),
@@ -81,6 +88,8 @@ def create(
     from_branch: str | None,
     instance_id: int | None,
     force: bool,
+    strategy: str | None,
+    no_conflict_check: bool,
     format: str,
 ) -> None:
     """Create a new git worktree.
@@ -91,6 +100,11 @@ def create(
     try:
         service = WorktreeService()
 
+        # Convert strategy string to enum if provided
+        branch_strategy = None
+        if strategy:
+            branch_strategy = BranchStrategy(strategy)
+
         worktree = service.create_worktree(
             name=name,
             branch=branch_name,
@@ -98,6 +112,8 @@ def create(
             custom_path=path,
             instance_id=instance_id,
             force=force,
+            strategy=branch_strategy,
+            check_conflicts=not no_conflict_check,
         )
 
         if format == "json":
@@ -253,5 +269,205 @@ def status(path_or_id: str, format: str) -> None:
         raise click.Abort()
     except Exception as e:
         logger.error(f"Unexpected error getting status: {e}")
+        click.echo(f"Unexpected error: {e}", err=True)
+        raise click.Abort()
+
+
+@worktrees.command()
+@click.argument("path_or_branch")
+@click.option("--from-branch", help="Branch to check conflicts against")
+@click.option(
+    "--format",
+    default="table",
+    type=click.Choice(["table", "json"]),
+    help="Output format",
+)
+def check_conflicts(path_or_branch: str, from_branch: str | None, format: str) -> None:
+    """Check for potential conflicts before creating a worktree.
+
+    PATH_OR_BRANCH: Path for worktree or branch name to check
+    """
+    try:
+        service = WorktreeService()
+
+        # Determine if input is path or branch name
+        if "/" in path_or_branch:
+            # Looks like a path
+            path = path_or_branch
+            branch = f"temp-check-{hash(path_or_branch) % 10000}"
+        else:
+            # Looks like a branch name
+            branch = path_or_branch
+            path = f"/tmp/worktree-check-{hash(path_or_branch) % 10000}"
+
+        conflicts = service.check_worktree_conflicts(path, branch, from_branch)
+
+        if format == "json":
+            click.echo(json.dumps(conflicts, indent=2))
+        else:
+            if not conflicts:
+                click.echo("✓ No conflicts detected")
+            else:
+                click.echo("⚠️ Conflicts detected:")
+                for conflict in conflicts:
+                    click.echo(f"  - {conflict['type']}: {conflict['message']}")
+
+    except WorktreeServiceError as e:
+        logger.error(f"Failed to check conflicts: {e}")
+        click.echo(f"Error: {e}", err=True)
+        raise click.Abort()
+    except Exception as e:
+        logger.error(f"Unexpected error checking conflicts: {e}")
+        click.echo(f"Unexpected error: {e}", err=True)
+        raise click.Abort()
+
+
+@worktrees.command()
+@click.argument("branch_name")
+@click.option(
+    "--strategy",
+    type=click.Choice([s.value for s in BranchStrategy]),
+    help="Expected branch strategy",
+)
+@click.option(
+    "--format",
+    default="table",
+    type=click.Choice(["table", "json"]),
+    help="Output format",
+)
+def validate_branch(branch_name: str, strategy: str | None, format: str) -> None:
+    """Validate branch name against naming conventions.
+
+    BRANCH_NAME: Branch name to validate
+    """
+    try:
+        service = WorktreeService()
+
+        # Convert strategy string to enum if provided
+        expected_strategy = None
+        if strategy:
+            expected_strategy = BranchStrategy(strategy)
+
+        result = service.validate_branch_strategy(branch_name, expected_strategy)
+
+        if format == "json":
+            click.echo(json.dumps(result, indent=2))
+        else:
+            if result["valid"]:
+                click.echo(f"✓ {result['message']}")
+                if result["strategy"]:
+                    click.echo(f"  Strategy: {result['strategy']}")
+            else:
+                click.echo(f"✗ {result['message']}")
+                if result["strategy"]:
+                    click.echo(f"  Expected strategy: {result['strategy']}")
+
+    except WorktreeServiceError as e:
+        logger.error(f"Failed to validate branch: {e}")
+        click.echo(f"Error: {e}", err=True)
+        raise click.Abort()
+    except Exception as e:
+        logger.error(f"Unexpected error validating branch: {e}")
+        click.echo(f"Unexpected error: {e}", err=True)
+        raise click.Abort()
+
+
+@worktrees.command()
+@click.argument("strategy", type=click.Choice([s.value for s in BranchStrategy]))
+@click.argument("identifier")
+@click.option("--suffix", help="Optional suffix for branch name")
+@click.option(
+    "--format",
+    default="table",
+    type=click.Choice(["table", "json"]),
+    help="Output format",
+)
+def suggest_branch(
+    strategy: str, identifier: str, suffix: str | None, format: str
+) -> None:
+    """Suggest a branch name following conventions.
+
+    STRATEGY: Branch strategy to use (feature, hotfix, bugfix, release, experiment)
+    IDENTIFIER: Main identifier (e.g., issue number, feature name)
+    """
+    try:
+        service = WorktreeService()
+        branch_strategy = BranchStrategy(strategy)
+
+        suggested_name = service.suggest_branch_name(
+            branch_strategy, identifier, suffix
+        )
+
+        if format == "json":
+            click.echo(json.dumps({"suggested_branch": suggested_name}, indent=2))
+        else:
+            click.echo(f"Suggested branch name: {suggested_name}")
+
+    except WorktreeServiceError as e:
+        logger.error(f"Failed to suggest branch name: {e}")
+        click.echo(f"Error: {e}", err=True)
+        raise click.Abort()
+    except Exception as e:
+        logger.error(f"Unexpected error suggesting branch name: {e}")
+        click.echo(f"Unexpected error: {e}", err=True)
+        raise click.Abort()
+
+
+@worktrees.command()
+@click.option("--days-old", type=int, default=30, help="Age threshold in days")
+@click.option(
+    "--dry-run", is_flag=True, default=True, help="Only show what would be cleaned"
+)
+@click.option(
+    "--force", is_flag=True, help="Actually delete branches (disables dry-run)"
+)
+@click.option(
+    "--format",
+    default="table",
+    type=click.Choice(["table", "json"]),
+    help="Output format",
+)
+def cleanup_branches(days_old: int, dry_run: bool, force: bool, format: str) -> None:
+    """Clean up stale branches that are no longer needed."""
+    try:
+        service = WorktreeService()
+
+        # Force flag disables dry-run
+        actual_dry_run = dry_run and not force
+
+        result = service.cleanup_stale_branches(days_old, actual_dry_run)
+
+        if format == "json":
+            click.echo(json.dumps(result, indent=2))
+        else:
+            stale_count = len(result["stale_branches"])
+            deleted_count = len(result["deleted"])
+            protected_count = len(result["protected"])
+
+            if stale_count == 0:
+                click.echo("✓ No stale branches found")
+            else:
+                mode = "Would delete" if actual_dry_run else "Deleted"
+                click.echo(f"Stale branches found: {stale_count}")
+
+                if actual_dry_run:
+                    click.echo("Would clean up:")
+                    for branch in result["stale_branches"]:
+                        click.echo(f"  - {branch}")
+                    click.echo("\nUse --force to actually delete these branches")
+                else:
+                    click.echo(f"{mode}: {deleted_count} branches")
+                    for branch in result["deleted"]:
+                        click.echo(f"  ✓ {branch}")
+
+            if protected_count > 0:
+                click.echo(f"\nProtected branches (not cleaned): {protected_count}")
+
+    except WorktreeServiceError as e:
+        logger.error(f"Failed to cleanup branches: {e}")
+        click.echo(f"Error: {e}", err=True)
+        raise click.Abort()
+    except Exception as e:
+        logger.error(f"Unexpected error cleaning up branches: {e}")
         click.echo(f"Unexpected error: {e}", err=True)
         raise click.Abort()
