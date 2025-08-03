@@ -1,7 +1,10 @@
 """Git operations for worktree management."""
 
 import os
+import re
 import shutil
+from datetime import datetime
+from enum import Enum
 from pathlib import Path
 
 from git import Repo
@@ -16,6 +19,138 @@ class GitWorktreeError(Exception):
     """Base exception for git worktree operations."""
 
     pass
+
+
+class BranchStrategy(Enum):
+    """Branch naming strategies for worktrees."""
+
+    FEATURE = "feature"
+    HOTFIX = "hotfix"
+    BUGFIX = "bugfix"
+    RELEASE = "release"
+    EXPERIMENT = "experiment"
+
+
+class ConflictType(Enum):
+    """Types of conflicts that can occur during worktree creation."""
+
+    BRANCH_EXISTS = "branch_exists"
+    PATH_EXISTS = "path_exists"
+    UNCOMMITTED_CHANGES = "uncommitted_changes"
+    MERGE_CONFLICT = "merge_conflict"
+    REMOTE_DIVERGED = "remote_diverged"
+
+
+class BranchValidator:
+    """Validates branch names and enforces naming conventions."""
+
+    # Branch name patterns for different strategies
+    STRATEGY_PATTERNS = {
+        BranchStrategy.FEATURE: r"^feature/[a-z0-9-]+(?:/[a-z0-9-]+)*$",
+        BranchStrategy.HOTFIX: r"^hotfix/[a-z0-9-]+(?:/[a-z0-9-]+)*$",
+        BranchStrategy.BUGFIX: r"^bugfix/[a-z0-9-]+(?:/[a-z0-9-]+)*$",
+        BranchStrategy.RELEASE: r"^release/v?\d+\.\d+(?:\.\d+)?(?:-[a-z0-9-]+)*$",
+        BranchStrategy.EXPERIMENT: r"^experiment/[a-z0-9-]+(?:/[a-z0-9-]+)*$",
+    }
+
+    @classmethod
+    def generate_branch_name(
+        cls,
+        strategy: BranchStrategy,
+        identifier: str,
+        suffix: str | None = None,
+    ) -> str:
+        """Generate a branch name following naming conventions.
+
+        Args:
+            strategy: Branch strategy to use
+            identifier: Main identifier (e.g., issue number, feature name)
+            suffix: Optional suffix for additional context
+
+        Returns:
+            Generated branch name
+
+        Raises:
+            GitWorktreeError: If identifier is invalid
+        """
+        # Sanitize identifier
+        clean_id = cls._sanitize_identifier(identifier)
+        if not clean_id:
+            raise GitWorktreeError(f"Invalid identifier: {identifier}")
+
+        # Build branch name
+        if suffix:
+            clean_suffix = cls._sanitize_identifier(suffix)
+            branch_name = f"{strategy.value}/{clean_id}/{clean_suffix}"
+        else:
+            branch_name = f"{strategy.value}/{clean_id}"
+
+        # Validate against pattern
+        if not cls.validate_branch_name(branch_name, strategy):
+            raise GitWorktreeError(
+                f"Generated branch name doesn't match pattern: {branch_name}"
+            )
+
+        return branch_name
+
+    @classmethod
+    def validate_branch_name(cls, branch_name: str, strategy: BranchStrategy) -> bool:
+        """Validate if branch name follows the strategy's naming convention.
+
+        Args:
+            branch_name: Branch name to validate
+            strategy: Expected branch strategy
+
+        Returns:
+            True if branch name is valid
+        """
+        pattern = cls.STRATEGY_PATTERNS.get(strategy)
+        if not pattern:
+            return False
+
+        return bool(re.match(pattern, branch_name))
+
+    @classmethod
+    def detect_strategy(cls, branch_name: str) -> BranchStrategy | None:
+        """Detect the branch strategy from a branch name.
+
+        Args:
+            branch_name: Branch name to analyze
+
+        Returns:
+            Detected strategy or None if no pattern matches
+        """
+        for strategy, pattern in cls.STRATEGY_PATTERNS.items():
+            if re.match(pattern, branch_name):
+                return strategy
+        return None
+
+    @staticmethod
+    def _sanitize_identifier(identifier: str) -> str:
+        """Sanitize identifier for use in branch names.
+
+        Args:
+            identifier: Raw identifier
+
+        Returns:
+            Sanitized identifier safe for git branch names
+        """
+        # Convert to lowercase
+        clean = identifier.lower()
+
+        # Replace spaces and underscores with hyphens
+        clean = re.sub(r"[_\s]+", "-", clean)
+
+        # Remove non-alphanumeric characters except hyphens and slashes
+        clean = re.sub(r"[^a-z0-9-/]", "", clean)
+
+        # Remove leading/trailing hyphens
+        clean = clean.strip("-")
+
+        # Collapse multiple hyphens
+        clean = re.sub(r"-+", "-", clean)
+
+        return clean
 
 
 class GitWorktreeManager:
@@ -377,3 +512,292 @@ class GitWorktreeManager:
             counter += 1
 
         return str(base_path)
+
+    def check_worktree_conflicts(
+        self,
+        path: str,
+        branch: str,
+        checkout_branch: str | None = None,
+    ) -> list[dict[str, str]]:
+        """Check for potential conflicts before creating a worktree.
+
+        Args:
+            path: Path where the worktree would be created
+            branch: Name of the new branch to create
+            checkout_branch: Existing branch to checkout from
+
+        Returns:
+            List of conflict dictionaries with 'type' and 'message' keys
+
+        Raises:
+            GitWorktreeError: If conflict check fails
+        """
+        conflicts = []
+
+        try:
+            # Check if path already exists
+            abs_path = os.path.abspath(path)
+            if os.path.exists(abs_path):
+                conflicts.append(
+                    {
+                        "type": ConflictType.PATH_EXISTS.value,
+                        "message": f"Path already exists: {abs_path}",
+                    }
+                )
+
+            # Check if branch already exists
+            try:
+                self.repo.git.show_ref(f"refs/heads/{branch}")
+                conflicts.append(
+                    {
+                        "type": ConflictType.BRANCH_EXISTS.value,
+                        "message": f"Branch already exists: {branch}",
+                    }
+                )
+            except GitCommandError:
+                # Branch doesn't exist, which is what we want
+                pass
+
+            # Check for uncommitted changes in main repo
+            if self.repo.is_dirty() or self.repo.untracked_files:
+                conflicts.append(
+                    {
+                        "type": ConflictType.UNCOMMITTED_CHANGES.value,
+                        "message": "Repository has uncommitted changes",
+                    }
+                )
+
+            # Check for merge conflicts with checkout branch
+            if checkout_branch:
+                try:
+                    # Test merge to see if there would be conflicts
+                    merge_base = self.repo.merge_base(
+                        self.repo.active_branch.commit,
+                        self.repo.refs[checkout_branch].commit,
+                    )
+
+                    if merge_base:
+                        # Check if branches have diverged significantly
+                        commits_ahead = list(
+                            self.repo.iter_commits(
+                                f"{checkout_branch}..{self.repo.active_branch.name}"
+                            )
+                        )
+                        commits_behind = list(
+                            self.repo.iter_commits(
+                                f"{self.repo.active_branch.name}..{checkout_branch}"
+                            )
+                        )
+
+                        if len(commits_ahead) > 10 or len(commits_behind) > 10:
+                            conflicts.append(
+                                {
+                                    "type": ConflictType.REMOTE_DIVERGED.value,
+                                    "message": f"Branches have diverged significantly: {len(commits_ahead)} ahead, {len(commits_behind)} behind",
+                                }
+                            )
+
+                        # Try to simulate merge to detect conflicts
+                        try:
+                            # This is a dry run - we're not actually merging
+                            self.repo.git.merge_tree(
+                                merge_base[0].hexsha,
+                                self.repo.active_branch.commit.hexsha,
+                                self.repo.refs[checkout_branch].commit.hexsha,
+                            )
+                        except GitCommandError as e:
+                            if "conflicts" in str(e).lower():
+                                conflicts.append(
+                                    {
+                                        "type": ConflictType.MERGE_CONFLICT.value,
+                                        "message": f"Potential merge conflicts detected with {checkout_branch}",
+                                    }
+                                )
+
+                except (GitCommandError, KeyError) as e:
+                    logger.warning(f"Could not check merge conflicts: {e}")
+
+            logger.info(
+                f"Found {len(conflicts)} potential conflicts for worktree {path}"
+            )
+            return conflicts
+
+        except Exception as e:
+            logger.error(f"Failed to check worktree conflicts: {e}")
+            raise GitWorktreeError(f"Failed to check conflicts: {e}") from e
+
+    def validate_branch_strategy(
+        self,
+        branch_name: str,
+        expected_strategy: BranchStrategy | None = None,
+    ) -> dict[str, any]:
+        """Validate branch name against naming conventions.
+
+        Args:
+            branch_name: Branch name to validate
+            expected_strategy: Expected branch strategy (optional)
+
+        Returns:
+            Dictionary with validation results:
+            - valid: Whether branch name is valid
+            - strategy: Detected or expected strategy
+            - message: Validation message
+        """
+        try:
+            detected_strategy = BranchValidator.detect_strategy(branch_name)
+
+            if expected_strategy:
+                # Validate against expected strategy
+                is_valid = BranchValidator.validate_branch_name(
+                    branch_name, expected_strategy
+                )
+                if is_valid:
+                    return {
+                        "valid": True,
+                        "strategy": expected_strategy.value,
+                        "message": f"Branch name follows {expected_strategy.value} convention",
+                    }
+                else:
+                    return {
+                        "valid": False,
+                        "strategy": expected_strategy.value,
+                        "message": f"Branch name doesn't follow {expected_strategy.value} convention",
+                    }
+            else:
+                # Auto-detect strategy
+                if detected_strategy:
+                    return {
+                        "valid": True,
+                        "strategy": detected_strategy.value,
+                        "message": f"Branch name follows {detected_strategy.value} convention",
+                    }
+                else:
+                    return {
+                        "valid": False,
+                        "strategy": None,
+                        "message": "Branch name doesn't follow any recognized convention",
+                    }
+
+        except Exception as e:
+            logger.error(f"Failed to validate branch strategy: {e}")
+            return {
+                "valid": False,
+                "strategy": None,
+                "message": f"Validation error: {e}",
+            }
+
+    def suggest_branch_name(
+        self,
+        strategy: BranchStrategy,
+        identifier: str,
+        suffix: str | None = None,
+    ) -> str:
+        """Suggest a branch name following conventions.
+
+        Args:
+            strategy: Branch strategy to use
+            identifier: Main identifier
+            suffix: Optional suffix
+
+        Returns:
+            Suggested branch name
+
+        Raises:
+            GitWorktreeError: If suggestion fails
+        """
+        try:
+            suggested_name = BranchValidator.generate_branch_name(
+                strategy, identifier, suffix
+            )
+
+            # Check if suggested branch already exists
+            counter = 1
+            original_name = suggested_name
+
+            while True:
+                try:
+                    self.repo.git.show_ref(f"refs/heads/{suggested_name}")
+                    # Branch exists, try with counter
+                    if suffix:
+                        suggested_name = f"{original_name}-{counter}"
+                    else:
+                        suggested_name = f"{original_name}-{counter}"
+                    counter += 1
+
+                    if counter > 99:  # Prevent infinite loop
+                        raise GitWorktreeError("Too many branch name collisions")
+
+                except GitCommandError:
+                    # Branch doesn't exist, we can use this name
+                    break
+
+            return suggested_name
+
+        except Exception as e:
+            logger.error(f"Failed to suggest branch name: {e}")
+            raise GitWorktreeError(f"Failed to suggest branch name: {e}") from e
+
+    def cleanup_stale_branches(
+        self,
+        days_old: int = 30,
+        dry_run: bool = True,
+    ) -> dict[str, list[str]]:
+        """Clean up stale branches that are no longer needed.
+
+        Args:
+            days_old: Age threshold in days for considering branches stale
+            dry_run: If True, only identify branches without deleting
+
+        Returns:
+            Dictionary with cleanup results:
+            - stale_branches: List of branches identified as stale
+            - deleted: List of branches actually deleted (empty if dry_run=True)
+            - protected: List of protected branches that won't be deleted
+        """
+        stale_branches = []
+        deleted = []
+        protected = ["main", "master", "develop", "dev"]
+
+        try:
+            cutoff_time = datetime.now().timestamp() - (days_old * 24 * 60 * 60)
+
+            # Get all local branches
+            for branch in self.repo.branches:
+                if branch.name in protected:
+                    continue
+
+                # Check if branch has recent activity
+                last_commit_time = branch.commit.committed_date
+
+                if last_commit_time < cutoff_time:
+                    # Check if branch is associated with any active worktrees
+                    worktrees = self.list_worktrees()
+                    is_active = any(wt.get("branch") == branch.name for wt in worktrees)
+
+                    if not is_active:
+                        stale_branches.append(branch.name)
+
+                        if not dry_run:
+                            try:
+                                self.repo.git.branch("-D", branch.name)
+                                deleted.append(branch.name)
+                                logger.info(f"Deleted stale branch: {branch.name}")
+                            except GitCommandError as e:
+                                logger.warning(
+                                    f"Could not delete branch {branch.name}: {e}"
+                                )
+
+            result = {
+                "stale_branches": stale_branches,
+                "deleted": deleted,
+                "protected": protected,
+            }
+
+            logger.info(
+                f"Branch cleanup: {len(stale_branches)} stale, {len(deleted)} deleted"
+            )
+            return result
+
+        except Exception as e:
+            logger.error(f"Failed to cleanup branches: {e}")
+            raise GitWorktreeError(f"Failed to cleanup branches: {e}") from e

@@ -113,6 +113,7 @@ class TestWorktreeService:
         mock_git_manager.generate_worktree_path.return_value = (
             "/test/worktrees/test-worktree"
         )
+        mock_git_manager.check_worktree_conflicts.return_value = []  # No conflicts
         mock_git_manager.create_worktree.return_value = {
             "path": "/test/worktrees/test-worktree",
             "branch": "feature-branch",
@@ -160,6 +161,7 @@ class TestWorktreeService:
         """Test worktree creation with custom path."""
         custom_path = "/custom/path/worktree"
 
+        mock_git_manager.check_worktree_conflicts.return_value = []  # No conflicts
         mock_git_manager.create_worktree.return_value = {
             "path": custom_path,
             "branch": "feature-branch",
@@ -198,6 +200,7 @@ class TestWorktreeService:
         from cc_orchestrator.core.git_operations import GitWorktreeError
 
         mock_git_manager.generate_worktree_path.return_value = "/test/path"
+        mock_git_manager.check_worktree_conflicts.return_value = []  # No conflicts
         mock_git_manager.create_worktree.side_effect = GitWorktreeError("Git error")
 
         with pytest.raises(WorktreeServiceError, match="Failed to create worktree"):
