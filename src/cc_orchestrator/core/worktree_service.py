@@ -7,11 +7,7 @@ from ..database.connection import get_db_session
 from ..database.crud import WorktreeCRUD
 from ..database.models import WorktreeStatus
 from ..utils.logging import LogContext, get_logger
-from .git_operations import (
-    BranchStrategy,
-    GitWorktreeError,
-    GitWorktreeManager,
-)
+from .git_operations import GitWorktreeError, GitWorktreeManager
 
 logger = get_logger(__name__, LogContext.WORKTREE)
 
@@ -93,8 +89,6 @@ class WorktreeService:
         custom_path: str | None = None,
         instance_id: int | None = None,
         force: bool = False,
-        strategy: BranchStrategy | None = None,
-        check_conflicts: bool = True,
     ) -> dict[str, any]:
         """Create a new git worktree and register it in the database.
 
@@ -105,8 +99,6 @@ class WorktreeService:
             custom_path: Custom path for the worktree (overrides default)
             instance_id: Associate with an instance
             force: Force creation even if path exists
-            strategy: Branch naming strategy to enforce
-            check_conflicts: Whether to check for conflicts before creation
 
         Returns:
             Dictionary with created worktree information
@@ -115,15 +107,6 @@ class WorktreeService:
             WorktreeServiceError: If creation fails
         """
         try:
-            # Validate branch strategy if provided
-            if strategy:
-                validation = self.git_manager.validate_branch_strategy(branch, strategy)
-                if not validation["valid"]:
-                    raise WorktreeServiceError(
-                        f"Branch name validation failed: {validation['message']}"
-                    )
-                logger.info(f"Branch name follows {strategy.value} strategy")
-
             # Determine the worktree path
             if custom_path:
                 worktree_path = os.path.abspath(custom_path)
@@ -131,19 +114,6 @@ class WorktreeService:
                 worktree_path = self.git_manager.generate_worktree_path(
                     self.base_worktree_dir, name
                 )
-
-            # Check for conflicts if requested
-            if check_conflicts and not force:
-                conflicts = self.git_manager.check_worktree_conflicts(
-                    worktree_path, branch, checkout_branch
-                )
-                if conflicts:
-                    conflict_messages = [
-                        f"{c['type']}: {c['message']}" for c in conflicts
-                    ]
-                    raise WorktreeServiceError(
-                        f"Conflicts detected: {'; '.join(conflict_messages)}"
-                    )
 
             logger.info(f"Creating worktree '{name}' at {worktree_path}")
 
@@ -427,144 +397,3 @@ class WorktreeService:
         except Exception as e:
             logger.debug(f"Could not get repository URL: {e}")
         return None
-
-    def check_worktree_conflicts(
-        self,
-        path: str,
-        branch: str,
-        checkout_branch: str | None = None,
-    ) -> list[dict[str, str]]:
-        """Check for potential conflicts before creating a worktree.
-
-        Args:
-            path: Path where the worktree would be created
-            branch: Name of the new branch to create
-            checkout_branch: Existing branch to checkout from
-
-        Returns:
-            List of conflict dictionaries with 'type' and 'message' keys
-
-        Raises:
-            WorktreeServiceError: If conflict check fails
-        """
-        try:
-            return self.git_manager.check_worktree_conflicts(
-                path, branch, checkout_branch
-            )
-        except GitWorktreeError as e:
-            raise WorktreeServiceError(f"Failed to check conflicts: {e}") from e
-
-    def validate_branch_strategy(
-        self,
-        branch_name: str,
-        expected_strategy: BranchStrategy | None = None,
-    ) -> dict[str, any]:
-        """Validate branch name against naming conventions.
-
-        Args:
-            branch_name: Branch name to validate
-            expected_strategy: Expected branch strategy (optional)
-
-        Returns:
-            Dictionary with validation results
-        """
-        return self.git_manager.validate_branch_strategy(branch_name, expected_strategy)
-
-    def suggest_branch_name(
-        self,
-        strategy: BranchStrategy,
-        identifier: str,
-        suffix: str | None = None,
-    ) -> str:
-        """Suggest a branch name following conventions.
-
-        Args:
-            strategy: Branch strategy to use
-            identifier: Main identifier
-            suffix: Optional suffix
-
-        Returns:
-            Suggested branch name
-
-        Raises:
-            WorktreeServiceError: If suggestion fails
-        """
-        try:
-            return self.git_manager.suggest_branch_name(strategy, identifier, suffix)
-        except GitWorktreeError as e:
-            raise WorktreeServiceError(f"Failed to suggest branch name: {e}") from e
-
-    def cleanup_stale_branches(
-        self,
-        days_old: int = 30,
-        dry_run: bool = True,
-    ) -> dict[str, list[str]]:
-        """Clean up stale branches that are no longer needed.
-
-        Args:
-            days_old: Age threshold in days for considering branches stale
-            dry_run: If True, only identify branches without deleting
-
-        Returns:
-            Dictionary with cleanup results
-        """
-        try:
-            return self.git_manager.cleanup_stale_branches(days_old, dry_run)
-        except GitWorktreeError as e:
-            raise WorktreeServiceError(f"Failed to cleanup branches: {e}") from e
-
-    def create_worktree_with_task(
-        self,
-        task_id: int,
-        strategy: BranchStrategy = BranchStrategy.FEATURE,
-        identifier: str | None = None,
-        checkout_branch: str | None = None,
-        instance_id: int | None = None,
-    ) -> dict[str, any]:
-        """Create a worktree for a specific task with automatic naming.
-
-        Args:
-            task_id: ID of the task to create worktree for
-            strategy: Branch strategy to use
-            identifier: Custom identifier (defaults to task-{task_id})
-            checkout_branch: Branch to checkout from
-            instance_id: Instance to associate with
-
-        Returns:
-            Dictionary with created worktree information
-
-        Raises:
-            WorktreeServiceError: If creation fails
-        """
-        try:
-            # Use task ID as identifier if not provided
-            if identifier is None:
-                identifier = f"task-{task_id}"
-
-            # Generate branch name
-            suggested_branch = self.suggest_branch_name(strategy, identifier)
-
-            # Generate worktree name
-            worktree_name = f"{strategy.value}-{identifier}"
-
-            # Create the worktree
-            result = self.create_worktree(
-                name=worktree_name,
-                branch=suggested_branch,
-                checkout_branch=checkout_branch,
-                instance_id=instance_id,
-                strategy=strategy,
-            )
-
-            # Update with task association
-            # Here we would update the task with worktree_id using database session
-            # This requires the task CRUD operations to be available
-            logger.info(f"Created worktree for task {task_id}: {result}")
-
-            return result
-
-        except Exception as e:
-            logger.error(f"Failed to create worktree for task {task_id}: {e}")
-            raise WorktreeServiceError(
-                f"Failed to create worktree for task: {e}"
-            ) from e

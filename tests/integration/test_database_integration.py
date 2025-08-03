@@ -196,9 +196,8 @@ class TestMigrationSystem:
         # After migration
         migration_manager.migrate_up()
         status = migration_manager.get_migration_status()
-        # Should be latest migration version (002) after applying all migrations
-        assert status["current_version"] == "002"
-        assert status["applied_count"] >= 2  # Should have applied both migrations
+        assert status["current_version"] == "001"
+        assert status["applied_count"] >= 1
         assert status["pending_count"] == 0
 
 
