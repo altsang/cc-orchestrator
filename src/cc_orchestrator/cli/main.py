@@ -5,6 +5,7 @@ import warnings
 import click
 
 from .config import config
+from .health import health
 from .instances import instances
 from .tasks import tasks
 from .tmux import tmux
@@ -59,6 +60,7 @@ def main(
     - config: Manage configuration settings
     - web: Control the web interface
     - tmux: Manage tmux sessions for persistent environments
+    - health: Monitor and manage instance health
     """
     ctx.ensure_object(dict)
     ctx.obj["config"] = config
@@ -94,6 +96,7 @@ main.add_command(worktrees)
 main.add_command(config)
 main.add_command(web)
 main.add_command(tmux)
+main.add_command(health)
 
 
 if __name__ == "__main__":
