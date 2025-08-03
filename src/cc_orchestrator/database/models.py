@@ -72,6 +72,25 @@ class ConfigScope(Enum):
     INSTANCE = "instance"
 
 
+class HealthStatus(Enum):
+    """Health status of an instance."""
+
+    HEALTHY = "healthy"
+    DEGRADED = "degraded"
+    UNHEALTHY = "unhealthy"
+    CRITICAL = "critical"
+    UNKNOWN = "unknown"
+
+
+class AlertLevel(Enum):
+    """Alert severity levels."""
+
+    INFO = "info"
+    WARNING = "warning"
+    ERROR = "error"
+    CRITICAL = "critical"
+
+
 class Instance(Base):
     """Claude Code instance model."""
 
@@ -86,6 +105,17 @@ class Instance(Base):
     branch_name: Mapped[str | None] = mapped_column(String(255))
     tmux_session: Mapped[str | None] = mapped_column(String(255))
     process_id: Mapped[int | None] = mapped_column(Integer)
+
+    # Health monitoring fields
+    health_status: Mapped[HealthStatus] = mapped_column(
+        SQLEnum(HealthStatus), nullable=False, default=HealthStatus.UNKNOWN
+    )
+    last_health_check: Mapped[datetime | None] = mapped_column(DateTime)
+    health_check_count: Mapped[int] = mapped_column(Integer, default=0)
+    healthy_check_count: Mapped[int] = mapped_column(Integer, default=0)
+    last_recovery_attempt: Mapped[datetime | None] = mapped_column(DateTime)
+    recovery_attempt_count: Mapped[int] = mapped_column(Integer, default=0)
+    health_check_details: Mapped[str | None] = mapped_column(Text)
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
@@ -283,3 +313,113 @@ Index("idx_worktrees_status", Worktree.status)
 # Configuration indexes
 Index("idx_configurations_key_scope", Configuration.key, Configuration.scope)
 Index("idx_configurations_instance_id", Configuration.instance_id)
+
+
+class HealthCheck(Base):
+    """Health check history model."""
+
+    __tablename__ = "health_checks"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    instance_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("instances.id"), nullable=False
+    )
+    check_timestamp: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=datetime.now
+    )
+    overall_status: Mapped[HealthStatus] = mapped_column(
+        SQLEnum(HealthStatus), nullable=False
+    )
+    check_results: Mapped[str] = mapped_column(Text, nullable=False)
+    duration_ms: Mapped[float] = mapped_column(Integer, default=0)
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=datetime.now
+    )
+
+    # Relationships
+    instance: Mapped["Instance"] = relationship("Instance")
+
+    def __repr__(self) -> str:
+        return f"<HealthCheck(id={self.id}, instance_id={self.instance_id}, status='{self.overall_status.value}')>"
+
+
+class RecoveryAttempt(Base):
+    """Recovery attempt history model."""
+
+    __tablename__ = "recovery_attempts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    instance_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("instances.id"), nullable=False
+    )
+    attempt_timestamp: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=datetime.now
+    )
+    strategy: Mapped[str] = mapped_column(String(50), nullable=False)
+    success: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    error_message: Mapped[str | None] = mapped_column(Text)
+    duration_seconds: Mapped[float] = mapped_column(Integer, default=0)
+    details: Mapped[str | None] = mapped_column(Text)
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=datetime.now
+    )
+
+    # Relationships
+    instance: Mapped["Instance"] = relationship("Instance")
+
+    def __repr__(self) -> str:
+        return f"<RecoveryAttempt(id={self.id}, instance_id={self.instance_id}, strategy='{self.strategy}', success={self.success})>"
+
+
+class Alert(Base):
+    """Alert history model."""
+
+    __tablename__ = "alerts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    instance_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("instances.id"), nullable=False
+    )
+    alert_id: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    level: Mapped[AlertLevel] = mapped_column(SQLEnum(AlertLevel), nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    details: Mapped[str | None] = mapped_column(Text)
+    timestamp: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=datetime.now
+    )
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=datetime.now
+    )
+
+    # Relationships
+    instance: Mapped["Instance"] = relationship("Instance")
+
+    def __repr__(self) -> str:
+        return f"<Alert(id={self.id}, instance_id={self.instance_id}, level='{self.level.value}', alert_id='{self.alert_id}')>"
+
+
+# Health monitoring indexes
+Index("idx_instances_health_status", Instance.health_status)
+Index("idx_instances_last_health_check", Instance.last_health_check)
+
+# Health check indexes
+Index("idx_health_checks_instance_id", HealthCheck.instance_id)
+Index("idx_health_checks_timestamp", HealthCheck.check_timestamp)
+Index("idx_health_checks_status", HealthCheck.overall_status)
+
+# Recovery attempt indexes
+Index("idx_recovery_attempts_instance_id", RecoveryAttempt.instance_id)
+Index("idx_recovery_attempts_timestamp", RecoveryAttempt.attempt_timestamp)
+Index("idx_recovery_attempts_success", RecoveryAttempt.success)
+
+# Alert indexes
+Index("idx_alerts_instance_id", Alert.instance_id)
+Index("idx_alerts_level", Alert.level)
+Index("idx_alerts_timestamp", Alert.timestamp)
+Index("idx_alerts_alert_id", Alert.alert_id)
