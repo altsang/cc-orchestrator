@@ -496,6 +496,38 @@ git branch -a | grep -E "test|temp|debug"
 tmux list-sessions | grep cc-orchestrator
 ```
 
+### **Phase Epic Completion Protocol (MANDATORY)**
+
+**CRITICAL**: When ALL issues within a phase are complete, the phase epic must also be closed.
+
+#### **Epic Completion Steps:**
+```bash
+# 1. Verify all phase issues are closed
+gh issue list --label "phase-X" --state open
+# Should only show the epic itself (or be empty)
+
+# 2. Close phase epic with completion summary
+gh issue close <EPIC_NUMBER> --comment "Phase X Epic completed - all sub-issues implemented, tested, and merged.
+
+✅ [List of completed issues with numbers]
+
+Phase X: [Phase Name] is now complete."
+
+# 3. Move epic to Done on project board
+gh project item-edit --id <EPIC_ITEM_ID> --project-id PVT_kwHOACKAcc4A-64R --field-id PVTSSF_lAHOACKAcc4A-64RzgyLaOg --single-select-option-id 98236657
+
+# 4. Update all phase documentation
+# - Mark phase as COMPLETE in PROJECT_PLAN.md
+# - Update status in CLAUDE.md and README.md
+# - Commit and push changes
+```
+
+#### **Why Epic Closure is Critical:**
+- **Project Tracking**: Ensures accurate phase completion status
+- **Documentation Sync**: Keeps GitHub project board aligned with actual progress  
+- **Milestone Management**: Properly closes phase milestones for reporting
+- **Workflow Integrity**: Maintains consistent issue lifecycle management
+
 ### **Multi-Session Coordination Best Practices**
 
 #### **Session Naming Convention**
