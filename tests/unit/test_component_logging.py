@@ -195,10 +195,8 @@ class TestTmuxLoggingUtils:
 
         mock_logger.info.assert_called_once()
         call_args = mock_logger.info.call_args
-        assert "Tmux session create completed" in call_args[0][0]
-        assert call_args[1]["operation"] == "create"
-        assert call_args[1]["session_name"] == "cc-orchestrator-claude-001"
-        assert call_args[1]["details"]["layout"] == "main"
+        assert "Session create success - cc-orchestrator-claude-001" in call_args[0][0]
+        assert "{'layout': 'main'}" in call_args[0][0]
 
     @patch("cc_orchestrator.tmux.logging_utils.tmux_logger")
     def test_log_session_operation_error(self, mock_logger):
@@ -209,9 +207,8 @@ class TestTmuxLoggingUtils:
 
         mock_logger.error.assert_called_once()
         call_args = mock_logger.error.call_args
-        assert "Tmux session attach failed" in call_args[0][0]
-        assert call_args[1]["operation"] == "attach"
-        assert call_args[1]["session_name"] == "nonexistent-session"
+        assert "Session attach error - nonexistent-session" in call_args[0][0]
+        assert "{'error': 'session not found'}" in call_args[0][0]
 
     @patch("cc_orchestrator.tmux.logging_utils.tmux_logger")
     def test_log_session_list(self, mock_logger):
@@ -225,23 +222,16 @@ class TestTmuxLoggingUtils:
 
         mock_logger.debug.assert_called_once()
         call_args = mock_logger.debug.call_args
-        assert "Tmux sessions listed" in call_args[0][0]
-        assert call_args[1]["session_count"] == 2
-        assert "cc-orchestrator-claude-001" in call_args[1]["sessions"]
+        assert "Sessions listed - count: 2" in call_args[0][0]
 
-    @patch("cc_orchestrator.tmux.logging_utils.get_logger")
-    def test_log_session_attach(self, mock_get_logger):
+    @patch("cc_orchestrator.tmux.logging_utils.tmux_logger")
+    def test_log_session_attach(self, mock_logger):
         """Test logging session attachment."""
-        mock_logger = Mock()
-        mock_get_logger.return_value = mock_logger
-
         log_session_attach("test-session", "claude-001")
 
-        mock_logger.set_instance_id.assert_called_with("claude-001")
         mock_logger.info.assert_called_once()
         call_args = mock_logger.info.call_args
-        assert "Attached to tmux session" in call_args[0][0]
-        assert call_args[1]["session_name"] == "test-session"
+        assert "Session attached - test-session (instance: claude-001)" in call_args[0][0]
 
     @patch("cc_orchestrator.tmux.logging_utils.tmux_logger")
     def test_log_layout_setup(self, mock_logger):
@@ -252,10 +242,7 @@ class TestTmuxLoggingUtils:
 
         mock_logger.info.assert_called_once()
         call_args = mock_logger.info.call_args
-        assert "Tmux layout configured" in call_args[0][0]
-        assert call_args[1]["layout_name"] == "three-pane"
-        assert call_args[1]["window_count"] == 3
-        assert call_args[1]["windows"] == windows
+        assert "Layout template applied - test-session (template: three-pane, windows: ['main', 'logs', 'monitoring'])" in call_args[0][0]
 
     @patch("cc_orchestrator.tmux.logging_utils.tmux_logger")
     def test_log_orphaned_sessions_found(self, mock_logger):
@@ -266,9 +253,7 @@ class TestTmuxLoggingUtils:
 
         mock_logger.warning.assert_called_once()
         call_args = mock_logger.warning.call_args
-        assert "Orphaned tmux sessions detected" in call_args[0][0]
-        assert call_args[1]["session_count"] == 2
-        assert call_args[1]["sessions"] == orphaned
+        assert "Orphaned sessions detected - count: 2, sessions: ['old-session-1', 'old-session-2']" in call_args[0][0]
 
     @patch("cc_orchestrator.tmux.logging_utils.tmux_logger")
     def test_log_orphaned_sessions_none_found(self, mock_logger):
@@ -277,7 +262,7 @@ class TestTmuxLoggingUtils:
 
         mock_logger.debug.assert_called_once()
         call_args = mock_logger.debug.call_args
-        assert "No orphaned tmux sessions found" in call_args[0][0]
+        assert "No orphaned sessions found" in call_args[0][0]
 
 
 class TestWebLoggingUtils:

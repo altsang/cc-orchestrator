@@ -2,8 +2,9 @@
 
 import json
 import sys
+from collections.abc import Callable
 from functools import wraps
-from typing import Any, Callable
+from typing import Any
 
 import click
 
@@ -23,11 +24,11 @@ class CliError(Exception):
         self.exit_code = exit_code
 
 
-def error_handler(func: Callable) -> Callable:
+def error_handler(func: Callable[..., Any]) -> Callable[..., Any]:
     """Decorator for handling CLI errors."""
 
     @wraps(func)
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
         try:
             return func(*args, **kwargs)
         except CliError as e:
