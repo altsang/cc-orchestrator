@@ -98,7 +98,7 @@ def create(
     try:
         result = asyncio.run(_create_session())
 
-        if ctx.obj.get("json"):
+        if ctx.obj and ctx.obj.get("json"):
             click.echo(json.dumps(result, indent=2))
         else:
             success_message(f"Created tmux session '{result['session_name']}'")
@@ -135,7 +135,7 @@ def destroy(ctx: click.Context, session_name: str, force: bool) -> None:
     try:
         result = asyncio.run(_destroy_session())
 
-        if ctx.obj.get("json"):
+        if ctx.obj and ctx.obj.get("json"):
             click.echo(json.dumps(result, indent=2))
         else:
             if result["success"]:
@@ -165,7 +165,7 @@ def attach(ctx: click.Context, session_name: str) -> None:
     try:
         result = asyncio.run(_attach_session())
 
-        if ctx.obj.get("json"):
+        if ctx.obj and ctx.obj.get("json"):
             click.echo(json.dumps(result, indent=2))
         else:
             if result["success"]:
@@ -196,7 +196,7 @@ def detach(ctx: click.Context, session_name: str) -> None:
     try:
         result = asyncio.run(_detach_session())
 
-        if ctx.obj.get("json"):
+        if ctx.obj and ctx.obj.get("json"):
             click.echo(json.dumps(result, indent=2))
         else:
             if result["success"]:
@@ -240,7 +240,7 @@ def list(ctx: click.Context, include_orphaned: bool) -> None:
     try:
         sessions = asyncio.run(_list_sessions())
 
-        if ctx.obj.get("json"):
+        if ctx.obj and ctx.obj.get("json"):
             click.echo(json.dumps(sessions, indent=2))
         else:
             if not sessions:
@@ -299,7 +299,7 @@ def info(ctx: click.Context, session_name: str) -> None:
         if not info_data:
             raise CliError(f"Session '{session_name}' not found")
 
-        if ctx.obj.get("json"):
+        if ctx.obj and ctx.obj.get("json"):
             click.echo(json.dumps(info_data, indent=2))
         else:
             click.echo(f"Session: {info_data['session_name']}")
@@ -349,7 +349,7 @@ def cleanup(ctx: click.Context, instance_id: str | None, force: bool) -> None:
     try:
         result = asyncio.run(_cleanup_sessions())
 
-        if ctx.obj.get("json"):
+        if ctx.obj and ctx.obj.get("json"):
             click.echo(json.dumps(result, indent=2))
         else:
             count = result["cleaned_up"]
@@ -372,7 +372,7 @@ def templates(ctx: click.Context) -> None:
     tmux_service = get_tmux_service()
     templates = tmux_service.get_layout_templates()
 
-    if ctx.obj.get("json"):
+    if ctx.obj and ctx.obj.get("json"):
         template_data = {}
         for name, template in templates.items():
             template_data[name] = {
@@ -459,7 +459,7 @@ def add_template(
     tmux_service = get_tmux_service()
     tmux_service.add_layout_template(template)
 
-    if ctx.obj.get("json"):
+    if ctx.obj and ctx.obj.get("json"):
         result = {
             "template_name": template_name,
             "description": template_description,

@@ -1,8 +1,7 @@
 """Unit tests for tmux service functionality."""
 
-import asyncio
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -222,7 +221,9 @@ class TestTmuxService:
         )
 
     @pytest.mark.asyncio
-    async def test_create_session_already_exists(self, tmux_service, mock_server, tmp_path):
+    async def test_create_session_already_exists(
+        self, tmux_service, mock_server, tmp_path
+    ):
         """Test session creation when session already exists."""
         mock_session = MagicMock()
         mock_server.sessions.get.return_value = mock_session
@@ -237,7 +238,9 @@ class TestTmuxService:
             await tmux_service.create_session(config)
 
     @pytest.mark.asyncio
-    async def test_create_session_with_environment(self, tmux_service, mock_server, tmp_path):
+    async def test_create_session_with_environment(
+        self, tmux_service, mock_server, tmp_path
+    ):
         """Test session creation with environment variables."""
         mock_session = MagicMock()
         mock_window = MagicMock()
@@ -286,7 +289,9 @@ class TestTmuxService:
         assert "cc-orchestrator-test-session" not in tmux_service._sessions
 
     @pytest.mark.asyncio
-    async def test_destroy_session_with_attached_clients(self, tmux_service, mock_server):
+    async def test_destroy_session_with_attached_clients(
+        self, tmux_service, mock_server
+    ):
         """Test session destruction with attached clients."""
         mock_session = MagicMock()
         mock_session.attached = True
@@ -296,7 +301,9 @@ class TestTmuxService:
             await tmux_service.destroy_session("test-session", force=False)
 
     @pytest.mark.asyncio
-    async def test_destroy_session_force_with_attached_clients(self, tmux_service, mock_server):
+    async def test_destroy_session_force_with_attached_clients(
+        self, tmux_service, mock_server
+    ):
         """Test forced session destruction with attached clients."""
         mock_session = MagicMock()
         mock_session.attached = True
@@ -439,7 +446,9 @@ class TestTmuxService:
         }
 
         # Mock destroy_session to return True
-        with patch.object(tmux_service, "destroy_session", return_value=True) as mock_destroy:
+        with patch.object(
+            tmux_service, "destroy_session", return_value=True
+        ) as mock_destroy:
             result = await tmux_service.cleanup_sessions()
 
         assert result == 2
@@ -473,7 +482,9 @@ class TestTmuxService:
         }
 
         # Mock destroy_session to return True
-        with patch.object(tmux_service, "destroy_session", return_value=True) as mock_destroy:
+        with patch.object(
+            tmux_service, "destroy_session", return_value=True
+        ) as mock_destroy:
             result = await tmux_service.cleanup_sessions(instance_id="instance1")
 
         assert result == 1

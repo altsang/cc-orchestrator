@@ -166,10 +166,8 @@ class TmuxService:
 
             log_session_operation("create", session_name, "success")
             tmux_logger.info(
-                "Tmux session created successfully",
-                session_name=session_name,
-                instance_id=config.instance_id,
-                layout_template=config.layout_template,
+                f"Tmux session created successfully - {session_name} "
+                f"(instance: {config.instance_id}, layout: {config.layout_template})"
             )
 
             return session_info
@@ -215,15 +213,16 @@ class TmuxService:
                 del self._sessions[session_name]
 
             log_session_operation("destroy", session_name, "success")
-            tmux_logger.info("Tmux session destroyed", session_name=session_name)
+            tmux_logger.info(f"Tmux session destroyed - {session_name}")
 
             return True
 
+        except TmuxError:
+            # Re-raise TmuxError to maintain API contract
+            raise
         except Exception as e:
             log_session_operation("destroy", session_name, "error", {"error": str(e)})
-            tmux_logger.error(
-                "Failed to destroy session", session_name=session_name, error=str(e)
-            )
+            tmux_logger.error(f"Failed to destroy session - {session_name}: {e}")
             return False
 
     async def attach_session(self, session_name: str) -> bool:
@@ -262,9 +261,7 @@ class TmuxService:
             return True
 
         except Exception as e:
-            tmux_logger.error(
-                "Failed to attach to session", session_name=session_name, error=str(e)
-            )
+            tmux_logger.error(f"Failed to attach to session - {session_name}: {e}")
             return False
 
     async def detach_session(self, session_name: str) -> bool:
@@ -302,9 +299,7 @@ class TmuxService:
             return True
 
         except Exception as e:
-            tmux_logger.error(
-                "Failed to detach from session", session_name=session_name, error=str(e)
-            )
+            tmux_logger.error(f"Failed to detach from session - {session_name}: {e}")
             return False
 
     async def session_exists(self, session_name: str) -> bool:
@@ -412,16 +407,14 @@ class TmuxService:
                     cleaned_up += 1
 
             tmux_logger.info(
-                "Session cleanup completed",
-                cleaned_up=cleaned_up,
-                instance_id=instance_id,
-                force=force,
+                f"Session cleanup completed - cleaned: {cleaned_up}, "
+                f"instance: {instance_id}, force: {force}"
             )
 
             return cleaned_up
 
         except Exception as e:
-            tmux_logger.error("Session cleanup failed", error=str(e))
+            tmux_logger.error(f"Session cleanup failed: {e}")
             return cleaned_up
 
     def add_layout_template(self, template: LayoutTemplate) -> None:
@@ -432,9 +425,7 @@ class TmuxService:
         """
         self._layout_templates[template.name] = template
         tmux_logger.info(
-            "Layout template added",
-            template_name=template.name,
-            description=template.description,
+            f"Layout template added - {template.name}: {template.description}"
         )
 
     def get_layout_templates(self) -> dict[str, LayoutTemplate]:
@@ -592,10 +583,8 @@ class TmuxService:
 
         except Exception as e:
             tmux_logger.error(
-                "Failed to apply layout template",
-                session_name=session.name,
-                template_name=template.name,
-                error=str(e),
+                f"Failed to apply layout template - {session.name} "
+                f"(template: {template.name}): {e}"
             )
             raise TmuxError(f"Failed to apply layout template {template.name}: {e}")
 

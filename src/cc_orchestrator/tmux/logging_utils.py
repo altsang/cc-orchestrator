@@ -7,12 +7,17 @@ from typing import Any
 tmux_logger = logging.getLogger("cc_orchestrator.tmux")
 
 
-def log_session_operation(operation: str, session_name: str, status: str, context: dict[str, Any] | None = None) -> None:
+def log_session_operation(
+    operation: str,
+    session_name: str,
+    status: str,
+    context: dict[str, Any] | None = None,
+) -> None:
     """Log session operation."""
     message = f"Session {operation} {status} - {session_name}"
     if context:
         message += f" - {context}"
-    
+
     if status == "success":
         tmux_logger.info(message)
     elif status == "error":
@@ -52,7 +57,9 @@ def log_session_list(sessions: list[dict[str, Any]]) -> None:
 def log_orphaned_sessions(orphaned: list[str]) -> None:
     """Log orphaned sessions detected."""
     if orphaned:
-        message = f"Orphaned sessions detected - count: {len(orphaned)}, sessions: {orphaned}"
+        message = (
+            f"Orphaned sessions detected - count: {len(orphaned)}, sessions: {orphaned}"
+        )
         tmux_logger.warning(message)
     else:
         tmux_logger.debug("No orphaned sessions found")
