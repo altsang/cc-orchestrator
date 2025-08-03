@@ -360,7 +360,9 @@ class ResponseHealthCheck(HealthCheck):
             # Send a simple command to the tmux session and check if it responds
             # This is a basic ping-like test
             temp_dir = tempfile.gettempdir()
-            test_file = f"{temp_dir}/claude_health_check_{instance_id}_{int(time.time())}"
+            test_file = (
+                f"{temp_dir}/claude_health_check_{instance_id}_{int(time.time())}"
+            )
 
             # Send command to create a test file
             process = await asyncio.create_subprocess_exec(
