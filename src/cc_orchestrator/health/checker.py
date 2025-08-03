@@ -484,7 +484,7 @@ class HealthChecker:
                     error=str(e),
                 )
                 results[check_name] = HealthCheckResult(
-                    status=HealthStatus.UNKNOWN, message=f"Check failed: {str(e)}"
+                    status=HealthStatus.CRITICAL, message=f"Check failed: {str(e)}"
                 )
 
         logger.debug(
