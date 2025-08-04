@@ -8,10 +8,13 @@ This module provides specialized logging for:
 - Real-time event streaming
 """
 
+import asyncio
+import functools
+import time
 from collections.abc import Callable
 from typing import Any
 
-from ..utils.logging import LogContext, get_logger, handle_errors, log_performance
+from ..utils.logging import LogContext, get_logger
 
 # Web component loggers
 api_logger = get_logger(__name__ + ".api", LogContext.WEB)
@@ -167,9 +170,6 @@ def log_dashboard_access(
 
 
 # Decorator functions for web operations
-import asyncio
-import functools
-import time
 
 
 def handle_api_errors(
