@@ -168,13 +168,13 @@ class CRUDBase:
         self, worktree_id: int, update_data: dict[str, Any]
     ) -> Worktree:
         """Update a worktree."""
-        import tempfile
         import os
-        
+        import tempfile
+
         # Use secure temporary directory instead of hardcoded /tmp
         temp_dir = tempfile.gettempdir()
         secure_path = os.path.join(temp_dir, f"worktree-{worktree_id}")
-        
+
         worktree = Worktree(
             id=worktree_id,
             name=f"updated-worktree-{worktree_id}",
