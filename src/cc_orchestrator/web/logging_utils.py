@@ -14,7 +14,7 @@ import time
 from collections.abc import Callable
 from typing import Any
 
-from ..utils.logging import LogContext, get_logger
+from ..utils.logging import CCOrchestratorException, LogContext, get_logger
 
 # Web component loggers
 api_logger = get_logger(__name__ + ".api", LogContext.WEB)
@@ -203,7 +203,10 @@ def handle_api_errors(
                                 function=func.__name__,
                                 recovery_error=str(recovery_error),
                             )
-                    raise
+                    # Convert to CCOrchestratorException
+                    raise CCOrchestratorException(
+                        f"API error in {func.__name__}: {str(e)}"
+                    ) from e
 
             return async_wrapper
         else:
@@ -228,7 +231,10 @@ def handle_api_errors(
                                 function=func.__name__,
                                 recovery_error=str(recovery_error),
                             )
-                    raise
+                    # Convert to CCOrchestratorException
+                    raise CCOrchestratorException(
+                        f"API error in {func.__name__}: {str(e)}"
+                    ) from e
 
             return sync_wrapper
 
