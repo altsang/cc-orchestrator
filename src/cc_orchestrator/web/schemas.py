@@ -13,22 +13,12 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from ..database.models import (
     ConfigScope,
+    HealthStatus,
     InstanceStatus,
     TaskPriority,
     TaskStatus,
     WorktreeStatus,
 )
-
-
-# Additional enums for API that may not exist in database models yet
-class HealthStatus(Enum):
-    """Health status of an instance."""
-
-    HEALTHY = "healthy"
-    DEGRADED = "degraded"
-    UNHEALTHY = "unhealthy"
-    CRITICAL = "critical"
-    UNKNOWN = "unknown"
 
 
 class AlertLevel(Enum):

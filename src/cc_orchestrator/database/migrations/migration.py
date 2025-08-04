@@ -3,6 +3,7 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
 
+from sqlalchemy import Table
 from sqlalchemy.engine import Engine
 
 
@@ -52,7 +53,7 @@ class MigrationRecord:
 
     # SQLAlchemy table definition for migration tracking
     # This will be properly initialized by the migration manager
-    table = None
+    table: Table | None = None
 
     def __init__(
         self,

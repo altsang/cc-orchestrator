@@ -51,7 +51,7 @@ async def list_instances(
     if status_filter:
         filters["status"] = status_filter
     if branch_name:
-        filters["branch_name"] = branch_name
+        filters["branch_name"] = branch_name  # type: ignore[assignment]
 
     # Get instances with pagination
     instances, total = await crud.list_instances(

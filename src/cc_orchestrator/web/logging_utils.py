@@ -174,23 +174,22 @@ def log_dashboard_access(
 
 def handle_api_errors(
     recovery_strategy: Callable[..., Any] | None = None,
-) -> Callable[..., Any]:
+) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """Async-aware decorator for API error handling."""
-    def decorator(func: Callable) -> Callable:
+
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         if asyncio.iscoroutinefunction(func):
+
             @functools.wraps(func)
-            async def async_wrapper(*args, **kwargs):
+            async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
                 try:
                     return await func(*args, **kwargs)
                 except Exception as e:
                     api_logger.error(
                         f"API error in {func.__name__}: {str(e)}",
-                        extra={
-                            "function": func.__name__,
-                            "error_type": type(e).__name__,
-                            "error_message": str(e),
-                        },
-                        exc_info=True,
+                        function=func.__name__,
+                        error_type=type(e).__name__,
+                        error_message=str(e),
                     )
                     if recovery_strategy:
                         try:
@@ -201,27 +200,24 @@ def handle_api_errors(
                         except Exception as recovery_error:
                             api_logger.error(
                                 f"Recovery strategy failed: {str(recovery_error)}",
-                                extra={
-                                    "function": func.__name__,
-                                    "recovery_error": str(recovery_error),
-                                },
+                                function=func.__name__,
+                                recovery_error=str(recovery_error),
                             )
                     raise
+
             return async_wrapper
         else:
+
             @functools.wraps(func)
-            def sync_wrapper(*args, **kwargs):
+            def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
                 try:
                     return func(*args, **kwargs)
                 except Exception as e:
                     api_logger.error(
                         f"API error in {func.__name__}: {str(e)}",
-                        extra={
-                            "function": func.__name__,
-                            "error_type": type(e).__name__,
-                            "error_message": str(e),
-                        },
-                        exc_info=True,
+                        function=func.__name__,
+                        error_type=type(e).__name__,
+                        error_message=str(e),
                     )
                     if recovery_strategy:
                         try:
@@ -229,22 +225,24 @@ def handle_api_errors(
                         except Exception as recovery_error:
                             api_logger.error(
                                 f"Recovery strategy failed: {str(recovery_error)}",
-                                extra={
-                                    "function": func.__name__,
-                                    "recovery_error": str(recovery_error),
-                                },
+                                function=func.__name__,
+                                recovery_error=str(recovery_error),
                             )
                     raise
+
             return sync_wrapper
+
     return decorator
 
 
-def track_api_performance() -> Callable[..., Any]:
+def track_api_performance() -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """Async-aware decorator for API performance tracking."""
-    def decorator(func: Callable) -> Callable:
+
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         if asyncio.iscoroutinefunction(func):
+
             @functools.wraps(func)
-            async def async_wrapper(*args, **kwargs):
+            async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
                 start_time = time.time()
                 api_logger.debug(
                     f"Performance tracking started for {func.__name__}",
@@ -270,10 +268,12 @@ def track_api_performance() -> Callable[..., Any]:
                         error=str(e),
                     )
                     raise
+
             return async_wrapper
         else:
+
             @functools.wraps(func)
-            def sync_wrapper(*args, **kwargs):
+            def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
                 start_time = time.time()
                 api_logger.debug(
                     f"Performance tracking started for {func.__name__}",
@@ -299,5 +299,7 @@ def track_api_performance() -> Callable[..., Any]:
                         error=str(e),
                     )
                     raise
+
             return sync_wrapper
+
     return decorator

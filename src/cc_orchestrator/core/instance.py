@@ -218,9 +218,9 @@ class ClaudeInstance:
             info.update(
                 {
                     "process_status": self._process_info.status.value,
-                    "cpu_percent": self._process_info.cpu_percent,
-                    "memory_mb": self._process_info.memory_mb,
-                    "started_at": self._process_info.started_at,
+                    "cpu_percent": str(self._process_info.cpu_percent),
+                    "memory_mb": str(self._process_info.memory_mb),
+                    "started_at": str(self._process_info.started_at),
                     "return_code": self._process_info.return_code,
                     "error_message": self._process_info.error_message,
                 }

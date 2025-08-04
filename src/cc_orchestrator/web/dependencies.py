@@ -8,7 +8,7 @@ sessions, authentication, and other shared resources.
 from collections.abc import AsyncGenerator
 
 from fastapi import Depends, HTTPException, Request, status
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from ..database.connection import DatabaseManager
 from .crud_adapter import CRUDBase
@@ -28,10 +28,10 @@ async def get_database_manager(request: Request) -> DatabaseManager:
 
 async def get_db_session(
     db_manager: DatabaseManager = Depends(get_database_manager),
-) -> AsyncGenerator[AsyncSession, None]:
+) -> AsyncGenerator[Session, None]:
     """Get a database session for request handling."""
     try:
-        async with db_manager.get_session() as session:
+        with db_manager.get_session() as session:
             api_logger.debug("Database session created")
             yield session
     except Exception as e:
@@ -42,7 +42,7 @@ async def get_db_session(
         )
 
 
-async def get_crud(db_session: AsyncSession = Depends(get_db_session)) -> CRUDBase:
+async def get_crud(db_session: Session = Depends(get_db_session)) -> CRUDBase:
     """Get CRUD operations instance."""
     return CRUDBase(db_session)
 
@@ -74,13 +74,13 @@ class PaginationParams:
     def __init__(self, page: int = 1, size: int = 20, max_size: int = 100):
         if page < 1:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="Page number must be >= 1",
             )
 
         if size < 1 or size > max_size:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=f"Page size must be between 1 and {max_size}",
             )
 

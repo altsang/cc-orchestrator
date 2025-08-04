@@ -1,8 +1,10 @@
 """Instance management commands."""
 
 import asyncio
+import builtins
 import json
 from pathlib import Path
+from typing import Any
 
 import click
 
@@ -23,7 +25,7 @@ def instances() -> None:
 def status(output_json: bool) -> None:
     """Show status of all Claude instances."""
 
-    async def _status():
+    async def _status() -> None:
         try:
             orchestrator = Orchestrator()
             await orchestrator.initialize()
@@ -38,7 +40,7 @@ def status(output_json: bool) -> None:
                 return
 
             # Gather status information
-            status_data = []
+            status_data: builtins.list[dict[str, Any]] = []
             for instance in instances:
                 info = instance.get_info()
                 process_info = await instance.get_process_status()
@@ -110,7 +112,7 @@ def start(
 ) -> None:
     """Start a new Claude instance for an issue."""
 
-    async def _start():
+    async def _start() -> None:
         try:
             orchestrator = Orchestrator()
             await orchestrator.initialize()
@@ -154,7 +156,7 @@ def start(
                     return
 
             # Create new instance
-            kwargs = {}
+            kwargs: dict[str, Any] = {}
             if workspace:
                 kwargs["workspace_path"] = workspace
             if branch:
@@ -210,7 +212,7 @@ def start(
 def stop(issue_id: str, force: bool, timeout: int, output_json: bool) -> None:
     """Stop a Claude instance."""
 
-    async def _stop():
+    async def _stop() -> None:
         try:
             orchestrator = Orchestrator()
             await orchestrator.initialize()
@@ -269,7 +271,7 @@ def stop(issue_id: str, force: bool, timeout: int, output_json: bool) -> None:
 def list(output_json: bool, running_only: bool) -> None:
     """List all active instances."""
 
-    async def _list():
+    async def _list() -> None:
         try:
             orchestrator = Orchestrator()
             await orchestrator.initialize()
@@ -289,7 +291,7 @@ def list(output_json: bool, running_only: bool) -> None:
                 return
 
             # Gather instance information
-            instance_data = []
+            instance_data: builtins.list[dict[str, Any]] = []
             for instance in instances:
                 info = instance.get_info()
                 process_info = await instance.get_process_status()

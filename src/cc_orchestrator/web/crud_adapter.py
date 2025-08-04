@@ -5,10 +5,10 @@ This module provides an async wrapper around the existing synchronous CRUD opera
 to make them compatible with FastAPI's async model.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from ..database.models import (
     Configuration,
@@ -22,36 +22,50 @@ from ..database.models import (
 class Alert:
     """Placeholder Alert model."""
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         for key, value in kwargs.items():
             setattr(self, key, value)
         self.created_at = datetime.now()
+        # Ensure required attributes exist
+        if not hasattr(self, "id"):
+            self.id = kwargs.get("id", 1)
+        if not hasattr(self, "level"):
+            self.level = kwargs.get("level", "info")
 
 
 class HealthCheck:
     """Placeholder HealthCheck model."""
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         for key, value in kwargs.items():
             setattr(self, key, value)
         self.created_at = datetime.now()
+        # Ensure id attribute exists
+        if not hasattr(self, "id"):
+            self.id = kwargs.get("id", 1)
 
 
 class RecoveryAttempt:
     """Placeholder RecoveryAttempt model."""
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         for key, value in kwargs.items():
             setattr(self, key, value)
         self.created_at = datetime.now()
+        # Ensure id attribute exists
+        if not hasattr(self, "id"):
+            self.id = kwargs.get("id", 1)
 
 
 class CRUDBase:
     """Async CRUD operations adapter for FastAPI."""
 
-    def __init__(self, session: AsyncSession):
-        """Initialize with async session."""
+    def __init__(self, session: Session):
+        """Initialize with database session."""
         self.session = session
+        # Simple in-memory storage for testing
+        self._instances: dict[int, Instance] = {}
+        self._instance_counter = 0
 
     # Instance operations
     async def list_instances(
@@ -64,6 +78,10 @@ class CRUDBase:
 
     async def create_instance(self, instance_data: dict[str, Any]) -> Instance:
         """Create a new instance."""
+        from datetime import datetime
+
+        from ..database.models import HealthStatus, InstanceStatus
+
         # This is a placeholder - would need proper async implementation
         # For now, simulate the creation
         instance = Instance(
@@ -72,15 +90,23 @@ class CRUDBase:
             branch_name=instance_data.get("branch_name"),
             tmux_session=instance_data.get("tmux_session"),
             extra_metadata=instance_data.get("extra_metadata", {}),
+            status=InstanceStatus.INITIALIZING,
+            health_status=HealthStatus.UNKNOWN,
+            health_check_count=0,
+            healthy_check_count=0,
+            recovery_attempt_count=0,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
         # In real implementation, would save to database
-        instance.id = 1  # Simulate assigned ID
+        self._instance_counter += 1
+        instance.id = self._instance_counter  # Simulate assigned ID
+        self._instances[instance.id] = instance
         return instance
 
     async def get_instance(self, instance_id: int) -> Instance | None:
         """Get instance by ID."""
-        # Placeholder implementation
-        return None
+        return self._instances.get(instance_id)
 
     async def get_instance_by_issue_id(self, issue_id: str) -> Instance | None:
         """Get instance by issue ID."""

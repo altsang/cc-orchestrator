@@ -50,7 +50,7 @@ async def list_alerts(
     if level:
         filters["level"] = level
     if instance_id:
-        filters["instance_id"] = instance_id
+        filters["instance_id"] = instance_id  # type: ignore[assignment]
 
     # Get alerts with pagination
     alerts, total = await crud.list_alerts(
@@ -166,7 +166,7 @@ async def get_instance_alerts(
     # Build filters
     filters = {"instance_id": instance_id}
     if level:
-        filters["level"] = level
+        filters["level"] = level  # type: ignore[assignment]
 
     # Get alerts for this instance
     alerts, total = await crud.list_alerts(
@@ -204,7 +204,7 @@ async def get_alerts_by_level(
     # Build filters
     filters = {"level": level}
     if instance_id:
-        filters["instance_id"] = instance_id
+        filters["instance_id"] = instance_id  # type: ignore[assignment]
 
     # Get alerts with the specified level
     alerts, total = await crud.list_alerts(
@@ -299,7 +299,7 @@ async def get_recent_critical_alerts(
     # Build filters for critical alerts
     filters = {"level": AlertLevel.CRITICAL}
     if instance_id:
-        filters["instance_id"] = instance_id
+        filters["instance_id"] = instance_id  # type: ignore[assignment]
 
     # Get recent critical alerts
     alerts, total = await crud.list_alerts(

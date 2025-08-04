@@ -53,9 +53,9 @@ async def list_worktrees(
     if status_filter:
         filters["status"] = status_filter
     if branch_name:
-        filters["branch_name"] = branch_name
+        filters["branch_name"] = branch_name  # type: ignore[assignment]
     if instance_id:
-        filters["instance_id"] = instance_id
+        filters["instance_id"] = instance_id  # type: ignore[assignment]
 
     # Get worktrees with pagination
     worktrees, total = await crud.list_worktrees(

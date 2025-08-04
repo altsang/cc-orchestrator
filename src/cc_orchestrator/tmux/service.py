@@ -94,7 +94,7 @@ class LayoutTemplate:
 class TmuxService:
     """Comprehensive tmux session management service."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize tmux service."""
         self._server = libtmux.Server()
         self._sessions: dict[str, SessionInfo] = {}
@@ -152,7 +152,7 @@ class TmuxService:
                 working_directory=config.working_directory,
                 layout_template=config.layout_template,
                 created_at=asyncio.get_event_loop().time(),
-                windows=[w.name for w in session.windows],
+                windows=[w.name for w in session.windows if w.name is not None],
                 current_window=session.windows[0].name if session.windows else None,
                 environment=config.environment,
             )
@@ -200,7 +200,7 @@ class TmuxService:
                 return False
 
             # Check for attached clients
-            if not force and session.attached:
+            if not force and getattr(session, "attached", False):
                 raise TmuxError(
                     f"Session {session_name} has attached clients. Use force=True to destroy anyway."
                 )
@@ -335,7 +335,7 @@ class TmuxService:
 
             # Process managed sessions
             for session in tmux_sessions:
-                if session.name.startswith(self._session_prefix):
+                if session.name and session.name.startswith(self._session_prefix):
                     session_info = await self._get_session_info(session)
                     if session_info:
                         sessions.append(session_info)
@@ -544,13 +544,13 @@ class TmuxService:
                     # First window - use session's default window
                     window = session.new_window(
                         window_name=window_name,
-                        start_directory=session.start_directory,
+                        start_directory=getattr(session, "start_directory", None),
                         attach=False,
                     )
                 else:
                     window = session.new_window(
                         window_name=window_name,
-                        start_directory=session.start_directory,
+                        start_directory=getattr(session, "start_directory", None),
                         attach=False,
                     )
 
@@ -575,11 +575,15 @@ class TmuxService:
                             pane = window.split_window(vertical=True, attach=False)
                         pane.send_keys(pane_command)
 
-            log_layout_setup(
-                session.name,
-                template.name,
-                [w.get("name", f"window-{i}") for i, w in enumerate(template.windows)],
-            )
+            if session.name:
+                log_layout_setup(
+                    session.name,
+                    template.name,
+                    [
+                        w.get("name", f"window-{i}")
+                        for i, w in enumerate(template.windows)
+                    ],
+                )
 
         except Exception as e:
             tmux_logger.error(
@@ -602,7 +606,9 @@ class TmuxService:
             if session.name in self._sessions:
                 session_info = self._sessions[session.name]
                 # Update dynamic info
-                session_info.windows = [w.name for w in session.windows]
+                session_info.windows = [
+                    w.name for w in session.windows if w.name is not None
+                ]
                 session_info.current_window = (
                     session.active_window.name if session.active_window else None
                 )
@@ -612,17 +618,23 @@ class TmuxService:
                 return session_info
 
             # Create basic info from tmux session
+            if session.name is None:
+                return None
             instance_id = self._extract_instance_id(session.name)
             return SessionInfo(
                 session_name=session.name,
                 instance_id=instance_id,
                 status=(
-                    SessionStatus.ACTIVE if session.attached else SessionStatus.DETACHED
+                    SessionStatus.ACTIVE
+                    if getattr(session, "attached", False)
+                    else SessionStatus.DETACHED
                 ),
-                working_directory=Path(session.start_directory or "/"),
+                working_directory=Path(
+                    getattr(session, "start_directory", None) or "/"
+                ),
                 layout_template="unknown",
                 created_at=0.0,  # Not available from tmux
-                windows=[w.name for w in session.windows],
+                windows=[w.name for w in session.windows if w.name is not None],
                 current_window=(
                     session.active_window.name if session.active_window else None
                 ),
@@ -660,10 +672,12 @@ class TmuxService:
             all_sessions = self._server.sessions
             for session in all_sessions:
                 if (
-                    session.name.startswith(self._session_prefix)
+                    session.name
+                    and session.name.startswith(self._session_prefix)
                     and session.name not in self._sessions
                 ):
-                    orphaned.append(session.name)
+                    if session.name:
+                        orphaned.append(session.name)
         except Exception as e:
             tmux_logger.debug(f"Error detecting orphaned sessions: {e}")
 

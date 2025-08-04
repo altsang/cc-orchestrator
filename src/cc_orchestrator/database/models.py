@@ -35,6 +35,16 @@ class InstanceStatus(Enum):
     ERROR = "error"
 
 
+class HealthStatus(Enum):
+    """Health status of an instance."""
+
+    HEALTHY = "healthy"
+    DEGRADED = "degraded"
+    UNHEALTHY = "unhealthy"
+    CRITICAL = "critical"
+    UNKNOWN = "unknown"
+
+
 class TaskStatus(Enum):
     """Status of a task."""
 
@@ -86,6 +96,17 @@ class Instance(Base):
     branch_name: Mapped[str | None] = mapped_column(String(255))
     tmux_session: Mapped[str | None] = mapped_column(String(255))
     process_id: Mapped[int | None] = mapped_column(Integer)
+
+    # Health monitoring attributes (from Issue #16)
+    health_status: Mapped[HealthStatus] = mapped_column(
+        SQLEnum(HealthStatus), nullable=False, default=HealthStatus.UNKNOWN
+    )
+    last_health_check: Mapped[datetime | None] = mapped_column(DateTime)
+    health_check_count: Mapped[int] = mapped_column(Integer, default=0)
+    healthy_check_count: Mapped[int] = mapped_column(Integer, default=0)
+    last_recovery_attempt: Mapped[datetime | None] = mapped_column(DateTime)
+    recovery_attempt_count: Mapped[int] = mapped_column(Integer, default=0)
+    health_check_details: Mapped[str | None] = mapped_column(Text)
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(

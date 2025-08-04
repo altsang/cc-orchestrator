@@ -4,6 +4,7 @@ import hashlib
 import importlib.util
 import inspect
 from pathlib import Path
+from typing import Any
 
 from sqlalchemy import MetaData, text
 from sqlalchemy.engine import Engine
@@ -54,7 +55,8 @@ class MigrationManager:
     def _ensure_migration_table(self) -> None:
         """Ensure the migration tracking table exists."""
         try:
-            MigrationRecord.table.create(self.engine, checkfirst=True)
+            if MigrationRecord.table is not None:
+                MigrationRecord.table.create(self.engine, checkfirst=True)
         except SQLAlchemyError as e:
             raise RuntimeError(f"Failed to create migration table: {e}") from e
 
@@ -162,7 +164,7 @@ class MigrationManager:
                 and issubclass(obj, Migration)
                 and obj is not Migration
             ):
-                return obj()
+                return obj()  # type: ignore[call-arg]  # Migration subclasses override __init__
 
         return None
 
@@ -313,7 +315,7 @@ class MigrationManager:
         applied = self.get_applied_migrations()
         return applied[-1].version if applied else None
 
-    def get_migration_status(self) -> dict[str, any]:
+    def get_migration_status(self) -> dict[str, Any]:
         """Get detailed migration status information.
 
         Returns:

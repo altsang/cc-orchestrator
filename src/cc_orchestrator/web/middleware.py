@@ -21,7 +21,9 @@ from .logging_utils import log_api_request, log_api_response
 class RequestIDMiddleware(BaseHTTPMiddleware):
     """Add unique request ID to each request for tracking."""
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+    async def dispatch(
+        self, request: Request, call_next: Callable[..., Any]
+    ) -> Response:
         """Add request ID header and make it available in request state."""
         request_id = str(uuid.uuid4())
         request.state.request_id = request_id
@@ -35,7 +37,9 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
 class LoggingMiddleware(BaseHTTPMiddleware):
     """Log API requests and responses with timing information."""
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+    async def dispatch(
+        self, request: Request, call_next: Callable[..., Any]
+    ) -> Response:
         """Log request details and response timing."""
         start_time = time.time()
 
@@ -100,7 +104,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self.requests_per_minute = requests_per_minute
         self.client_requests: dict[str, list[datetime]] = defaultdict(list)
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+    async def dispatch(
+        self, request: Request, call_next: Callable[..., Any]
+    ) -> Response:
         """Check rate limit and process request if allowed."""
         client_ip = self._get_client_ip(request)
 
@@ -158,7 +164,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Add security headers to all responses."""
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+    async def dispatch(
+        self, request: Request, call_next: Callable[..., Any]
+    ) -> Response:
         """Add security headers to response."""
         response = await call_next(request)
 

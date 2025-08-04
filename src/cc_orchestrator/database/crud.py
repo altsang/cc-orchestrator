@@ -638,7 +638,7 @@ class ConfigurationCRUD:
             Configuration value or None if not found.
         """
         # Define scope hierarchy (most specific first)
-        scopes_to_check = []
+        scopes_to_check: list[tuple[ConfigScope, int | None]] = []
 
         if scope == ConfigScope.INSTANCE and instance_id:
             scopes_to_check.append((ConfigScope.INSTANCE, instance_id))

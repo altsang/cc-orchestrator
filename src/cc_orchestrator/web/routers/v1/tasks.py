@@ -55,11 +55,11 @@ async def list_tasks(
     if status_filter:
         filters["status"] = status_filter
     if priority_filter:
-        filters["priority"] = priority_filter
+        filters["priority"] = priority_filter  # type: ignore[assignment]
     if instance_id:
-        filters["instance_id"] = instance_id
+        filters["instance_id"] = instance_id  # type: ignore[assignment]
     if worktree_id:
-        filters["worktree_id"] = worktree_id
+        filters["worktree_id"] = worktree_id  # type: ignore[assignment]
 
     # Get tasks with pagination
     tasks, total = await crud.list_tasks(

@@ -53,9 +53,9 @@ async def list_configurations(
     if scope:
         filters["scope"] = scope
     if instance_id:
-        filters["instance_id"] = instance_id
+        filters["instance_id"] = instance_id  # type: ignore[assignment]
     if key_pattern:
-        filters["key_pattern"] = key_pattern
+        filters["key_pattern"] = key_pattern  # type: ignore[assignment]
 
     # Get configurations with pagination
     configurations, total = await crud.list_configurations(

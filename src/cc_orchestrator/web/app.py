@@ -11,7 +11,7 @@ This module provides:
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -36,7 +36,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     if not hasattr(app.state, "db_manager"):
         try:
             db_manager = DatabaseManager()
-            await db_manager.initialize()
             app.state.db_manager = db_manager
             api_logger.info("Database connection initialized")
         except Exception as e:
@@ -115,7 +114,9 @@ def create_app() -> FastAPI:
 
     # Global exception handler
     @app.exception_handler(Exception)
-    async def global_exception_handler(request, exc: Exception) -> JSONResponse:
+    async def global_exception_handler(
+        request: Request, exc: Exception
+    ) -> JSONResponse:
         """Handle unexpected exceptions."""
         api_logger.error(
             "Unhandled exception",
