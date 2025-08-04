@@ -185,6 +185,12 @@ def handle_api_errors(
                 try:
                     return await func(*args, **kwargs)
                 except Exception as e:
+                    # Re-raise HTTPExceptions to let FastAPI handle them
+                    from fastapi import HTTPException
+
+                    if isinstance(e, HTTPException):
+                        raise
+
                     api_logger.error(
                         f"API error in {func.__name__}: {str(e)}",
                         function=func.__name__,
@@ -216,6 +222,12 @@ def handle_api_errors(
                 try:
                     return func(*args, **kwargs)
                 except Exception as e:
+                    # Re-raise HTTPExceptions to let FastAPI handle them
+                    from fastapi import HTTPException
+
+                    if isinstance(e, HTTPException):
+                        raise
+
                     api_logger.error(
                         f"API error in {func.__name__}: {str(e)}",
                         function=func.__name__,

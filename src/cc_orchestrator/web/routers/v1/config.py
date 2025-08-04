@@ -95,13 +95,20 @@ async def create_configuration(
     - **is_readonly**: Whether this value is read-only
     """
     # Validate scope and instance_id combination
-    if config_data.scope == ConfigScope.INSTANCE and not config_data.instance_id:
+    # Handle both enum and string values for scope comparison
+    if hasattr(config_data.scope, "value"):
+        scope_value = config_data.scope.value
+    else:
+        scope_value = str(config_data.scope)
+    is_instance_scope = scope_value == "instance"
+
+    if is_instance_scope and not config_data.instance_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="instance_id is required for instance-scoped configurations",
         )
 
-    if config_data.scope != ConfigScope.INSTANCE and config_data.instance_id:
+    if not is_instance_scope and config_data.instance_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="instance_id can only be set for instance-scoped configurations",
@@ -121,9 +128,14 @@ async def create_configuration(
         config_data.key, config_data.scope, config_data.instance_id
     )
     if existing:
+        # Handle both enum and string values for scope in error message
+        if hasattr(config_data.scope, "value"):
+            scope_display = config_data.scope.value
+        else:
+            scope_display = str(config_data.scope)
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"Configuration with key '{config_data.key}' already exists for scope '{config_data.scope.value}'",
+            detail=f"Configuration with key '{config_data.key}' already exists for scope '{scope_display}'",
         )
 
     # Create the configuration
@@ -262,11 +274,20 @@ async def get_configuration_by_key(
             detail="instance_id is required for instance-scoped configurations",
         )
 
-    configuration = await crud.get_configuration_by_key_scope(key, scope, instance_id)
+    # Convert enum to string for CRUD adapter compatibility
+    scope_value = scope.value if hasattr(scope, "value") else str(scope)
+    configuration = await crud.get_configuration_by_key_scope(
+        key, scope_value, instance_id
+    )
     if not configuration:
+        # Handle both enum and string values for scope in error message
+        if hasattr(scope, "value"):
+            scope_display = scope.value
+        else:
+            scope_display = str(scope)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Configuration with key '{key}' not found for scope '{scope.value}'",
+            detail=f"Configuration with key '{key}' not found for scope '{scope_display}'",
         )
 
     return {
@@ -301,7 +322,7 @@ async def get_resolved_configuration(
     # Check instance scope first if instance_id provided
     if instance_id:
         configuration = await crud.get_configuration_by_key_scope(
-            key, ConfigScope.INSTANCE, instance_id
+            key, ConfigScope.INSTANCE.value, instance_id
         )
         if configuration:
             resolved_scope = "instance"
@@ -309,7 +330,7 @@ async def get_resolved_configuration(
     # Fall back to global scope
     if not configuration:
         configuration = await crud.get_configuration_by_key_scope(
-            key, ConfigScope.GLOBAL, None
+            key, ConfigScope.GLOBAL.value, None
         )
         if configuration:
             resolved_scope = "global"

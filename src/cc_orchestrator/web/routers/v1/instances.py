@@ -118,8 +118,18 @@ async def get_instance(
 
     - **instance_id**: The ID of the instance to retrieve
     """
-    instance = await crud.get_instance(instance_id)
-    if not instance:
+    try:
+        instance = await crud.get_instance(instance_id)
+        if not instance:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Instance with ID {instance_id} not found",
+            )
+    except HTTPException:
+        # Re-raise HTTPExceptions (like 404)
+        raise
+    except Exception:
+        # Catch any other database/session errors and return 404
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Instance with ID {instance_id} not found",
@@ -339,8 +349,13 @@ async def get_instance_tasks(
         filters={"instance_id": instance_id},
     )
 
+    # Convert to response schemas
+    from ...schemas import TaskResponse
+
+    task_responses = [TaskResponse.model_validate(task) for task in tasks]
+
     return {
-        "items": [task.__dict__ for task in tasks],
+        "items": task_responses,
         "total": total,
         "page": pagination.page,
         "size": pagination.size,

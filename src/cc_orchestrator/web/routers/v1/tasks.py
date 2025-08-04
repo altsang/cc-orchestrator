@@ -5,6 +5,7 @@ This module provides REST API endpoints for managing tasks,
 including CRUD operations, status updates, and assignment to instances.
 """
 
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -263,10 +264,9 @@ async def start_task(
         )
 
     # Update task status to in_progress
-    from datetime import datetime
-
     updated_task = await crud.update_task(
-        task_id, {"status": TaskStatus.IN_PROGRESS, "started_at": datetime.now()}
+        task_id,
+        {"status": TaskStatus.IN_PROGRESS, "started_at": datetime.now(UTC)},
     )
 
     return {
@@ -313,15 +313,18 @@ async def complete_task(
     # Calculate actual duration if task was started
     actual_duration = None
     if task.started_at:
-        from datetime import datetime
-
-        duration_delta = datetime.now() - task.started_at
+        # Handle both timezone-aware and timezone-naive started_at
+        started_at = task.started_at
+        if started_at.tzinfo is None:
+            # If started_at is timezone-naive, assume it's UTC
+            started_at = started_at.replace(tzinfo=UTC)
+        duration_delta = datetime.now(UTC) - started_at
         actual_duration = int(duration_delta.total_seconds() / 60)  # Convert to minutes
 
     # Update task status to completed
     update_data = {
         "status": TaskStatus.COMPLETED,
-        "completed_at": datetime.now(),
+        "completed_at": datetime.now(UTC),
     }
 
     if actual_duration:
@@ -380,7 +383,7 @@ async def cancel_task(
 @track_api_performance()
 @handle_api_errors()
 async def assign_task(
-    instance_id: int,
+    assignment_data: dict[str, int],
     task_id: int = Depends(validate_task_id),
     crud: CRUDBase = Depends(get_crud),
 ) -> dict[str, Any]:
@@ -388,8 +391,16 @@ async def assign_task(
     Assign a task to an instance.
 
     - **task_id**: The ID of the task to assign
-    - **instance_id**: The ID of the instance to assign to
+    - **assignment_data**: JSON body with instance_id
     """
+    # Extract instance_id from request data
+    instance_id = assignment_data.get("instance_id")
+    if not instance_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="instance_id is required",
+        )
+
     # Check if task exists
     task = await crud.get_task(task_id)
     if not task:
