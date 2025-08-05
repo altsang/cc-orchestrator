@@ -154,8 +154,9 @@ class ConnectionManager:
         # Close the WebSocket
         try:
             await connection.websocket.close()
-        except Exception:
-            pass  # Connection might already be closed
+        except (RuntimeError, ConnectionError):
+            # Connection might already be closed or in invalid state
+            pass
 
         # Remove from connections
         del self.connections[connection_id]
@@ -422,8 +423,10 @@ class ConnectionManager:
 
             except asyncio.CancelledError:
                 break
-            except Exception:
-                # Continue monitoring despite errors
+            except (RuntimeError, ConnectionError, OSError) as e:
+                # Log error but continue monitoring
+                logger = get_logger(__name__)
+                logger.warning(f"Error in heartbeat monitor: {e}")
                 continue
 
 
