@@ -131,19 +131,21 @@ class TestConnectionManager:
         """Test sending message to non-existent connection."""
         message = WebSocketMessage(type="test", data={"key": "value"})
 
-        result = await manager.send_message("nonexistent", message, queue_if_offline=False)
+        result = await manager.send_message(
+            "nonexistent", message, queue_if_offline=False
+        )
 
         assert result is False
         assert manager.total_messages_sent == 0
 
     @pytest.mark.asyncio
-    async def test_send_message_with_queuing(
-        self, manager: ConnectionManager
-    ) -> None:
+    async def test_send_message_with_queuing(self, manager: ConnectionManager) -> None:
         """Test message queuing for offline connections."""
         message = WebSocketMessage(type="test", data={"key": "value"})
 
-        result = await manager.send_message("offline-conn", message, queue_if_offline=True)
+        result = await manager.send_message(
+            "offline-conn", message, queue_if_offline=True
+        )
 
         assert result is False
         assert "offline-conn" in manager.message_queues
@@ -291,7 +293,9 @@ class TestConnectionManager:
             assert "future-conn" in manager.message_queues
 
     @pytest.mark.asyncio
-    async def test_heartbeat_timeout_detection(self, manager: ConnectionManager) -> None:
+    async def test_heartbeat_timeout_detection(
+        self, manager: ConnectionManager
+    ) -> None:
         """Test heartbeat timeout detection."""
         # Create a mock connection with old heartbeat
         mock_websocket = AsyncMock(spec=WebSocket)
@@ -302,10 +306,12 @@ class TestConnectionManager:
         connection.last_heartbeat = datetime.now() - timedelta(seconds=120)
 
         # Mock the disconnect method to verify it's called
-        with patch.object(manager, 'disconnect') as mock_disconnect:
+        with patch.object(manager, "disconnect") as mock_disconnect:
             # Manually check for timed-out connections (simulate heartbeat monitor logic)
             current_time = datetime.now()
-            timeout_threshold = current_time - timedelta(seconds=manager.heartbeat_timeout)
+            timeout_threshold = current_time - timedelta(
+                seconds=manager.heartbeat_timeout
+            )
 
             for conn_id, conn in list(manager.connections.items()):
                 if conn.last_heartbeat < timeout_threshold:
@@ -327,4 +333,3 @@ class TestConnectionManager:
         # Should close all connections and cancel heartbeat task
         assert connection_id not in manager.connections
         assert manager.heartbeat_task is None or manager.heartbeat_task.cancelled()
-
