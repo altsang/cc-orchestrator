@@ -1,6 +1,5 @@
 """Tests for web API components."""
 
-
 import pytest
 
 from cc_orchestrator.web.api.websocket_stats import router as stats_router
@@ -17,18 +16,18 @@ class TestWebAPIComponents:
     def test_websocket_stats_router_exists(self):
         """Test that WebSocket stats router exists."""
         assert stats_router is not None
-        assert hasattr(stats_router, 'routes')
+        assert hasattr(stats_router, "routes")
 
     def test_websocket_stats_router_has_endpoints(self):
         """Test that WebSocket stats router has expected endpoints."""
         routes = stats_router.routes
-        route_paths = [route.path for route in routes if hasattr(route, 'path')]
+        route_paths = [route.path for route in routes if hasattr(route, "path")]
 
         # Should have a stats endpoint
         assert len(route_paths) > 0
 
         # Check for expected stats endpoint
-        assert any('/stats' in path for path in route_paths)
+        assert any("/stats" in path for path in route_paths)
 
     def test_logging_utils_functions_exist(self):
         """Test that logging utility functions exist and are callable."""
@@ -42,9 +41,7 @@ class TestWebAPIComponents:
         # Call the logging function with correct parameters
         try:
             log_websocket_connection(
-                client_ip="127.0.0.1",
-                action="connect",
-                connection_id="test-123"
+                client_ip="127.0.0.1", action="connect", connection_id="test-123"
             )
             # If no exception, the function works
             assert True
@@ -60,7 +57,7 @@ class TestWebAPIComponents:
                 connection_id="test-123",
                 message_type="test",
                 direction="inbound",
-                message_size=100
+                message_size=100,
             )
             # If no exception, the function works
             assert True
@@ -76,7 +73,7 @@ class TestWebAPIComponents:
                 event_type="test_event",
                 target_connections=5,
                 payload_size=200,
-                instance_id="test-instance"
+                instance_id="test-instance",
             )
             # If no exception, the function works
             assert True
@@ -104,7 +101,7 @@ class TestWebAPIComponents:
         assert app is not None
 
         # Should be able to import the app
-        if hasattr(app, 'app'):
+        if hasattr(app, "app"):
             assert app.app is not None
 
     def test_web_server_imports(self):
@@ -115,5 +112,5 @@ class TestWebAPIComponents:
         assert server is not None
 
         # Should have server functions
-        assert hasattr(server, 'run_server')
+        assert hasattr(server, "run_server")
         assert callable(server.run_server)
