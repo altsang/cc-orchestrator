@@ -231,7 +231,9 @@ class TestTmuxLoggingUtils:
 
         mock_logger.info.assert_called_once()
         call_args = mock_logger.info.call_args
-        assert "Session attached - test-session (instance: claude-001)" in call_args[0][0]
+        assert (
+            "Session attached - test-session (instance: claude-001)" in call_args[0][0]
+        )
 
     @patch("cc_orchestrator.tmux.logging_utils.tmux_logger")
     def test_log_layout_setup(self, mock_logger):
@@ -242,7 +244,10 @@ class TestTmuxLoggingUtils:
 
         mock_logger.info.assert_called_once()
         call_args = mock_logger.info.call_args
-        assert "Layout template applied - test-session (template: three-pane, windows: ['main', 'logs', 'monitoring'])" in call_args[0][0]
+        assert (
+            "Layout template applied - test-session (template: three-pane, windows: ['main', 'logs', 'monitoring'])"
+            in call_args[0][0]
+        )
 
     @patch("cc_orchestrator.tmux.logging_utils.tmux_logger")
     def test_log_orphaned_sessions_found(self, mock_logger):
@@ -253,7 +258,10 @@ class TestTmuxLoggingUtils:
 
         mock_logger.warning.assert_called_once()
         call_args = mock_logger.warning.call_args
-        assert "Orphaned sessions detected - count: 2, sessions: ['old-session-1', 'old-session-2']" in call_args[0][0]
+        assert (
+            "Orphaned sessions detected - count: 2, sessions: ['old-session-1', 'old-session-2']"
+            in call_args[0][0]
+        )
 
     @patch("cc_orchestrator.tmux.logging_utils.tmux_logger")
     def test_log_orphaned_sessions_none_found(self, mock_logger):
