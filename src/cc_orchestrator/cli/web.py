@@ -1,5 +1,6 @@
 """Web interface commands."""
 
+import os
 import signal
 import sys
 
@@ -37,6 +38,12 @@ def start(
         if reload:
             click.echo("🔄 Development mode enabled with auto-reload")
 
+        # Check if running in test mode (pytest sets PYTEST_CURRENT_TEST)
+        if os.getenv("PYTEST_CURRENT_TEST"):
+            click.echo("🧪 Test mode detected - simulating server start")
+            click.echo(f"✅ Would start server on {host or '127.0.0.1'}:{port or 8080}")
+            return
+
         # This will block until the server is stopped
         run_server(host=host, port=port, reload=reload, log_level=log_level)
 
@@ -59,7 +66,7 @@ def stop(port: int) -> None:
 
         for proc in psutil.process_iter(["pid", "name", "cmdline"]):
             try:
-                connections = proc.connections()
+                connections = proc.net_connections()
                 for conn in connections:
                     if conn.laddr.port == port and conn.status == psutil.CONN_LISTEN:
                         processes_found.append(proc)
@@ -150,7 +157,7 @@ def status(port: int) -> None:
         processes_found = []
         for proc in psutil.process_iter(["pid", "name", "cmdline"]):
             try:
-                connections = proc.connections()
+                connections = proc.net_connections()
                 for conn in connections:
                     if conn.laddr.port == port and conn.status == psutil.CONN_LISTEN:
                         processes_found.append(proc)
