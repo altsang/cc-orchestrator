@@ -130,7 +130,7 @@ def status(port: int) -> None:
                         click.echo(
                             f"   Messages received: {ws_data.get('messages_received', 0)}"
                         )
-                except (requests.RequestException, ValueError, KeyError):
+                except (httpx.RequestError, ValueError, KeyError):
                     # WebSocket stats are optional, ignore errors
                     pass
 
