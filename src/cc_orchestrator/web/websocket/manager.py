@@ -423,10 +423,8 @@ class ConnectionManager:
 
             except asyncio.CancelledError:
                 break
-            except (RuntimeError, ConnectionError, OSError) as e:
-                # Log error but continue monitoring
-                logger = get_logger(__name__)
-                logger.warning(f"Error in heartbeat monitor: {e}")
+            except (RuntimeError, ConnectionError, OSError):
+                # Continue monitoring despite errors
                 continue
 
 
