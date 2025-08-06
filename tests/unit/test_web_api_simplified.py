@@ -4,9 +4,10 @@ Simplified unit tests for FastAPI web application.
 This module provides basic tests to verify FastAPI functionality.
 """
 
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import MagicMock, AsyncMock
 
 from cc_orchestrator.web.app import create_app
 from cc_orchestrator.web.dependencies import get_crud

@@ -5,9 +5,7 @@ This module tests the FastAPI application with real database connections
 and end-to-end API workflows using proper async testing with httpx.AsyncClient.
 """
 
-import tempfile
-from pathlib import Path
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 
 import httpx
 import pytest

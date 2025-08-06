@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
 
 from cc_orchestrator.database.models import (
     InstanceStatus,
@@ -24,9 +24,9 @@ from cc_orchestrator.web.schemas import HealthStatus
 def client():
     """Create a test client for the FastAPI app."""
     from cc_orchestrator.web.dependencies import get_crud
-    
+
     app = create_app()
-    
+
     # Create a mock CRUD instance
     mock_crud = MagicMock()
     mock_crud.list_instances = AsyncMock(return_value=([], 0))
@@ -57,10 +57,10 @@ def client():
     mock_crud.list_alerts = AsyncMock(return_value=([], 0))
     mock_crud.create_alert = AsyncMock()
     mock_crud.get_alert_by_alert_id = AsyncMock()
-    
+
     # Override the dependency
     app.dependency_overrides[get_crud] = lambda: mock_crud
-    
+
     return TestClient(app)
 
 
@@ -223,7 +223,7 @@ class TestInstanceEndpoints:
         # Get the mock CRUD from the client fixture and configure it
         from cc_orchestrator.web.dependencies import get_crud
         mock_crud = client.app.dependency_overrides[get_crud]()
-        
+
         mock_crud.get_instance.return_value = None
 
         response = client.get("/api/v1/instances/999")
@@ -358,7 +358,7 @@ class TestPaginationAndFiltering:
         # Get the mock CRUD from the client fixture and configure it
         from cc_orchestrator.web.dependencies import get_crud
         mock_crud = client.app.dependency_overrides[get_crud]()
-        
+
         # Reset the mock to track calls
         mock_crud.list_instances.reset_mock()
 
@@ -412,7 +412,7 @@ class TestErrorHandling:
         # Get the mock CRUD from the client fixture and configure it
         from cc_orchestrator.web.dependencies import get_crud
         mock_crud = client.app.dependency_overrides[get_crud]()
-        
+
         # Configure to return None for not found
         mock_crud.get_instance.return_value = None
 

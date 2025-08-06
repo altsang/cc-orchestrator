@@ -9,26 +9,25 @@ Tests cover all worktree management functionality including:
 - Get worktree status and associated tasks
 """
 
-from datetime import datetime, timezone
-from typing import Any
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, Mock
 
 import pytest
 
 from cc_orchestrator.database.models import WorktreeStatus
-from cc_orchestrator.web.routers.v1 import worktrees
-from cc_orchestrator.web.schemas import WorktreeCreate, WorktreeUpdate, WorktreeResponse
 from cc_orchestrator.web.dependencies import PaginationParams
+from cc_orchestrator.web.routers.v1 import worktrees
+from cc_orchestrator.web.schemas import WorktreeCreate, WorktreeResponse, WorktreeUpdate
 
 
 class TestWorktreesRouterFunctions:
     """Test worktrees router endpoint functions directly."""
-    
+
     @pytest.fixture
     def mock_crud(self):
         """Mock CRUD adapter."""
         crud = AsyncMock()
-        
+
         # Mock worktree data
         mock_worktree = Mock()
         mock_worktree.id = 1
@@ -42,22 +41,22 @@ class TestWorktreesRouterFunctions:
         mock_worktree.has_uncommitted_changes = False
         mock_worktree.git_config = {}
         mock_worktree.extra_metadata = {}
-        mock_worktree.last_sync = datetime.now(timezone.utc)
-        mock_worktree.created_at = datetime.now(timezone.utc)
-        mock_worktree.updated_at = datetime.now(timezone.utc)
-        
+        mock_worktree.last_sync = datetime.now(UTC)
+        mock_worktree.created_at = datetime.now(UTC)
+        mock_worktree.updated_at = datetime.now(UTC)
+
         # Mock instance data
         mock_instance = Mock()
         mock_instance.id = 1
         mock_instance.issue_id = "test-issue"
-        
+
         # Mock task data
         mock_task = Mock()
         mock_task.id = 1
         mock_task.worktree_id = 1
         mock_task.title = "test-task"
         mock_task.__dict__ = {"id": 1, "worktree_id": 1, "title": "test-task"}
-        
+
         crud.list_worktrees.return_value = ([mock_worktree], 1)
         crud.create_worktree.return_value = mock_worktree
         crud.get_worktree.return_value = mock_worktree
@@ -66,9 +65,9 @@ class TestWorktreesRouterFunctions:
         crud.delete_worktree.return_value = True
         crud.get_instance.return_value = mock_instance
         crud.list_tasks.return_value = ([mock_task], 1)
-        
+
         return crud
-    
+
     @pytest.fixture
     def pagination_params(self):
         """Mock pagination parameters."""
@@ -88,13 +87,13 @@ class TestWorktreesRouterFunctions:
             instance_id=None,
             crud=mock_crud
         )
-        
+
         assert result["total"] == 1
         assert len(result["items"]) == 1
         assert result["page"] == 1
         assert result["size"] == 20
         assert result["pages"] == 1
-        
+
         # Verify CRUD was called correctly
         mock_crud.list_worktrees.assert_called_once_with(
             offset=0, limit=20, filters={}
@@ -110,9 +109,9 @@ class TestWorktreesRouterFunctions:
             instance_id=1,
             crud=mock_crud
         )
-        
+
         assert result["total"] == 1
-        
+
         # Verify filters were applied
         mock_crud.list_worktrees.assert_called_once_with(
             offset=0, limit=20, filters={
@@ -132,16 +131,16 @@ class TestWorktreesRouterFunctions:
             repository_url="https://github.com/test/new-repo.git",
             instance_id=1
         )
-        
+
         result = await worktrees.create_worktree(
-            worktree_data=worktree_data, 
+            worktree_data=worktree_data,
             crud=mock_crud
         )
-        
+
         assert result["success"] is True
         assert "Worktree created successfully" in result["message"]
         assert "data" in result
-        
+
         # Verify path uniqueness check, instance validation, and creation
         mock_crud.get_worktree_by_path.assert_called_once_with("/workspace/new-worktree")
         mock_crud.get_instance.assert_called_once_with(1)
@@ -153,60 +152,60 @@ class TestWorktreesRouterFunctions:
         # Mock existing worktree
         mock_existing = Mock()
         mock_crud.get_worktree_by_path.return_value = mock_existing
-        
+
         worktree_data = WorktreeCreate(
             name="duplicate-worktree",
             path="/workspace/duplicate",
             branch_name="duplicate-branch"
         )
-        
+
         with pytest.raises(Exception) as exc_info:
             await worktrees.create_worktree(
-                worktree_data=worktree_data, 
+                worktree_data=worktree_data,
                 crud=mock_crud
             )
-        
+
         assert "Worktree with path '/workspace/duplicate' already exists" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_create_worktree_invalid_instance(self, mock_crud):
         """Test worktree creation with non-existent instance."""
         mock_crud.get_instance.return_value = None
-        
+
         worktree_data = WorktreeCreate(
             name="invalid-worktree",
             path="/workspace/invalid",
             branch_name="invalid-branch",
             instance_id=999
         )
-        
+
         with pytest.raises(Exception) as exc_info:
             await worktrees.create_worktree(
-                worktree_data=worktree_data, 
+                worktree_data=worktree_data,
                 crud=mock_crud
             )
-        
+
         assert "Instance with ID 999 not found" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_get_worktree_success(self, mock_crud):
         """Test successful worktree retrieval by ID."""
         result = await worktrees.get_worktree(worktree_id=1, crud=mock_crud)
-        
+
         assert result["success"] is True
         assert "Worktree retrieved successfully" in result["message"]
         assert "data" in result
-        
+
         mock_crud.get_worktree.assert_called_once_with(1)
 
     @pytest.mark.asyncio
     async def test_get_worktree_not_found(self, mock_crud):
         """Test worktree retrieval for non-existent worktree."""
         mock_crud.get_worktree.return_value = None
-        
+
         with pytest.raises(Exception) as exc_info:
             await worktrees.get_worktree(worktree_id=999, crud=mock_crud)
-        
+
         assert "Worktree with ID 999 not found" in str(exc_info.value)
 
     @pytest.mark.asyncio
@@ -216,16 +215,16 @@ class TestWorktreesRouterFunctions:
             name="updated-worktree",
             status=WorktreeStatus.INACTIVE
         )
-        
+
         result = await worktrees.update_worktree(
             worktree_id=1,
             worktree_data=update_data,
             crud=mock_crud
         )
-        
+
         assert result["success"] is True
         assert "Worktree updated successfully" in result["message"]
-        
+
         mock_crud.get_worktree.assert_called_once_with(1)
         mock_crud.update_worktree.assert_called_once()
 
@@ -233,42 +232,42 @@ class TestWorktreesRouterFunctions:
     async def test_update_worktree_not_found(self, mock_crud):
         """Test worktree update for non-existent worktree."""
         mock_crud.get_worktree.return_value = None
-        
+
         update_data = WorktreeUpdate(name="updated-name")
-        
+
         with pytest.raises(Exception) as exc_info:
             await worktrees.update_worktree(
                 worktree_id=999,
                 worktree_data=update_data,
                 crud=mock_crud
             )
-        
+
         assert "Worktree with ID 999 not found" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_update_worktree_invalid_instance(self, mock_crud):
         """Test worktree update with non-existent instance."""
         mock_crud.get_instance.return_value = None
-        
+
         update_data = WorktreeUpdate(instance_id=999)
-        
+
         with pytest.raises(Exception) as exc_info:
             await worktrees.update_worktree(
                 worktree_id=1,
                 worktree_data=update_data,
                 crud=mock_crud
             )
-        
+
         assert "Instance with ID 999 not found" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_delete_worktree_success(self, mock_crud):
         """Test successful worktree deletion."""
         result = await worktrees.delete_worktree(worktree_id=1, crud=mock_crud)
-        
+
         assert result["success"] is True
         assert "Worktree deleted successfully" in result["message"]
-        
+
         mock_crud.get_worktree.assert_called_once_with(1)
         mock_crud.delete_worktree.assert_called_once_with(1)
 
@@ -276,20 +275,20 @@ class TestWorktreesRouterFunctions:
     async def test_delete_worktree_not_found(self, mock_crud):
         """Test worktree deletion for non-existent worktree."""
         mock_crud.get_worktree.return_value = None
-        
+
         with pytest.raises(Exception) as exc_info:
             await worktrees.delete_worktree(worktree_id=999, crud=mock_crud)
-        
+
         assert "Worktree with ID 999 not found" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_sync_worktree_success(self, mock_crud):
         """Test successful worktree sync operation."""
         result = await worktrees.sync_worktree(worktree_id=1, crud=mock_crud)
-        
+
         assert result["success"] is True
         assert "Worktree synced successfully" in result["message"]
-        
+
         mock_crud.get_worktree.assert_called_once_with(1)
         mock_crud.update_worktree.assert_called_once()
 
@@ -297,37 +296,37 @@ class TestWorktreesRouterFunctions:
     async def test_sync_worktree_not_found(self, mock_crud):
         """Test worktree sync for non-existent worktree."""
         mock_crud.get_worktree.return_value = None
-        
+
         with pytest.raises(Exception) as exc_info:
             await worktrees.sync_worktree(worktree_id=999, crud=mock_crud)
-        
+
         assert "Worktree with ID 999 not found" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_get_worktree_status_success(self, mock_crud):
         """Test successful worktree status retrieval."""
         result = await worktrees.get_worktree_status(worktree_id=1, crud=mock_crud)
-        
+
         assert result["success"] is True
         assert "Worktree status retrieved successfully" in result["message"]
         assert "data" in result
-        
+
         status_data = result["data"]
         assert status_data["id"] == 1
         assert status_data["name"] == "test-worktree"
         assert status_data["path"] == "/workspace/test-worktree"
         assert status_data["status"] == WorktreeStatus.ACTIVE
-        
+
         mock_crud.get_worktree.assert_called_once_with(1)
 
     @pytest.mark.asyncio
     async def test_get_worktree_status_not_found(self, mock_crud):
         """Test worktree status retrieval for non-existent worktree."""
         mock_crud.get_worktree.return_value = None
-        
+
         with pytest.raises(Exception) as exc_info:
             await worktrees.get_worktree_status(worktree_id=999, crud=mock_crud)
-        
+
         assert "Worktree with ID 999 not found" in str(exc_info.value)
 
     @pytest.mark.asyncio
@@ -338,12 +337,12 @@ class TestWorktreesRouterFunctions:
             pagination=pagination_params,
             crud=mock_crud
         )
-        
+
         assert result["total"] == 1
         assert len(result["items"]) == 1
         assert result["page"] == 1
         assert result["size"] == 20
-        
+
         # Verify worktree check and task retrieval
         mock_crud.get_worktree.assert_called_once_with(1)
         mock_crud.list_tasks.assert_called_once_with(
@@ -354,20 +353,20 @@ class TestWorktreesRouterFunctions:
     async def test_get_worktree_tasks_not_found(self, mock_crud, pagination_params):
         """Test worktree tasks retrieval for non-existent worktree."""
         mock_crud.get_worktree.return_value = None
-        
+
         with pytest.raises(Exception) as exc_info:
             await worktrees.get_worktree_tasks(
                 worktree_id=999,
                 pagination=pagination_params,
                 crud=mock_crud
             )
-        
+
         assert "Worktree with ID 999 not found" in str(exc_info.value)
 
 
 class TestWorktreeValidation:
     """Test worktree data validation and edge cases."""
-    
+
     def test_worktree_response_model_validation(self):
         """Test WorktreeResponse model validation."""
         worktree_data = {
@@ -382,11 +381,11 @@ class TestWorktreeValidation:
             "has_uncommitted_changes": False,
             "git_config": {},
             "extra_metadata": {},
-            "last_sync": datetime.now(timezone.utc),
-            "created_at": datetime.now(timezone.utc),
-            "updated_at": datetime.now(timezone.utc)
+            "last_sync": datetime.now(UTC),
+            "created_at": datetime.now(UTC),
+            "updated_at": datetime.now(UTC)
         }
-        
+
         response_model = WorktreeResponse.model_validate(worktree_data)
         assert response_model.name == "test-worktree"
         assert response_model.status == WorktreeStatus.ACTIVE.value
@@ -399,7 +398,7 @@ class TestWorktreeValidation:
             "branch_name": "new-branch",
             "repository_url": "https://github.com/test/new-repo.git"
         }
-        
+
         create_model = WorktreeCreate.model_validate(create_data)
         assert create_model.name == "new-worktree"
         assert create_model.path == "/workspace/new"
@@ -408,13 +407,13 @@ class TestWorktreeValidation:
         """Test WorktreeStatus enum contains expected values."""
         expected_statuses = {"active", "inactive", "dirty", "error"}
         actual_statuses = {status.value for status in WorktreeStatus}
-        
+
         assert actual_statuses == expected_statuses
 
 
 class TestWorktreeRouterDecorators:
     """Test decorator functionality on worktree endpoints."""
-    
+
     def test_decorators_applied_to_list_worktrees(self):
         """Test that decorators are applied to list_worktrees function."""
         func = worktrees.list_worktrees
@@ -436,17 +435,17 @@ class TestWorktreeRouterDecorators:
 
 class TestWorktreeRouterIntegration:
     """Test router integration aspects."""
-    
+
     def test_router_has_endpoints(self):
         """Test that the router has the expected endpoints."""
         routes = worktrees.router.routes
         assert len(routes) > 0
-        
+
         route_paths = [route.path for route in routes]
-        
+
         # Should have the main list endpoint
         assert "/" in route_paths
-        
+
         # Should have specific worktree endpoints
         assert "/{worktree_id}" in route_paths
         assert "/{worktree_id}/sync" in route_paths
@@ -456,23 +455,23 @@ class TestWorktreeRouterIntegration:
     def test_router_methods(self):
         """Test that routes have correct HTTP methods."""
         routes = worktrees.router.routes
-        
+
         # Collect all methods for each path
         path_methods = {}
         for route in routes:
             if route.path not in path_methods:
                 path_methods[route.path] = set()
             path_methods[route.path].update(route.methods)
-        
+
         # Main endpoint should support GET and POST
         assert "GET" in path_methods["/"]
         assert "POST" in path_methods["/"]
-        
+
         # Specific worktree endpoint should support GET, PUT, DELETE
         assert "GET" in path_methods["/{worktree_id}"]
         assert "PUT" in path_methods["/{worktree_id}"]
         assert "DELETE" in path_methods["/{worktree_id}"]
-        
+
         # Action endpoints should support GET/POST
         assert "POST" in path_methods["/{worktree_id}/sync"]
         assert "GET" in path_methods["/{worktree_id}/status"]
@@ -482,13 +481,13 @@ class TestWorktreeRouterIntegration:
         """Test that WorktreeStatus enum is properly integrated."""
         statuses = [status.value for status in WorktreeStatus]
         expected_statuses = ["active", "inactive", "dirty", "error"]
-        
+
         assert set(statuses) == set(expected_statuses)
 
 
 class TestWorktreeRouterEdgeCases:
     """Test edge cases and boundary conditions."""
-    
+
     @pytest.fixture
     def mock_crud_empty_results(self):
         """Mock CRUD adapter with empty results."""
@@ -516,7 +515,7 @@ class TestWorktreeRouterEdgeCases:
             instance_id=None,
             crud=mock_crud_empty_results
         )
-        
+
         assert result["total"] == 0
         assert len(result["items"]) == 0
         assert result["pages"] == 0
@@ -528,12 +527,12 @@ class TestWorktreeRouterEdgeCases:
         mock_worktree = Mock()
         mock_worktree.id = 1
         mock_crud_empty_results.get_worktree.return_value = mock_worktree
-        
+
         result = await worktrees.get_worktree_tasks(
             worktree_id=1,
             pagination=pagination_params,
             crud=mock_crud_empty_results
         )
-        
+
         assert result["total"] == 0
         assert len(result["items"]) == 0
