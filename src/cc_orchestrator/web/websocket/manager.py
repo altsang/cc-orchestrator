@@ -11,6 +11,7 @@ import uuid
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from threading import RLock
 from typing import Any
 
 from fastapi import WebSocket, WebSocketDisconnect
@@ -30,6 +31,16 @@ class ConnectionRefusedError(Exception):
 
 
 @dataclass
+class QueuedMessage:
+    """A message with expiration time for queue management."""
+    message: "WebSocketMessage"
+    expires_at: datetime
+    
+    def is_expired(self) -> bool:
+        return datetime.now() > self.expires_at
+
+
+@dataclass
 class WebSocketConfig:
     """Configuration for WebSocket connections."""
 
@@ -37,6 +48,10 @@ class WebSocketConfig:
     max_connections: int = 1000
     max_message_size: int = 64 * 1024  # 64KB
     max_queue_size: int = 100  # Maximum queued messages per connection
+    
+    # Message queue settings
+    queue_message_ttl: int = 300  # TTL for queued messages in seconds (5 minutes)
+    queue_cleanup_interval: int = 60  # Cleanup expired messages every 60 seconds
 
     # Heartbeat settings
     heartbeat_interval: int = 30  # seconds
@@ -117,6 +132,9 @@ class ConnectionManager:
     def __init__(self, config: WebSocketConfig | None = None) -> None:
         # Configuration
         self.config = config or WebSocketConfig.from_environment()
+        
+        # Thread safety lock for connection management
+        self._connection_lock = RLock()
 
         # Active connections by connection ID
         self.connections: dict[str, WebSocketConnection] = {}
@@ -124,11 +142,14 @@ class ConnectionManager:
         # Subscription groups (topic -> set of connection_ids)
         self.subscriptions: dict[str, set[str]] = defaultdict(set)
 
-        # Message queues for offline connections
-        self.message_queues: dict[str, list[WebSocketMessage]] = defaultdict(list)
+        # Message queues for offline connections with TTL
+        self.message_queues: dict[str, list[QueuedMessage]] = defaultdict(list)
 
         # Heartbeat monitoring
         self.heartbeat_task: asyncio.Task[None] | None = None
+        
+        # Queue cleanup task
+        self.queue_cleanup_task: asyncio.Task[None] | None = None
 
         # Connection stats
         self.total_connections = 0
@@ -139,13 +160,25 @@ class ConnectionManager:
         """Initialize the connection manager."""
         # Start heartbeat monitoring
         self.heartbeat_task = asyncio.create_task(self._heartbeat_monitor())
+        
+        # Start queue cleanup task
+        self.queue_cleanup_task = asyncio.create_task(self._queue_cleanup_monitor())
 
     async def cleanup(self) -> None:
         """Cleanup resources on shutdown."""
+        # Cancel heartbeat monitoring
         if self.heartbeat_task:
             self.heartbeat_task.cancel()
             try:
                 await self.heartbeat_task
+            except asyncio.CancelledError:
+                pass
+        
+        # Cancel queue cleanup task
+        if self.queue_cleanup_task:
+            self.queue_cleanup_task.cancel()
+            try:
+                await self.queue_cleanup_task
             except asyncio.CancelledError:
                 pass
 
@@ -167,20 +200,21 @@ class ConnectionManager:
         Raises:
             ConnectionRefusedError: If server is at capacity
         """
-        # Check connection limits before accepting
-        if len(self.connections) >= self.config.max_connections:
-            await websocket.close(code=1008, reason="Server at capacity")
-            raise ConnectionRefusedError(
-                f"Maximum connections ({self.config.max_connections}) exceeded"
-            )
+        # Check connection limits before accepting (thread-safe)
+        with self._connection_lock:
+            if len(self.connections) >= self.config.max_connections:
+                await websocket.close(code=1008, reason="Server at capacity")
+                raise ConnectionRefusedError(
+                    f"Maximum connections ({self.config.max_connections}) exceeded"
+                )
 
-        await websocket.accept()
+            await websocket.accept()
 
-        connection_id = str(uuid.uuid4())
-        connection = WebSocketConnection(websocket, connection_id, client_ip)
+            connection_id = str(uuid.uuid4())
+            connection = WebSocketConnection(websocket, connection_id, client_ip)
 
-        self.connections[connection_id] = connection
-        self.total_connections += 1
+            self.connections[connection_id] = connection
+            self.total_connections += 1
 
         log_websocket_connection(
             client_ip=client_ip,
@@ -203,25 +237,26 @@ class ConnectionManager:
             connection_id: ID of the connection to remove
             reason: Reason for disconnection
         """
-        if connection_id not in self.connections:
-            return
+        with self._connection_lock:
+            if connection_id not in self.connections:
+                return
 
-        connection = self.connections[connection_id]
-        connection.is_alive = False
+            connection = self.connections[connection_id]
+            connection.is_alive = False
 
-        # Remove from all subscriptions
-        for topic in list(connection.subscriptions):
-            await self.unsubscribe(connection_id, topic)
+            # Remove from all subscriptions
+            for topic in list(connection.subscriptions):
+                await self.unsubscribe(connection_id, topic)
 
-        # Close the WebSocket
-        try:
-            await connection.websocket.close()
-        except (RuntimeError, ConnectionError, OSError):
-            # Connection might already be closed or in invalid state
-            pass
+            # Close the WebSocket
+            try:
+                await connection.websocket.close()
+            except (RuntimeError, ConnectionError, OSError):
+                # Connection might already be closed or in invalid state
+                pass
 
-        # Remove from connections
-        del self.connections[connection_id]
+            # Remove from connections
+            del self.connections[connection_id]
 
         log_websocket_connection(
             client_ip=connection.client_ip,
@@ -261,12 +296,17 @@ class ConnectionManager:
 
         if connection_id not in self.connections:
             if queue_if_offline:
-                # Check queue size limit before adding
-                current_queue_size = len(self.message_queues[connection_id])
-                if current_queue_size >= self.config.max_queue_size:
-                    # Remove oldest message to make room
-                    self.message_queues[connection_id].pop(0)
-                self.message_queues[connection_id].append(message)
+                with self._connection_lock:
+                    # Check queue size limit before adding
+                    current_queue_size = len(self.message_queues[connection_id])
+                    if current_queue_size >= self.config.max_queue_size:
+                        # Remove oldest message to make room
+                        self.message_queues[connection_id].pop(0)
+                    
+                    # Create queued message with TTL
+                    expires_at = datetime.now() + timedelta(seconds=self.config.queue_message_ttl)
+                    queued_message = QueuedMessage(message=message, expires_at=expires_at)
+                    self.message_queues[connection_id].append(queued_message)
             return False
 
         connection = self.connections[connection_id]
@@ -288,12 +328,17 @@ class ConnectionManager:
         except WebSocketDisconnect:
             await self.disconnect(connection_id, "connection_lost")
             if queue_if_offline:
-                # Check queue size limit before adding
-                current_queue_size = len(self.message_queues[connection_id])
-                if current_queue_size >= self.config.max_queue_size:
-                    # Remove oldest message to make room
-                    self.message_queues[connection_id].pop(0)
-                self.message_queues[connection_id].append(message)
+                with self._connection_lock:
+                    # Check queue size limit before adding
+                    current_queue_size = len(self.message_queues[connection_id])
+                    if current_queue_size >= self.config.max_queue_size:
+                        # Remove oldest message to make room
+                        self.message_queues[connection_id].pop(0)
+                    
+                    # Create queued message with TTL
+                    expires_at = datetime.now() + timedelta(seconds=self.config.queue_message_ttl)
+                    queued_message = QueuedMessage(message=message, expires_at=expires_at)
+                    self.message_queues[connection_id].append(queued_message)
             return False
         except (ConnectionError, OSError) as e:
             await self.disconnect(connection_id, f"network_error: {str(e)}")
@@ -329,11 +374,17 @@ class ConnectionManager:
             # Send to all connections
             target_connections = set(self.connections.keys()) - exclude_connections
 
-        successful_sends = 0
-
-        for connection_id in target_connections:
-            if await self.send_message(connection_id, message):
-                successful_sends += 1
+        # Send messages concurrently for better performance
+        send_tasks = [
+            self.send_message(connection_id, message)
+            for connection_id in target_connections
+        ]
+        
+        if send_tasks:
+            results = await asyncio.gather(*send_tasks, return_exceptions=True)
+            successful_sends = sum(1 for result in results if result is True)
+        else:
+            successful_sends = 0
 
         log_real_time_event(
             event_type=message.type,
@@ -460,12 +511,16 @@ class ConnectionManager:
         if connection_id not in self.message_queues:
             return
 
-        messages = self.message_queues[connection_id]
-        for message in messages:
-            await self.send_message(connection_id, message, queue_if_offline=False)
+        with self._connection_lock:
+            queued_messages = self.message_queues[connection_id]
+            
+            # Send only non-expired messages
+            for queued_msg in queued_messages:
+                if not queued_msg.is_expired():
+                    await self.send_message(connection_id, queued_msg.message, queue_if_offline=False)
 
-        # Clear the queue
-        del self.message_queues[connection_id]
+            # Clear the queue
+            del self.message_queues[connection_id]
 
     async def _process_message(
         self, connection_id: str, message_type: str, data: dict[str, Any]
@@ -527,6 +582,36 @@ class ConnectionManager:
                 break
             except (RuntimeError, ConnectionError, OSError):
                 # Continue monitoring despite errors
+                continue
+
+    async def _queue_cleanup_monitor(self) -> None:
+        """Monitor and cleanup expired messages from queues."""
+        while True:
+            try:
+                await asyncio.sleep(self.config.queue_cleanup_interval)
+                
+                current_time = datetime.now()
+                
+                # Clean up expired messages from all queues
+                with self._connection_lock:
+                    for connection_id in list(self.message_queues.keys()):
+                        queue = self.message_queues[connection_id]
+                        
+                        # Remove expired messages
+                        self.message_queues[connection_id] = [
+                            queued_msg for queued_msg in queue 
+                            if not queued_msg.is_expired()
+                        ]
+                        
+                        # Remove empty queues for disconnected clients
+                        if (not self.message_queues[connection_id] and 
+                            connection_id not in self.connections):
+                            del self.message_queues[connection_id]
+                            
+            except asyncio.CancelledError:
+                break
+            except (RuntimeError, ConnectionError, OSError):
+                # Continue monitoring despite errors  
                 continue
 
 
