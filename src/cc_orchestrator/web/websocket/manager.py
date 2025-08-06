@@ -6,8 +6,10 @@ Handles connection lifecycle, message broadcasting, and client management.
 
 import asyncio
 import json
+import os
 import uuid
 from collections import defaultdict
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -19,6 +21,55 @@ from ..logging_utils import (
     log_websocket_connection,
     log_websocket_message,
 )
+
+
+class ConnectionRefusedError(Exception):
+    """Raised when a WebSocket connection is refused due to server constraints."""
+
+    pass
+
+
+@dataclass
+class WebSocketConfig:
+    """Configuration for WebSocket connections."""
+
+    # Connection management
+    max_connections: int = 1000
+    max_message_size: int = 64 * 1024  # 64KB
+    max_queue_size: int = 100  # Maximum queued messages per connection
+
+    # Heartbeat settings
+    heartbeat_interval: int = 30  # seconds
+    heartbeat_timeout: int = 120  # seconds (increased from 60 for reliability)
+
+    # CORS settings
+    cors_origins: list[str] = None
+
+    def __post_init__(self):
+        """Validate configuration after initialization."""
+        if self.heartbeat_timeout < (2 * self.heartbeat_interval):
+            raise ValueError(
+                f"Heartbeat timeout ({self.heartbeat_timeout}s) must be at least "
+                f"twice the interval ({self.heartbeat_interval}s)"
+            )
+
+        # Load CORS origins from environment if not provided
+        if self.cors_origins is None:
+            cors_env = os.getenv(
+                "CC_WEB_CORS_ORIGINS", "http://localhost:3000,http://localhost:8080"
+            )
+            self.cors_origins = [origin.strip() for origin in cors_env.split(",")]
+
+    @classmethod
+    def from_environment(cls) -> "WebSocketConfig":
+        """Create configuration from environment variables."""
+        return cls(
+            max_connections=int(os.getenv("CC_WS_MAX_CONNECTIONS", "1000")),
+            max_message_size=int(os.getenv("CC_WS_MAX_MESSAGE_SIZE", str(64 * 1024))),
+            max_queue_size=int(os.getenv("CC_WS_MAX_QUEUE_SIZE", "100")),
+            heartbeat_interval=int(os.getenv("CC_WS_HEARTBEAT_INTERVAL", "30")),
+            heartbeat_timeout=int(os.getenv("CC_WS_HEARTBEAT_TIMEOUT", "120")),
+        )
 
 
 class WebSocketMessage(BaseModel):
@@ -63,7 +114,10 @@ class ConnectionManager:
     - Event-driven architecture
     """
 
-    def __init__(self) -> None:
+    def __init__(self, config: WebSocketConfig | None = None) -> None:
+        # Configuration
+        self.config = config or WebSocketConfig.from_environment()
+
         # Active connections by connection ID
         self.connections: dict[str, WebSocketConnection] = {}
 
@@ -74,8 +128,6 @@ class ConnectionManager:
         self.message_queues: dict[str, list[WebSocketMessage]] = defaultdict(list)
 
         # Heartbeat monitoring
-        self.heartbeat_interval = 30  # seconds
-        self.heartbeat_timeout = 60  # seconds
         self.heartbeat_task: asyncio.Task[None] | None = None
 
         # Connection stats
@@ -111,7 +163,17 @@ class ConnectionManager:
 
         Returns:
             Connection ID for the new connection
+
+        Raises:
+            ConnectionRefusedError: If server is at capacity
         """
+        # Check connection limits before accepting
+        if len(self.connections) >= self.config.max_connections:
+            await websocket.close(code=1008, reason="Server at capacity")
+            raise ConnectionRefusedError(
+                f"Maximum connections ({self.config.max_connections}) exceeded"
+            )
+
         await websocket.accept()
 
         connection_id = str(uuid.uuid4())
@@ -154,7 +216,7 @@ class ConnectionManager:
         # Close the WebSocket
         try:
             await connection.websocket.close()
-        except (RuntimeError, ConnectionError):
+        except (RuntimeError, ConnectionError, OSError):
             # Connection might already be closed or in invalid state
             pass
 
@@ -184,16 +246,32 @@ class ConnectionManager:
 
         Returns:
             True if message was sent successfully, False otherwise
+
+        Raises:
+            ValueError: If message exceeds maximum size limit
         """
+        message_data = message.model_dump_json()
+
+        # Validate message size
+        if len(message_data) > self.config.max_message_size:
+            raise ValueError(
+                f"Message size ({len(message_data)} bytes) exceeds limit "
+                f"({self.config.max_message_size} bytes)"
+            )
+
         if connection_id not in self.connections:
             if queue_if_offline:
+                # Check queue size limit before adding
+                current_queue_size = len(self.message_queues[connection_id])
+                if current_queue_size >= self.config.max_queue_size:
+                    # Remove oldest message to make room
+                    self.message_queues[connection_id].pop(0)
                 self.message_queues[connection_id].append(message)
             return False
 
         connection = self.connections[connection_id]
 
         try:
-            message_data = message.model_dump_json()
             await connection.websocket.send_text(message_data)
 
             self.total_messages_sent += 1
@@ -210,7 +288,15 @@ class ConnectionManager:
         except WebSocketDisconnect:
             await self.disconnect(connection_id, "connection_lost")
             if queue_if_offline:
+                # Check queue size limit before adding
+                current_queue_size = len(self.message_queues[connection_id])
+                if current_queue_size >= self.config.max_queue_size:
+                    # Remove oldest message to make room
+                    self.message_queues[connection_id].pop(0)
                 self.message_queues[connection_id].append(message)
+            return False
+        except (ConnectionError, OSError) as e:
+            await self.disconnect(connection_id, f"network_error: {str(e)}")
             return False
         except Exception as e:
             await self.disconnect(connection_id, f"send_error: {str(e)}")
@@ -312,6 +398,20 @@ class ConnectionManager:
         if connection_id not in self.connections:
             return
 
+        # Validate incoming message size
+        if len(message_data) > self.config.max_message_size:
+            error_message = WebSocketMessage(
+                type="error",
+                data={
+                    "error": f"Message size ({len(message_data)} bytes) exceeds limit "
+                    f"({self.config.max_message_size} bytes)"
+                },
+            )
+            await self.send_message(
+                connection_id, error_message, queue_if_offline=False
+            )
+            return
+
         connection = self.connections[connection_id]
         connection.last_heartbeat = datetime.now()
         self.total_messages_received += 1
@@ -336,7 +436,9 @@ class ConnectionManager:
                 type="error",
                 data={"error": "Invalid JSON format"},
             )
-            await self.send_message(connection_id, error_message)
+            await self.send_message(
+                connection_id, error_message, queue_if_offline=False
+            )
 
     async def get_connection_stats(self) -> dict[str, Any]:
         """Get connection statistics."""
@@ -409,11 +511,11 @@ class ConnectionManager:
         """Monitor connection health with heartbeats."""
         while True:
             try:
-                await asyncio.sleep(self.heartbeat_interval)
+                await asyncio.sleep(self.config.heartbeat_interval)
 
                 current_time = datetime.now()
                 timeout_threshold = current_time - timedelta(
-                    seconds=self.heartbeat_timeout
+                    seconds=self.config.heartbeat_timeout
                 )
 
                 # Check for timed-out connections

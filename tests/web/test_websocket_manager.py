@@ -310,7 +310,7 @@ class TestConnectionManager:
             # Manually check for timed-out connections (simulate heartbeat monitor logic)
             current_time = datetime.now()
             timeout_threshold = current_time - timedelta(
-                seconds=manager.heartbeat_timeout
+                seconds=manager.config.heartbeat_timeout
             )
 
             for conn_id, conn in list(manager.connections.items()):

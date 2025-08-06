@@ -16,7 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .api import router as api_router
 from .websocket import router as websocket_router
-from .websocket.manager import connection_manager
+from .websocket.manager import WebSocketConfig, connection_manager
 
 
 @asynccontextmanager
@@ -51,10 +51,11 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # Add CORS middleware
+    # Add CORS middleware with configurable origins
+    websocket_config = WebSocketConfig.from_environment()
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:3000", "http://localhost:8080"],
+        allow_origins=websocket_config.cors_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
