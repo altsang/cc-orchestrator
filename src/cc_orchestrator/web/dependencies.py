@@ -30,16 +30,23 @@ async def get_db_session(
     db_manager: DatabaseManager = Depends(get_database_manager),
 ) -> AsyncGenerator[Session, None]:
     """Get a database session for request handling."""
+    session = None
     try:
-        with db_manager.get_session() as session:
-            api_logger.debug("Database session created")
-            yield session
+        session = db_manager.session_factory()
+        api_logger.debug("Database session created")
+        yield session
+        session.commit()
     except Exception as e:
+        if session:
+            session.rollback()
         api_logger.error("Failed to create database session", error=str(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Database session creation failed",
         )
+    finally:
+        if session:
+            session.close()
 
 
 async def get_crud(db_session: Session = Depends(get_db_session)) -> CRUDBase:
