@@ -86,7 +86,9 @@ class TestInstanceWorkflow:
         # 4. Update the instance
         update_data = {"status": "running", "process_id": 12345}
 
-        response = await client.put(f"/api/v1/instances/{instance_id}", json=update_data)
+        response = await client.put(
+            f"/api/v1/instances/{instance_id}", json=update_data
+        )
         assert response.status_code == 200
         updated_data = response.json()
         assert updated_data["data"]["status"] == "running"
@@ -256,7 +258,9 @@ class TestWorktreeWorkflow:
             "current_commit": "abc123def456",
             "has_uncommitted_changes": True,
         }
-        response = await client.put(f"/api/v1/worktrees/{worktree_id}", json=update_data)
+        response = await client.put(
+            f"/api/v1/worktrees/{worktree_id}", json=update_data
+        )
         assert response.status_code == 200
         assert response.json()["data"]["current_commit"] == "abc123def456"
 

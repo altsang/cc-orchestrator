@@ -60,7 +60,7 @@ class TestHealthRouterFunctions:
             "unhealthy_instances": 0,
             "degraded_instances": 0,
             "healthy_instances": 1,
-            "timestamp": "2025-08-03T05:31:33Z"
+            "timestamp": "2025-08-03T05:31:33Z",
         }
 
         return crud
@@ -95,9 +95,7 @@ class TestHealthRouterFunctions:
     async def test_list_instance_health_success(self, mock_crud, pagination_params):
         """Test successful instance health listing."""
         result = await health.list_instance_health(
-            pagination=pagination_params,
-            health_status=None,
-            crud=mock_crud
+            pagination=pagination_params, health_status=None, crud=mock_crud
         )
 
         assert result["total"] == 1
@@ -107,17 +105,17 @@ class TestHealthRouterFunctions:
         assert result["pages"] == 1
 
         # Verify CRUD was called correctly
-        mock_crud.list_instances.assert_called_once_with(
-            offset=0, limit=20, filters={}
-        )
+        mock_crud.list_instances.assert_called_once_with(offset=0, limit=20, filters={})
 
     @pytest.mark.asyncio
-    async def test_list_instance_health_with_status_filter(self, mock_crud, pagination_params):
+    async def test_list_instance_health_with_status_filter(
+        self, mock_crud, pagination_params
+    ):
         """Test instance health listing with status filter."""
         result = await health.list_instance_health(
             pagination=pagination_params,
             health_status=HealthStatus.HEALTHY,
-            crud=mock_crud
+            crud=mock_crud,
         )
 
         assert result["total"] == 1
@@ -179,9 +177,7 @@ class TestHealthRouterFunctions:
     async def test_get_health_history_success(self, mock_crud, pagination_params):
         """Test successful health check history retrieval."""
         result = await health.get_health_check_history(
-            instance_id=1,
-            pagination=pagination_params,
-            crud=mock_crud
+            instance_id=1, pagination=pagination_params, crud=mock_crud
         )
 
         assert result["total"] == 1
@@ -194,12 +190,12 @@ class TestHealthRouterFunctions:
         )
 
     @pytest.mark.asyncio
-    async def test_get_health_history_with_status_filter(self, mock_crud, pagination_params):
+    async def test_get_health_history_with_status_filter(
+        self, mock_crud, pagination_params
+    ):
         """Test health history with status filtering."""
         result = await health.get_health_check_history(
-            instance_id=1,
-            pagination=pagination_params,
-            crud=mock_crud
+            instance_id=1, pagination=pagination_params, crud=mock_crud
         )
 
         assert result["total"] == 1
@@ -210,15 +206,15 @@ class TestHealthRouterFunctions:
         )
 
     @pytest.mark.asyncio
-    async def test_get_health_history_instance_not_found(self, mock_crud, pagination_params):
+    async def test_get_health_history_instance_not_found(
+        self, mock_crud, pagination_params
+    ):
         """Test health history for non-existent instance."""
         mock_crud.get_instance.return_value = None
 
         with pytest.raises(Exception) as exc_info:
             await health.get_health_check_history(
-                instance_id=999,
-                pagination=pagination_params,
-                crud=mock_crud
+                instance_id=999, pagination=pagination_params, crud=mock_crud
             )
 
         assert "Instance with ID 999 not found" in str(exc_info.value)
@@ -282,7 +278,7 @@ class TestHealthValidation:
             "duration_ms": 150.5,
             "check_timestamp": datetime.now(UTC),
             "created_at": datetime.now(UTC),
-            "updated_at": datetime.now(UTC)
+            "updated_at": datetime.now(UTC),
         }
 
         response_model = HealthCheckResponse.model_validate(health_data)
@@ -303,20 +299,20 @@ class TestHealthRouterDecorators:
     def test_decorators_applied_to_health_check(self):
         """Test that decorators are applied to health_check function."""
         func = health.health_check
-        assert hasattr(func, '__wrapped__') or hasattr(func, '__name__')
-        assert func.__name__ == 'health_check'
+        assert hasattr(func, "__wrapped__") or hasattr(func, "__name__")
+        assert func.__name__ == "health_check"
 
     def test_decorators_applied_to_list_instance_health(self):
         """Test that decorators are applied to list_instance_health function."""
         func = health.list_instance_health
-        assert hasattr(func, '__wrapped__') or hasattr(func, '__name__')
-        assert func.__name__ == 'list_instance_health'
+        assert hasattr(func, "__wrapped__") or hasattr(func, "__name__")
+        assert func.__name__ == "list_instance_health"
 
     def test_decorators_applied_to_get_instance_health(self):
         """Test that decorators are applied to get_instance_health function."""
         func = health.get_instance_health
-        assert hasattr(func, '__wrapped__') or hasattr(func, '__name__')
-        assert func.__name__ == 'get_instance_health'
+        assert hasattr(func, "__wrapped__") or hasattr(func, "__name__")
+        assert func.__name__ == "get_instance_health"
 
 
 class TestHealthRouterIntegration:
@@ -393,7 +389,9 @@ class TestHealthRouterErrorCases:
             await health.get_instance_health(instance_id=1, crud=mock_crud_with_errors)
 
         # The error decorator should wrap the original exception
-        assert "Database connection failed" in str(exc_info.value) or "API error" in str(exc_info.value)
+        assert "Database connection failed" in str(
+            exc_info.value
+        ) or "API error" in str(exc_info.value)
 
 
 class TestHealthRouterEdgeCases:
@@ -413,7 +411,7 @@ class TestHealthRouterEdgeCases:
             "unhealthy_instances": 0,
             "degraded_instances": 0,
             "healthy_instances": 0,
-            "timestamp": "2025-08-03T05:31:33Z"
+            "timestamp": "2025-08-03T05:31:33Z",
         }
         return crud
 
@@ -427,12 +425,14 @@ class TestHealthRouterEdgeCases:
         return params
 
     @pytest.mark.asyncio
-    async def test_list_instance_health_empty_results(self, mock_crud_empty_results, pagination_params):
+    async def test_list_instance_health_empty_results(
+        self, mock_crud_empty_results, pagination_params
+    ):
         """Test instance health listing with no instances."""
         result = await health.list_instance_health(
             pagination=pagination_params,
             health_status=None,
-            crud=mock_crud_empty_results
+            crud=mock_crud_empty_results,
         )
 
         assert result["total"] == 0
@@ -440,7 +440,9 @@ class TestHealthRouterEdgeCases:
         assert result["pages"] == 0
 
     @pytest.mark.asyncio
-    async def test_get_health_history_empty_results(self, mock_crud_empty_results, pagination_params):
+    async def test_get_health_history_empty_results(
+        self, mock_crud_empty_results, pagination_params
+    ):
         """Test health history with no results."""
         # Still need a valid instance for the existence check
         mock_instance = Mock()
@@ -448,9 +450,7 @@ class TestHealthRouterEdgeCases:
         mock_crud_empty_results.get_instance.return_value = mock_instance
 
         result = await health.get_health_check_history(
-            instance_id=1,
-            pagination=pagination_params,
-            crud=mock_crud_empty_results
+            instance_id=1, pagination=pagination_params, crud=mock_crud_empty_results
         )
 
         assert result["total"] == 0

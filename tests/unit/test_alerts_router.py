@@ -66,10 +66,7 @@ class TestAlertsRouterFunctions:
     async def test_list_alerts_success(self, mock_crud, pagination_params):
         """Test successful alert listing with pagination."""
         result = await alerts.list_alerts(
-            pagination=pagination_params,
-            level=None,
-            instance_id=None,
-            crud=mock_crud
+            pagination=pagination_params, level=None, instance_id=None, crud=mock_crud
         )
 
         assert result["total"] == 1
@@ -79,9 +76,7 @@ class TestAlertsRouterFunctions:
         assert result["pages"] == 1
 
         # Verify CRUD was called correctly
-        mock_crud.list_alerts.assert_called_once_with(
-            offset=0, limit=20, filters={}
-        )
+        mock_crud.list_alerts.assert_called_once_with(offset=0, limit=20, filters={})
 
     @pytest.mark.asyncio
     async def test_list_alerts_with_filters(self, mock_crud, pagination_params):
@@ -90,7 +85,7 @@ class TestAlertsRouterFunctions:
             pagination=pagination_params,
             level=AlertLevel.ERROR,
             instance_id=1,
-            crud=mock_crud
+            crud=mock_crud,
         )
 
         assert result["total"] == 1
@@ -108,7 +103,7 @@ class TestAlertsRouterFunctions:
             alert_id="ALERT-NEW",
             level=AlertLevel.ERROR,
             message="New test alert",
-            details="test data"
+            details="test data",
         )
 
         # Mock no existing alert
@@ -134,7 +129,7 @@ class TestAlertsRouterFunctions:
             instance_id=999,
             alert_id="ALERT-NEW",
             level=AlertLevel.ERROR,
-            message="Test alert"
+            message="Test alert",
         )
 
         with pytest.raises(Exception) as exc_info:
@@ -154,7 +149,7 @@ class TestAlertsRouterFunctions:
             instance_id=1,
             alert_id="ALERT-001",  # Duplicate
             level=AlertLevel.ERROR,
-            message="Test alert"
+            message="Test alert",
         )
 
         with pytest.raises(Exception) as exc_info:
@@ -189,10 +184,7 @@ class TestAlertsRouterFunctions:
     async def test_get_instance_alerts_success(self, mock_crud, pagination_params):
         """Test successful retrieval of instance alerts."""
         result = await alerts.get_instance_alerts(
-            instance_id=1,
-            pagination=pagination_params,
-            level=None,
-            crud=mock_crud
+            instance_id=1, pagination=pagination_params, level=None, crud=mock_crud
         )
 
         assert result["total"] == 1
@@ -214,20 +206,22 @@ class TestAlertsRouterFunctions:
                 instance_id=999,
                 pagination=pagination_params,
                 level=None,
-                crud=mock_crud
+                crud=mock_crud,
             )
 
         # The error decorator converts HTTPException to CCOrchestratorException
         assert "Instance with ID 999 not found" in str(exc_info.value)
 
     @pytest.mark.asyncio
-    async def test_get_instance_alerts_with_level_filter(self, mock_crud, pagination_params):
+    async def test_get_instance_alerts_with_level_filter(
+        self, mock_crud, pagination_params
+    ):
         """Test instance alerts with level filtering."""
         result = await alerts.get_instance_alerts(
             instance_id=1,
             pagination=pagination_params,
             level=AlertLevel.CRITICAL,
-            crud=mock_crud
+            crud=mock_crud,
         )
 
         assert result["total"] == 1
@@ -244,7 +238,7 @@ class TestAlertsRouterFunctions:
             level=AlertLevel.ERROR,
             pagination=pagination_params,
             instance_id=None,
-            crud=mock_crud
+            crud=mock_crud,
         )
 
         assert result["total"] == 1
@@ -255,13 +249,15 @@ class TestAlertsRouterFunctions:
         )
 
     @pytest.mark.asyncio
-    async def test_get_alerts_by_level_with_instance_filter(self, mock_crud, pagination_params):
+    async def test_get_alerts_by_level_with_instance_filter(
+        self, mock_crud, pagination_params
+    ):
         """Test alerts by level with instance filtering."""
         result = await alerts.get_alerts_by_level(
             level=AlertLevel.CRITICAL,
             pagination=pagination_params,
             instance_id=1,
-            crud=mock_crud
+            crud=mock_crud,
         )
 
         assert result["total"] == 1
@@ -276,7 +272,12 @@ class TestAlertsRouterFunctions:
         """Test successful alert summary retrieval."""
         # Mock multiple alerts with different levels
         mock_alerts = []
-        for level in [AlertLevel.CRITICAL, AlertLevel.ERROR, AlertLevel.WARNING, AlertLevel.INFO]:
+        for level in [
+            AlertLevel.CRITICAL,
+            AlertLevel.ERROR,
+            AlertLevel.WARNING,
+            AlertLevel.INFO,
+        ]:
             alert = Mock()
             alert.level = level
             mock_alerts.append(alert)
@@ -284,9 +285,7 @@ class TestAlertsRouterFunctions:
         mock_crud.list_alerts.return_value = (mock_alerts, 4)
 
         result = await alerts.get_alert_summary(
-            instance_id=None,
-            hours=24,
-            crud=mock_crud
+            instance_id=None, hours=24, crud=mock_crud
         )
 
         assert result["success"] is True
@@ -307,11 +306,7 @@ class TestAlertsRouterFunctions:
         """Test alert summary with instance filtering."""
         mock_crud.list_alerts.return_value = ([], 0)
 
-        result = await alerts.get_alert_summary(
-            instance_id=1,
-            hours=48,
-            crud=mock_crud
-        )
+        result = await alerts.get_alert_summary(instance_id=1, hours=48, crud=mock_crud)
 
         summary = result["data"]
         assert summary["period_hours"] == 48
@@ -323,12 +318,12 @@ class TestAlertsRouterFunctions:
         )
 
     @pytest.mark.asyncio
-    async def test_get_recent_critical_alerts_success(self, mock_crud, pagination_params):
+    async def test_get_recent_critical_alerts_success(
+        self, mock_crud, pagination_params
+    ):
         """Test successful retrieval of recent critical alerts."""
         result = await alerts.get_recent_critical_alerts(
-            pagination=pagination_params,
-            instance_id=None,
-            crud=mock_crud
+            pagination=pagination_params, instance_id=None, crud=mock_crud
         )
 
         assert result["total"] == 1
@@ -339,12 +334,12 @@ class TestAlertsRouterFunctions:
         )
 
     @pytest.mark.asyncio
-    async def test_get_recent_critical_alerts_with_instance_filter(self, mock_crud, pagination_params):
+    async def test_get_recent_critical_alerts_with_instance_filter(
+        self, mock_crud, pagination_params
+    ):
         """Test recent critical alerts with instance filtering."""
         result = await alerts.get_recent_critical_alerts(
-            pagination=pagination_params,
-            instance_id=1,
-            crud=mock_crud
+            pagination=pagination_params, instance_id=1, crud=mock_crud
         )
 
         assert result["total"] == 1
@@ -370,13 +365,15 @@ class TestAlertValidation:
             "details": "test data",  # String, not dict
             "timestamp": datetime.now(UTC),
             "created_at": datetime.now(UTC),
-            "updated_at": datetime.now(UTC)
+            "updated_at": datetime.now(UTC),
         }
 
         # This should not raise an exception
         response_model = AlertResponse.model_validate(alert_data)
         assert response_model.alert_id == "ALERT-001"
-        assert response_model.level == AlertLevel.ERROR.value  # Pydantic converts to string
+        assert (
+            response_model.level == AlertLevel.ERROR.value
+        )  # Pydantic converts to string
 
     def test_alert_create_model_validation(self):
         """Test AlertCreate model validation."""
@@ -386,13 +383,15 @@ class TestAlertValidation:
             "alert_id": "ALERT-NEW",
             "level": AlertLevel.WARNING,
             "message": "New alert message",
-            "details": "test details"  # String, not dict
+            "details": "test details",  # String, not dict
         }
 
         # This should not raise an exception
         create_model = AlertCreate.model_validate(create_data)
         assert create_model.instance_id == 1
-        assert create_model.level == AlertLevel.WARNING.value  # Pydantic converts to string
+        assert (
+            create_model.level == AlertLevel.WARNING.value
+        )  # Pydantic converts to string
 
     def test_alert_level_enum_values(self):
         """Test AlertLevel enum contains expected values."""
@@ -411,24 +410,24 @@ class TestAlertRouterDecorators:
         func = alerts.list_alerts
 
         # The function should be wrapped by decorators
-        assert hasattr(func, '__wrapped__') or hasattr(func, '__name__')
-        assert func.__name__ == 'list_alerts'
+        assert hasattr(func, "__wrapped__") or hasattr(func, "__name__")
+        assert func.__name__ == "list_alerts"
 
     def test_decorators_applied_to_create_alert(self):
         """Test that decorators are applied to create_alert function."""
         func = alerts.create_alert
 
         # The function should be wrapped by decorators
-        assert hasattr(func, '__wrapped__') or hasattr(func, '__name__')
-        assert func.__name__ == 'create_alert'
+        assert hasattr(func, "__wrapped__") or hasattr(func, "__name__")
+        assert func.__name__ == "create_alert"
 
     def test_decorators_applied_to_get_alert(self):
         """Test that decorators are applied to get_alert function."""
         func = alerts.get_alert
 
         # The function should be wrapped by decorators
-        assert hasattr(func, '__wrapped__') or hasattr(func, '__name__')
-        assert func.__name__ == 'get_alert'
+        assert hasattr(func, "__wrapped__") or hasattr(func, "__name__")
+        assert func.__name__ == "get_alert"
 
 
 class TestAlertRouterIntegration:
@@ -461,7 +460,9 @@ class TestAlertRouterIntegration:
         assert "GET" in list_route.methods
 
         # Find the create route
-        create_route = next((r for r in routes if r.path == "/" and "POST" in r.methods), None)
+        create_route = next(
+            (r for r in routes if r.path == "/" and "POST" in r.methods), None
+        )
         assert create_route is not None
         assert "POST" in create_route.methods
 

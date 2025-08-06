@@ -140,7 +140,7 @@ class TestCRUDAdapter:
     @pytest.mark.asyncio
     async def test_list_instances_empty(self, crud_adapter):
         """Test listing instances returns empty list."""
-        with patch('cc_orchestrator.web.crud_adapter.InstanceCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.InstanceCRUD") as mock_crud:
             mock_crud.list_all.return_value = []
 
             result = await crud_adapter.list_instances()
@@ -151,12 +151,14 @@ class TestCRUDAdapter:
     @pytest.mark.asyncio
     async def test_list_instances_with_filters(self, crud_adapter):
         """Test listing instances with filters."""
-        with patch('cc_orchestrator.web.crud_adapter.InstanceCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.InstanceCRUD") as mock_crud:
             mock_instance = create_mock_instance(status=InstanceStatus.RUNNING)
             mock_crud.list_all.return_value = [mock_instance]
 
             filters = {"status": InstanceStatus.RUNNING}
-            result = await crud_adapter.list_instances(offset=10, limit=50, filters=filters)
+            result = await crud_adapter.list_instances(
+                offset=10, limit=50, filters=filters
+            )
 
             assert result == ([mock_instance], 1)
             mock_crud.list_all.assert_called()
@@ -164,13 +166,13 @@ class TestCRUDAdapter:
     @pytest.mark.asyncio
     async def test_create_instance_success(self, crud_adapter):
         """Test successful instance creation."""
-        with patch('cc_orchestrator.web.crud_adapter.InstanceCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.InstanceCRUD") as mock_crud:
             mock_instance = create_mock_instance(
                 issue_id="test-issue-001",
                 workspace_path="/workspace/test",
                 branch_name="main",
                 tmux_session="test-session",
-                extra_metadata={"key": "value"}
+                extra_metadata={"key": "value"},
             )
             mock_crud.create.return_value = mock_instance
 
@@ -179,7 +181,7 @@ class TestCRUDAdapter:
                 "workspace_path": "/workspace/test",
                 "branch_name": "main",
                 "tmux_session": "test-session",
-                "extra_metadata": {"key": "value"}
+                "extra_metadata": {"key": "value"},
             }
 
             result = await crud_adapter.create_instance(instance_data)
@@ -203,11 +205,9 @@ class TestCRUDAdapter:
     @pytest.mark.asyncio
     async def test_create_instance_minimal_data(self, crud_adapter):
         """Test instance creation with minimal data."""
-        with patch('cc_orchestrator.web.crud_adapter.InstanceCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.InstanceCRUD") as mock_crud:
             mock_instance = create_mock_instance(
-                issue_id="minimal-issue",
-                workspace_path=None,
-                extra_metadata={}
+                issue_id="minimal-issue", workspace_path=None, extra_metadata={}
             )
             mock_crud.create.return_value = mock_instance
 
@@ -224,7 +224,7 @@ class TestCRUDAdapter:
     @pytest.mark.asyncio
     async def test_get_instance_success(self, crud_adapter):
         """Test getting existing instance."""
-        with patch('cc_orchestrator.web.crud_adapter.InstanceCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.InstanceCRUD") as mock_crud:
             mock_instance = create_mock_instance(issue_id="test-issue")
             mock_crud.get_by_id.return_value = mock_instance
 
@@ -237,7 +237,7 @@ class TestCRUDAdapter:
     @pytest.mark.asyncio
     async def test_get_instance_not_found(self, crud_adapter):
         """Test getting non-existent instance."""
-        with patch('cc_orchestrator.web.crud_adapter.InstanceCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.InstanceCRUD") as mock_crud:
             mock_crud.get_by_id.side_effect = Exception("Not found")
 
             result = await crud_adapter.get_instance(999)
@@ -248,7 +248,7 @@ class TestCRUDAdapter:
     @pytest.mark.asyncio
     async def test_get_instance_by_issue_id(self, crud_adapter):
         """Test getting instance by issue ID."""
-        with patch('cc_orchestrator.web.crud_adapter.InstanceCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.InstanceCRUD") as mock_crud:
             mock_instance = create_mock_instance(issue_id="test-issue")
             mock_crud.get_by_issue_id.return_value = mock_instance
 
@@ -256,21 +256,26 @@ class TestCRUDAdapter:
 
             assert result == mock_instance
             assert result.issue_id == "test-issue"
-            mock_crud.get_by_issue_id.assert_called_once_with(crud_adapter.session, "test-issue")
+            mock_crud.get_by_issue_id.assert_called_once_with(
+                crud_adapter.session, "test-issue"
+            )
 
     @pytest.mark.asyncio
     async def test_update_instance(self, crud_adapter):
         """Test updating instance."""
-        with patch('cc_orchestrator.web.crud_adapter.InstanceCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.InstanceCRUD") as mock_crud:
             mock_instance = create_mock_instance(
                 instance_id=1,
                 issue_id="test-issue",
                 workspace_path="/new/path",
-                status=InstanceStatus.RUNNING
+                status=InstanceStatus.RUNNING,
             )
             mock_crud.update.return_value = mock_instance
 
-            update_data = {"workspace_path": "/new/path", "status": InstanceStatus.RUNNING}
+            update_data = {
+                "workspace_path": "/new/path",
+                "status": InstanceStatus.RUNNING,
+            }
 
             result = await crud_adapter.update_instance(1, update_data)
 
@@ -282,7 +287,7 @@ class TestCRUDAdapter:
     @pytest.mark.asyncio
     async def test_delete_instance(self, crud_adapter):
         """Test deleting instance."""
-        with patch('cc_orchestrator.web.crud_adapter.InstanceCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.InstanceCRUD") as mock_crud:
             mock_crud.delete.return_value = None
 
             # Should not raise exception
@@ -293,7 +298,7 @@ class TestCRUDAdapter:
     @pytest.mark.asyncio
     async def test_list_tasks_empty(self, crud_adapter):
         """Test listing tasks returns empty list."""
-        with patch('cc_orchestrator.web.crud_adapter.TaskCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.TaskCRUD") as mock_crud:
             mock_crud.list_pending.return_value = []
 
             result = await crud_adapter.list_tasks()
@@ -304,7 +309,7 @@ class TestCRUDAdapter:
     @pytest.mark.asyncio
     async def test_list_tasks_with_filters(self, crud_adapter):
         """Test listing tasks with filters."""
-        with patch('cc_orchestrator.web.crud_adapter.TaskCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.TaskCRUD") as mock_crud:
             mock_task = create_mock_task(status=TaskStatus.IN_PROGRESS, instance_id=1)
             mock_crud.list_by_instance.return_value = [mock_task]
 
@@ -314,19 +319,21 @@ class TestCRUDAdapter:
             # Should return the paginated slice: [mock_task][5:30] = [] (since offset is 5, list has 1 item)
             # But total count should be 1
             assert result == ([], 1)
-            mock_crud.list_by_instance.assert_called_with(crud_adapter.session, 1, status=TaskStatus.IN_PROGRESS)
+            mock_crud.list_by_instance.assert_called_with(
+                crud_adapter.session, 1, status=TaskStatus.IN_PROGRESS
+            )
 
     @pytest.mark.asyncio
     async def test_create_task_success(self, crud_adapter):
         """Test successful task creation."""
-        with patch('cc_orchestrator.web.crud_adapter.TaskCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.TaskCRUD") as mock_crud:
             mock_task = create_mock_task(
                 title="Test Task",
                 description="Test task description",
                 instance_id=1,
                 worktree_id=2,
                 requirements={"python": "3.11"},
-                extra_metadata={"priority": "high"}
+                extra_metadata={"priority": "high"},
             )
             mock_crud.create.return_value = mock_task
 
@@ -336,7 +343,7 @@ class TestCRUDAdapter:
                 "instance_id": 1,
                 "worktree_id": 2,
                 "requirements": {"python": "3.11"},
-                "extra_metadata": {"priority": "high"}
+                "extra_metadata": {"priority": "high"},
             }
 
             result = await crud_adapter.create_task(task_data)
@@ -354,12 +361,12 @@ class TestCRUDAdapter:
     @pytest.mark.asyncio
     async def test_create_task_minimal_data(self, crud_adapter):
         """Test task creation with minimal data."""
-        with patch('cc_orchestrator.web.crud_adapter.TaskCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.TaskCRUD") as mock_crud:
             mock_task = create_mock_task(
                 title="Minimal Task",
                 description=None,
                 requirements={},
-                extra_metadata={}
+                extra_metadata={},
             )
             mock_crud.create.return_value = mock_task
 
@@ -377,7 +384,7 @@ class TestCRUDAdapter:
     @pytest.mark.asyncio
     async def test_get_task(self, crud_adapter):
         """Test getting task by ID."""
-        with patch('cc_orchestrator.web.crud_adapter.TaskCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.TaskCRUD") as mock_crud:
             mock_task = create_mock_task()
             mock_crud.get_by_id.return_value = mock_task
 
@@ -389,11 +396,9 @@ class TestCRUDAdapter:
     @pytest.mark.asyncio
     async def test_update_task(self, crud_adapter):
         """Test updating task."""
-        with patch('cc_orchestrator.web.crud_adapter.TaskCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.TaskCRUD") as mock_crud:
             mock_task = create_mock_task(
-                task_id=1,
-                title="Updated Task",
-                status=TaskStatus.COMPLETED
+                task_id=1, title="Updated Task", status=TaskStatus.COMPLETED
             )
             mock_crud.update_status.return_value = mock_task
 
@@ -408,7 +413,7 @@ class TestCRUDAdapter:
     @pytest.mark.asyncio
     async def test_delete_task(self, crud_adapter):
         """Test deleting task."""
-        with patch('cc_orchestrator.web.crud_adapter.TaskCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.TaskCRUD") as mock_crud:
             mock_crud.get_by_id.return_value = create_mock_task()
 
             # Should not raise exception
@@ -419,7 +424,7 @@ class TestCRUDAdapter:
     @pytest.mark.asyncio
     async def test_list_worktrees_empty(self, crud_adapter):
         """Test listing worktrees returns empty list."""
-        with patch('cc_orchestrator.web.crud_adapter.WorktreeCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.WorktreeCRUD") as mock_crud:
             mock_crud.list_all.return_value = []
 
             result = await crud_adapter.list_worktrees()
@@ -430,22 +435,26 @@ class TestCRUDAdapter:
     @pytest.mark.asyncio
     async def test_list_worktrees_with_filters(self, crud_adapter):
         """Test listing worktrees with filters."""
-        with patch('cc_orchestrator.web.crud_adapter.WorktreeCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.WorktreeCRUD") as mock_crud:
             mock_worktree = create_mock_worktree(status=WorktreeStatus.ACTIVE)
             mock_crud.list_by_status.return_value = [mock_worktree]
 
             filters = {"status": WorktreeStatus.ACTIVE, "branch_name": "main"}
-            result = await crud_adapter.list_worktrees(offset=2, limit=10, filters=filters)
+            result = await crud_adapter.list_worktrees(
+                offset=2, limit=10, filters=filters
+            )
 
             # Should return the paginated slice: [mock_worktree][2:12] = [] (since offset is 2, list has 1 item)
             # But total count should be 1
             assert result == ([], 1)
-            mock_crud.list_by_status.assert_called_with(crud_adapter.session, WorktreeStatus.ACTIVE)
+            mock_crud.list_by_status.assert_called_with(
+                crud_adapter.session, WorktreeStatus.ACTIVE
+            )
 
     @pytest.mark.asyncio
     async def test_create_worktree_success(self, crud_adapter):
         """Test successful worktree creation."""
-        with patch('cc_orchestrator.web.crud_adapter.WorktreeCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.WorktreeCRUD") as mock_crud:
             mock_worktree = create_mock_worktree(
                 name="test-worktree",
                 path="/workspace/test-worktree",
@@ -453,7 +462,7 @@ class TestCRUDAdapter:
                 repository_url="https://github.com/test/repo.git",
                 instance_id=1,
                 git_config={"user.name": "Test User"},
-                extra_metadata={"created_by": "test"}
+                extra_metadata={"created_by": "test"},
             )
             mock_crud.create.return_value = mock_worktree
 
@@ -464,7 +473,7 @@ class TestCRUDAdapter:
                 "repository_url": "https://github.com/test/repo.git",
                 "instance_id": 1,
                 "git_config": {"user.name": "Test User"},
-                "extra_metadata": {"created_by": "test"}
+                "extra_metadata": {"created_by": "test"},
             }
 
             result = await crud_adapter.create_worktree(worktree_data)
@@ -483,21 +492,21 @@ class TestCRUDAdapter:
     @pytest.mark.asyncio
     async def test_create_worktree_minimal_data(self, crud_adapter):
         """Test worktree creation with minimal data."""
-        with patch('cc_orchestrator.web.crud_adapter.WorktreeCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.WorktreeCRUD") as mock_crud:
             mock_worktree = create_mock_worktree(
                 name="minimal-worktree",
                 path="/minimal/path",
                 branch_name="main",
                 repository_url=None,
                 git_config={},
-                extra_metadata={}
+                extra_metadata={},
             )
             mock_crud.create.return_value = mock_worktree
 
             worktree_data = {
                 "name": "minimal-worktree",
                 "path": "/minimal/path",
-                "branch_name": "main"
+                "branch_name": "main",
             }
 
             result = await crud_adapter.create_worktree(worktree_data)
@@ -514,7 +523,7 @@ class TestCRUDAdapter:
     @pytest.mark.asyncio
     async def test_get_worktree(self, crud_adapter):
         """Test getting worktree by ID."""
-        with patch('cc_orchestrator.web.crud_adapter.WorktreeCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.WorktreeCRUD") as mock_crud:
             mock_worktree = create_mock_worktree()
             mock_crud.get_by_id.return_value = mock_worktree
 
@@ -526,21 +535,25 @@ class TestCRUDAdapter:
     @pytest.mark.asyncio
     async def test_get_worktree_by_path(self, crud_adapter):
         """Test getting worktree by path."""
-        with patch('cc_orchestrator.web.crud_adapter.WorktreeCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.WorktreeCRUD") as mock_crud:
             mock_worktree = create_mock_worktree(path="/test/path")
             mock_crud.get_by_path.return_value = mock_worktree
 
             result = await crud_adapter.get_worktree_by_path("/test/path")
 
             assert result == mock_worktree
-            mock_crud.get_by_path.assert_called_once_with(crud_adapter.session, "/test/path")
+            mock_crud.get_by_path.assert_called_once_with(
+                crud_adapter.session, "/test/path"
+            )
 
     @pytest.mark.asyncio
     async def test_update_worktree_success(self, crud_adapter):
         """Test updating worktree."""
-        with patch('cc_orchestrator.web.crud_adapter.WorktreeCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.WorktreeCRUD") as mock_crud:
             # Mock the existing worktree for get_by_id
-            existing_worktree = create_mock_worktree(worktree_id=1, status=WorktreeStatus.ACTIVE)
+            existing_worktree = create_mock_worktree(
+                worktree_id=1, status=WorktreeStatus.ACTIVE
+            )
             mock_crud.get_by_id.return_value = existing_worktree
 
             # Mock the updated worktree
@@ -549,14 +562,14 @@ class TestCRUDAdapter:
                 name="updated-name",
                 path="/workspace/test-worktree",  # Default from existing
                 status=WorktreeStatus.INACTIVE,
-                branch_name="main"  # Default from implementation
+                branch_name="main",  # Default from implementation
             )
             mock_crud.update_status.return_value = updated_worktree
 
             update_data = {
                 "name": "updated-name",
                 "status": WorktreeStatus.INACTIVE,
-                "path": "/custom/path"
+                "path": "/custom/path",
             }
 
             result = await crud_adapter.update_worktree(1, update_data)
@@ -569,9 +582,11 @@ class TestCRUDAdapter:
     @pytest.mark.asyncio
     async def test_update_worktree_secure_path(self, crud_adapter):
         """Test updating worktree uses secure temp directory."""
-        with patch('cc_orchestrator.web.crud_adapter.WorktreeCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.WorktreeCRUD") as mock_crud:
             # Mock the existing worktree for get_by_id
-            existing_worktree = create_mock_worktree(worktree_id=42, name="test-worktree", status=WorktreeStatus.ACTIVE)
+            existing_worktree = create_mock_worktree(
+                worktree_id=42, name="test-worktree", status=WorktreeStatus.ACTIVE
+            )
             mock_crud.get_by_id.return_value = existing_worktree
 
             update_data = {"name": "secure-worktree"}
@@ -587,7 +602,7 @@ class TestCRUDAdapter:
     @pytest.mark.asyncio
     async def test_delete_worktree(self, crud_adapter):
         """Test deleting worktree."""
-        with patch('cc_orchestrator.web.crud_adapter.WorktreeCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.WorktreeCRUD") as mock_crud:
             mock_crud.delete.return_value = None
 
             # Should not raise exception
@@ -606,14 +621,16 @@ class TestCRUDAdapter:
     async def test_list_configurations_with_filters(self, crud_adapter):
         """Test listing configurations with filters."""
         filters = {"scope": ConfigScope.GLOBAL, "instance_id": 1}
-        result = await crud_adapter.list_configurations(offset=1, limit=5, filters=filters)
+        result = await crud_adapter.list_configurations(
+            offset=1, limit=5, filters=filters
+        )
 
         assert result == ([], 0)
 
     @pytest.mark.asyncio
     async def test_create_configuration_success(self, crud_adapter):
         """Test successful configuration creation."""
-        with patch('cc_orchestrator.web.crud_adapter.ConfigurationCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.ConfigurationCRUD") as mock_crud:
             mock_config = create_mock_configuration(
                 key="test_key",
                 value="test_value",
@@ -622,7 +639,7 @@ class TestCRUDAdapter:
                 description="Test configuration",
                 is_secret=True,
                 is_readonly=False,
-                extra_metadata={"env": "test"}
+                extra_metadata={"env": "test"},
             )
             mock_crud.create.return_value = mock_config
 
@@ -634,7 +651,7 @@ class TestCRUDAdapter:
                 "description": "Test configuration",
                 "is_secret": True,
                 "is_readonly": False,
-                "extra_metadata": {"env": "test"}
+                "extra_metadata": {"env": "test"},
             }
 
             result = await crud_adapter.create_configuration(config_data)
@@ -654,7 +671,7 @@ class TestCRUDAdapter:
     @pytest.mark.asyncio
     async def test_create_configuration_minimal_data(self, crud_adapter):
         """Test configuration creation with minimal data."""
-        with patch('cc_orchestrator.web.crud_adapter.ConfigurationCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.ConfigurationCRUD") as mock_crud:
             mock_config = create_mock_configuration(
                 key="minimal_key",
                 value="minimal_value",
@@ -662,14 +679,14 @@ class TestCRUDAdapter:
                 instance_id=None,
                 is_secret=False,
                 is_readonly=False,
-                extra_metadata={}
+                extra_metadata={},
             )
             mock_crud.create.return_value = mock_config
 
             config_data = {
                 "key": "minimal_key",
                 "value": "minimal_value",
-                "scope": ConfigScope.USER
+                "scope": ConfigScope.USER,
             }
 
             result = await crud_adapter.create_configuration(config_data)
@@ -695,10 +712,9 @@ class TestCRUDAdapter:
     @pytest.mark.asyncio
     async def test_get_configuration_by_key_scope(self, crud_adapter):
         """Test getting configuration by key and scope."""
-        with patch('cc_orchestrator.web.crud_adapter.ConfigurationCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.ConfigurationCRUD") as mock_crud:
             mock_config = create_mock_configuration(
-                key="test_key",
-                scope=ConfigScope.GLOBAL
+                key="test_key", scope=ConfigScope.GLOBAL
             )
             mock_crud.get_by_key_scope.return_value = mock_config
 
@@ -715,7 +731,7 @@ class TestCRUDAdapter:
         update_data = {
             "value": "updated_value",
             "description": "Updated description",
-            "is_secret": True
+            "is_secret": True,
         }
 
         result = await crud_adapter.update_configuration(1, update_data)
@@ -744,7 +760,9 @@ class TestCRUDAdapter:
     async def test_list_health_checks_with_filters(self, crud_adapter):
         """Test listing health checks with filters."""
         filters = {"instance_id": 1, "overall_status": HealthStatus.HEALTHY}
-        result = await crud_adapter.list_health_checks(offset=3, limit=15, filters=filters)
+        result = await crud_adapter.list_health_checks(
+            offset=3, limit=15, filters=filters
+        )
 
         assert result == ([], 0)
 
@@ -756,7 +774,7 @@ class TestCRUDAdapter:
             "overall_status": HealthStatus.HEALTHY,
             "check_results": '{"database": "healthy"}',
             "duration_ms": 150.5,
-            "check_timestamp": datetime.now(UTC)
+            "check_timestamp": datetime.now(UTC),
         }
 
         result = await crud_adapter.create_health_check(check_data)
@@ -793,7 +811,7 @@ class TestCRUDAdapter:
             "level": "error",
             "message": "Test alert message",
             "details": "Alert details",
-            "timestamp": datetime.now(UTC)
+            "timestamp": datetime.now(UTC),
         }
 
         result = await crud_adapter.create_alert(alert_data)
@@ -826,7 +844,7 @@ class TestPlaceholderModels:
             "instance_id": 1,
             "alert_id": "ALERT-001",
             "level": "error",
-            "message": "Test alert"
+            "message": "Test alert",
         }
 
         alert = Alert(**alert_data)
@@ -854,7 +872,7 @@ class TestPlaceholderModels:
             "instance_id": 1,
             "overall_status": "healthy",
             "check_results": '{"database": "ok"}',
-            "duration_ms": 150.0
+            "duration_ms": 150.0,
         }
 
         health_check = HealthCheck(**check_data)
@@ -881,7 +899,7 @@ class TestPlaceholderModels:
             "instance_id": 1,
             "attempt_type": "restart",
             "status": "success",
-            "details": "Successfully restarted"
+            "details": "Successfully restarted",
         }
 
         recovery = RecoveryAttempt(**recovery_data)
@@ -914,7 +932,7 @@ class TestCRUDAdapterEdgeCases:
     @pytest.mark.asyncio
     async def test_multiple_instance_creation(self, crud_adapter):
         """Test creating multiple instances increments counter correctly."""
-        with patch('cc_orchestrator.web.crud_adapter.InstanceCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.InstanceCRUD") as mock_crud:
             # Mock first instance
             instance1 = create_mock_instance(instance_id=1, issue_id="issue-1")
             # Mock second instance
@@ -935,9 +953,15 @@ class TestCRUDAdapterEdgeCases:
     @pytest.mark.asyncio
     async def test_operations_with_none_filters(self, crud_adapter):
         """Test operations handle None filters correctly."""
-        with patch('cc_orchestrator.web.crud_adapter.InstanceCRUD') as mock_instance_crud, \
-             patch('cc_orchestrator.web.crud_adapter.TaskCRUD') as mock_task_crud, \
-             patch('cc_orchestrator.web.crud_adapter.WorktreeCRUD') as mock_worktree_crud:
+        with (
+            patch(
+                "cc_orchestrator.web.crud_adapter.InstanceCRUD"
+            ) as mock_instance_crud,
+            patch("cc_orchestrator.web.crud_adapter.TaskCRUD") as mock_task_crud,
+            patch(
+                "cc_orchestrator.web.crud_adapter.WorktreeCRUD"
+            ) as mock_worktree_crud,
+        ):
 
             # Mock empty returns
             mock_instance_crud.list_all.return_value = []
@@ -955,9 +979,15 @@ class TestCRUDAdapterEdgeCases:
     @pytest.mark.asyncio
     async def test_operations_with_empty_filters(self, crud_adapter):
         """Test operations handle empty filters correctly."""
-        with patch('cc_orchestrator.web.crud_adapter.InstanceCRUD') as mock_instance_crud, \
-             patch('cc_orchestrator.web.crud_adapter.TaskCRUD') as mock_task_crud, \
-             patch('cc_orchestrator.web.crud_adapter.WorktreeCRUD') as mock_worktree_crud:
+        with (
+            patch(
+                "cc_orchestrator.web.crud_adapter.InstanceCRUD"
+            ) as mock_instance_crud,
+            patch("cc_orchestrator.web.crud_adapter.TaskCRUD") as mock_task_crud,
+            patch(
+                "cc_orchestrator.web.crud_adapter.WorktreeCRUD"
+            ) as mock_worktree_crud,
+        ):
 
             # Mock empty returns
             mock_instance_crud.list_all.return_value = []

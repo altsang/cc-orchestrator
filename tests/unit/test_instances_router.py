@@ -82,7 +82,7 @@ class TestInstancesRouterFunctions:
             pagination=pagination_params,
             status_filter=None,
             branch_name=None,
-            crud=mock_crud
+            crud=mock_crud,
         )
 
         assert result["total"] == 1
@@ -92,9 +92,7 @@ class TestInstancesRouterFunctions:
         assert result["pages"] == 1
 
         # Verify CRUD was called correctly
-        mock_crud.list_instances.assert_called_once_with(
-            offset=0, limit=20, filters={}
-        )
+        mock_crud.list_instances.assert_called_once_with(offset=0, limit=20, filters={})
 
     @pytest.mark.asyncio
     async def test_list_instances_with_filters(self, mock_crud, pagination_params):
@@ -103,17 +101,16 @@ class TestInstancesRouterFunctions:
             pagination=pagination_params,
             status_filter=InstanceStatus.RUNNING,
             branch_name="feature-branch",
-            crud=mock_crud
+            crud=mock_crud,
         )
 
         assert result["total"] == 1
 
         # Verify filters were applied
         mock_crud.list_instances.assert_called_once_with(
-            offset=0, limit=20, filters={
-                "status": InstanceStatus.RUNNING,
-                "branch_name": "feature-branch"
-            }
+            offset=0,
+            limit=20,
+            filters={"status": InstanceStatus.RUNNING, "branch_name": "feature-branch"},
         )
 
     @pytest.mark.asyncio
@@ -123,12 +120,11 @@ class TestInstancesRouterFunctions:
             issue_id="new-issue-001",
             workspace_path="/workspace/new",
             branch_name="new-branch",
-            tmux_session="new-session"
+            tmux_session="new-session",
         )
 
         result = await instances.create_instance(
-            instance_data=instance_data,
-            crud=mock_crud
+            instance_data=instance_data, crud=mock_crud
         )
 
         assert result["success"] is True
@@ -149,16 +145,15 @@ class TestInstancesRouterFunctions:
         instance_data = InstanceCreate(
             issue_id="duplicate-issue",
             workspace_path="/workspace/duplicate",
-            branch_name="duplicate-branch"
+            branch_name="duplicate-branch",
         )
 
         with pytest.raises(Exception) as exc_info:
-            await instances.create_instance(
-                instance_data=instance_data,
-                crud=mock_crud
-            )
+            await instances.create_instance(instance_data=instance_data, crud=mock_crud)
 
-        assert "Instance with issue_id 'duplicate-issue' already exists" in str(exc_info.value)
+        assert "Instance with issue_id 'duplicate-issue' already exists" in str(
+            exc_info.value
+        )
 
     @pytest.mark.asyncio
     async def test_get_instance_success(self, mock_crud):
@@ -185,14 +180,11 @@ class TestInstancesRouterFunctions:
     async def test_update_instance_success(self, mock_crud):
         """Test successful instance update."""
         update_data = InstanceUpdate(
-            workspace_path="/workspace/updated",
-            branch_name="updated-branch"
+            workspace_path="/workspace/updated", branch_name="updated-branch"
         )
 
         result = await instances.update_instance(
-            instance_id=1,
-            instance_data=update_data,
-            crud=mock_crud
+            instance_id=1, instance_data=update_data, crud=mock_crud
         )
 
         assert result["success"] is True
@@ -210,9 +202,7 @@ class TestInstancesRouterFunctions:
 
         with pytest.raises(Exception) as exc_info:
             await instances.update_instance(
-                instance_id=999,
-                instance_data=update_data,
-                crud=mock_crud
+                instance_id=999, instance_data=update_data, crud=mock_crud
             )
 
         assert "Instance with ID 999 not found" in str(exc_info.value)
@@ -376,9 +366,7 @@ class TestInstancesRouterFunctions:
         mock_crud.list_tasks.return_value = ([mock_task], 1)
 
         result = await instances.get_instance_tasks(
-            instance_id=1,
-            pagination=pagination_params,
-            crud=mock_crud
+            instance_id=1, pagination=pagination_params, crud=mock_crud
         )
 
         assert result["total"] == 1
@@ -399,9 +387,7 @@ class TestInstancesRouterFunctions:
 
         with pytest.raises(Exception) as exc_info:
             await instances.get_instance_tasks(
-                instance_id=999,
-                pagination=pagination_params,
-                crud=mock_crud
+                instance_id=999, pagination=pagination_params, crud=mock_crud
             )
 
         assert "Instance with ID 999 not found" in str(exc_info.value)
@@ -422,7 +408,7 @@ class TestInstanceValidation:
             "tmux_session": "test-session",
             "process_id": 12345,
             "created_at": datetime.now(UTC),
-            "updated_at": datetime.now(UTC)
+            "updated_at": datetime.now(UTC),
         }
 
         response_model = InstanceResponse.model_validate(instance_data)
@@ -435,7 +421,7 @@ class TestInstanceValidation:
             "issue_id": "new-issue",
             "workspace_path": "/workspace/new",
             "branch_name": "new-branch",
-            "tmux_session": "new-session"
+            "tmux_session": "new-session",
         }
 
         create_model = InstanceCreate.model_validate(create_data)
@@ -456,20 +442,20 @@ class TestInstanceRouterDecorators:
     def test_decorators_applied_to_list_instances(self):
         """Test that decorators are applied to list_instances function."""
         func = instances.list_instances
-        assert hasattr(func, '__wrapped__') or hasattr(func, '__name__')
-        assert func.__name__ == 'list_instances'
+        assert hasattr(func, "__wrapped__") or hasattr(func, "__name__")
+        assert func.__name__ == "list_instances"
 
     def test_decorators_applied_to_create_instance(self):
         """Test that decorators are applied to create_instance function."""
         func = instances.create_instance
-        assert hasattr(func, '__wrapped__') or hasattr(func, '__name__')
-        assert func.__name__ == 'create_instance'
+        assert hasattr(func, "__wrapped__") or hasattr(func, "__name__")
+        assert func.__name__ == "create_instance"
 
     def test_decorators_applied_to_get_instance(self):
         """Test that decorators are applied to get_instance function."""
         func = instances.get_instance
-        assert hasattr(func, '__wrapped__') or hasattr(func, '__name__')
-        assert func.__name__ == 'get_instance'
+        assert hasattr(func, "__wrapped__") or hasattr(func, "__name__")
+        assert func.__name__ == "get_instance"
 
 
 class TestInstanceRouterIntegration:
@@ -533,7 +519,9 @@ class TestInstanceRouterErrorCases:
         return crud
 
     @pytest.mark.asyncio
-    async def test_instance_operations_handle_database_errors(self, mock_crud_with_errors):
+    async def test_instance_operations_handle_database_errors(
+        self, mock_crud_with_errors
+    ):
         """Test instance operations when instance not found."""
         from fastapi import HTTPException
 
@@ -566,13 +554,15 @@ class TestInstanceRouterEdgeCases:
         return params
 
     @pytest.mark.asyncio
-    async def test_list_instances_empty_results(self, mock_crud_empty_results, pagination_params):
+    async def test_list_instances_empty_results(
+        self, mock_crud_empty_results, pagination_params
+    ):
         """Test instance listing with no instances."""
         result = await instances.list_instances(
             pagination=pagination_params,
             status_filter=None,
             branch_name=None,
-            crud=mock_crud_empty_results
+            crud=mock_crud_empty_results,
         )
 
         assert result["total"] == 0
@@ -580,7 +570,9 @@ class TestInstanceRouterEdgeCases:
         assert result["pages"] == 0
 
     @pytest.mark.asyncio
-    async def test_get_instance_tasks_empty_results(self, mock_crud_empty_results, pagination_params):
+    async def test_get_instance_tasks_empty_results(
+        self, mock_crud_empty_results, pagination_params
+    ):
         """Test instance tasks with no results."""
         # Still need a valid instance for the existence check
         mock_instance = Mock()
@@ -588,9 +580,7 @@ class TestInstanceRouterEdgeCases:
         mock_crud_empty_results.get_instance.return_value = mock_instance
 
         result = await instances.get_instance_tasks(
-            instance_id=1,
-            pagination=pagination_params,
-            crud=mock_crud_empty_results
+            instance_id=1, pagination=pagination_params, crud=mock_crud_empty_results
         )
 
         assert result["total"] == 0

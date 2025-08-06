@@ -85,7 +85,7 @@ class TestTasksRouterFunctions:
             priority_filter=None,
             instance_id=None,
             worktree_id=None,
-            crud=mock_crud
+            crud=mock_crud,
         )
 
         assert result["total"] == 1
@@ -95,9 +95,7 @@ class TestTasksRouterFunctions:
         assert result["pages"] == 1
 
         # Verify CRUD was called correctly
-        mock_crud.list_tasks.assert_called_once_with(
-            offset=0, limit=20, filters={}
-        )
+        mock_crud.list_tasks.assert_called_once_with(offset=0, limit=20, filters={})
 
     @pytest.mark.asyncio
     async def test_list_tasks_with_filters(self, mock_crud, pagination_params):
@@ -108,19 +106,21 @@ class TestTasksRouterFunctions:
             priority_filter=TaskPriority.HIGH,
             instance_id=1,
             worktree_id=2,
-            crud=mock_crud
+            crud=mock_crud,
         )
 
         assert result["total"] == 1
 
         # Verify filters were applied
         mock_crud.list_tasks.assert_called_once_with(
-            offset=0, limit=20, filters={
+            offset=0,
+            limit=20,
+            filters={
                 "status": TaskStatus.IN_PROGRESS,
                 "priority": TaskPriority.HIGH,
                 "instance_id": 1,
-                "worktree_id": 2
-            }
+                "worktree_id": 2,
+            },
         )
 
     @pytest.mark.asyncio
@@ -131,7 +131,7 @@ class TestTasksRouterFunctions:
             description="New task description",
             priority=TaskPriority.HIGH,
             instance_id=1,
-            estimated_duration=120
+            estimated_duration=120,
         )
 
         result = await tasks.create_task(task_data=task_data, crud=mock_crud)
@@ -148,9 +148,7 @@ class TestTasksRouterFunctions:
     async def test_create_task_with_worktree(self, mock_crud):
         """Test task creation with worktree validation."""
         task_data = TaskCreate(
-            title="Worktree Task",
-            description="Task with worktree",
-            worktree_id=1
+            title="Worktree Task", description="Task with worktree", worktree_id=1
         )
 
         result = await tasks.create_task(task_data=task_data, crud=mock_crud)
@@ -165,10 +163,7 @@ class TestTasksRouterFunctions:
         """Test task creation with non-existent instance."""
         mock_crud.get_instance.return_value = None
 
-        task_data = TaskCreate(
-            title="Invalid Task",
-            instance_id=999
-        )
+        task_data = TaskCreate(title="Invalid Task", instance_id=999)
 
         with pytest.raises(Exception) as exc_info:
             await tasks.create_task(task_data=task_data, crud=mock_crud)
@@ -180,10 +175,7 @@ class TestTasksRouterFunctions:
         """Test task creation with non-existent worktree."""
         mock_crud.get_worktree.return_value = None
 
-        task_data = TaskCreate(
-            title="Invalid Worktree Task",
-            worktree_id=999
-        )
+        task_data = TaskCreate(title="Invalid Worktree Task", worktree_id=999)
 
         with pytest.raises(Exception) as exc_info:
             await tasks.create_task(task_data=task_data, crud=mock_crud)
@@ -214,15 +206,10 @@ class TestTasksRouterFunctions:
     @pytest.mark.asyncio
     async def test_update_task_success(self, mock_crud):
         """Test successful task update."""
-        update_data = TaskUpdate(
-            title="Updated Task",
-            priority=TaskPriority.HIGH
-        )
+        update_data = TaskUpdate(title="Updated Task", priority=TaskPriority.HIGH)
 
         result = await tasks.update_task(
-            task_id=1,
-            task_data=update_data,
-            crud=mock_crud
+            task_id=1, task_data=update_data, crud=mock_crud
         )
 
         assert result["success"] is True
@@ -239,11 +226,7 @@ class TestTasksRouterFunctions:
         update_data = TaskUpdate(title="Updated Task")
 
         with pytest.raises(Exception) as exc_info:
-            await tasks.update_task(
-                task_id=999,
-                task_data=update_data,
-                crud=mock_crud
-            )
+            await tasks.update_task(task_id=999, task_data=update_data, crud=mock_crud)
 
         assert "Task with ID 999 not found" in str(exc_info.value)
 
@@ -320,9 +303,7 @@ class TestTasksRouterFunctions:
         mock_crud.get_task.return_value = mock_task
 
         result = await tasks.complete_task(
-            task_id=1,
-            results={"output": "success"},
-            crud=mock_crud
+            task_id=1, results={"output": "success"}, crud=mock_crud
         )
 
         assert result["success"] is True
@@ -358,7 +339,9 @@ class TestTasksRouterFunctions:
         assert "Task cancelled successfully" in result["message"]
 
         mock_crud.get_task.assert_called_once_with(1)
-        mock_crud.update_task.assert_called_once_with(1, {"status": TaskStatus.CANCELLED})
+        mock_crud.update_task.assert_called_once_with(
+            1, {"status": TaskStatus.CANCELLED}
+        )
 
     @pytest.mark.asyncio
     async def test_cancel_task_already_completed(self, mock_crud):
@@ -378,9 +361,7 @@ class TestTasksRouterFunctions:
         """Test successful task assignment."""
         assignment_data = {"instance_id": 2}
         result = await tasks.assign_task(
-            assignment_data=assignment_data,
-            task_id=1,
-            crud=mock_crud
+            assignment_data=assignment_data, task_id=1, crud=mock_crud
         )
 
         assert result["success"] is True
@@ -398,9 +379,7 @@ class TestTasksRouterFunctions:
 
         with pytest.raises(Exception) as exc_info:
             await tasks.assign_task(
-                assignment_data=assignment_data,
-                task_id=1,
-                crud=mock_crud
+                assignment_data=assignment_data, task_id=1, crud=mock_crud
             )
 
         assert "Instance with ID 999 not found" in str(exc_info.value)
@@ -439,7 +418,7 @@ class TestTaskValidation:
             "started_at": None,
             "completed_at": None,
             "created_at": datetime.now(UTC),
-            "updated_at": datetime.now(UTC)
+            "updated_at": datetime.now(UTC),
         }
 
         response_model = TaskResponse.model_validate(task_data)
@@ -452,7 +431,7 @@ class TestTaskValidation:
             "title": "New Task",
             "description": "New task description",
             "priority": TaskPriority.HIGH,
-            "estimated_duration": 90
+            "estimated_duration": 90,
         }
 
         create_model = TaskCreate.model_validate(create_data)
@@ -461,7 +440,13 @@ class TestTaskValidation:
 
     def test_task_status_enum_values(self):
         """Test TaskStatus enum contains expected values."""
-        expected_statuses = {"pending", "in_progress", "completed", "cancelled", "failed"}
+        expected_statuses = {
+            "pending",
+            "in_progress",
+            "completed",
+            "cancelled",
+            "failed",
+        }
         actual_statuses = {status.value for status in TaskStatus}
 
         assert actual_statuses == expected_statuses
@@ -480,20 +465,20 @@ class TestTaskRouterDecorators:
     def test_decorators_applied_to_list_tasks(self):
         """Test that decorators are applied to list_tasks function."""
         func = tasks.list_tasks
-        assert hasattr(func, '__wrapped__') or hasattr(func, '__name__')
-        assert func.__name__ == 'list_tasks'
+        assert hasattr(func, "__wrapped__") or hasattr(func, "__name__")
+        assert func.__name__ == "list_tasks"
 
     def test_decorators_applied_to_create_task(self):
         """Test that decorators are applied to create_task function."""
         func = tasks.create_task
-        assert hasattr(func, '__wrapped__') or hasattr(func, '__name__')
-        assert func.__name__ == 'create_task'
+        assert hasattr(func, "__wrapped__") or hasattr(func, "__name__")
+        assert func.__name__ == "create_task"
 
     def test_decorators_applied_to_start_task(self):
         """Test that decorators are applied to start_task function."""
         func = tasks.start_task
-        assert hasattr(func, '__wrapped__') or hasattr(func, '__name__')
-        assert func.__name__ == 'start_task'
+        assert hasattr(func, "__wrapped__") or hasattr(func, "__name__")
+        assert func.__name__ == "start_task"
 
 
 class TestTaskRouterIntegration:
@@ -561,7 +546,9 @@ class TestTaskRouterEdgeCases:
         return params
 
     @pytest.mark.asyncio
-    async def test_list_tasks_empty_results(self, mock_crud_empty_results, pagination_params):
+    async def test_list_tasks_empty_results(
+        self, mock_crud_empty_results, pagination_params
+    ):
         """Test task listing with no tasks."""
         result = await tasks.list_tasks(
             pagination=pagination_params,
@@ -569,7 +556,7 @@ class TestTaskRouterEdgeCases:
             priority_filter=None,
             instance_id=None,
             worktree_id=None,
-            crud=mock_crud_empty_results
+            crud=mock_crud_empty_results,
         )
 
         assert result["total"] == 0

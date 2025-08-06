@@ -54,7 +54,9 @@ class TestConfigRouterFunctions:
         crud.list_configurations.return_value = ([mock_config], 1)
         crud.create_configuration.return_value = mock_config
         crud.get_configuration.return_value = mock_config
-        crud.get_configuration_by_key_scope.return_value = None  # No duplicate by default
+        crud.get_configuration_by_key_scope.return_value = (
+            None  # No duplicate by default
+        )
         crud.update_configuration.return_value = mock_config
         crud.delete_configuration.return_value = True
         crud.get_instance.return_value = mock_instance
@@ -79,7 +81,7 @@ class TestConfigRouterFunctions:
             scope=None,
             instance_id=None,
             key_pattern=None,
-            crud=mock_crud
+            crud=mock_crud,
         )
 
         assert result["total"] == 1
@@ -101,18 +103,20 @@ class TestConfigRouterFunctions:
             scope=ConfigScope.GLOBAL,
             instance_id=1,
             key_pattern="test*",
-            crud=mock_crud
+            crud=mock_crud,
         )
 
         assert result["total"] == 1
 
         # Verify filters were applied
         mock_crud.list_configurations.assert_called_once_with(
-            offset=0, limit=20, filters={
+            offset=0,
+            limit=20,
+            filters={
                 "scope": ConfigScope.GLOBAL,
                 "instance_id": 1,
-                "key_pattern": "test*"
-            }
+                "key_pattern": "test*",
+            },
         )
 
     @pytest.mark.asyncio
@@ -122,10 +126,12 @@ class TestConfigRouterFunctions:
             key="test_key",
             value="test_value",
             scope=ConfigScope.GLOBAL,
-            description="Test config"
+            description="Test config",
         )
 
-        result = await config.create_configuration(config_data=config_data, crud=mock_crud)
+        result = await config.create_configuration(
+            config_data=config_data, crud=mock_crud
+        )
 
         assert result["success"] is True
         assert "Configuration created successfully" in result["message"]
@@ -145,10 +151,12 @@ class TestConfigRouterFunctions:
             value="instance_value",
             scope=ConfigScope.INSTANCE,
             instance_id=1,
-            description="Instance config"
+            description="Instance config",
         )
 
-        result = await config.create_configuration(config_data=config_data, crud=mock_crud)
+        result = await config.create_configuration(
+            config_data=config_data, crud=mock_crud
+        )
 
         assert result["success"] is True
 
@@ -162,30 +170,29 @@ class TestConfigRouterFunctions:
     async def test_create_configuration_instance_scope_without_id(self, mock_crud):
         """Test instance scope configuration without instance_id fails."""
         config_data = ConfigurationCreate(
-            key="test_key",
-            value="test_value",
-            scope=ConfigScope.INSTANCE
+            key="test_key", value="test_value", scope=ConfigScope.INSTANCE
         )
 
         with pytest.raises(Exception) as exc_info:
             await config.create_configuration(config_data=config_data, crud=mock_crud)
 
-        assert "instance_id is required for instance-scoped configurations" in str(exc_info.value)
+        assert "instance_id is required for instance-scoped configurations" in str(
+            exc_info.value
+        )
 
     @pytest.mark.asyncio
     async def test_create_configuration_global_with_instance_id(self, mock_crud):
         """Test global scope configuration with instance_id fails."""
         config_data = ConfigurationCreate(
-            key="test_key",
-            value="test_value",
-            scope=ConfigScope.GLOBAL,
-            instance_id=1
+            key="test_key", value="test_value", scope=ConfigScope.GLOBAL, instance_id=1
         )
 
         with pytest.raises(Exception) as exc_info:
             await config.create_configuration(config_data=config_data, crud=mock_crud)
 
-        assert "instance_id can only be set for instance-scoped configurations" in str(exc_info.value)
+        assert "instance_id can only be set for instance-scoped configurations" in str(
+            exc_info.value
+        )
 
     @pytest.mark.asyncio
     async def test_create_configuration_instance_not_found(self, mock_crud):
@@ -196,7 +203,7 @@ class TestConfigRouterFunctions:
             key="test_key",
             value="test_value",
             scope=ConfigScope.INSTANCE,
-            instance_id=999
+            instance_id=999,
         )
 
         with pytest.raises(Exception) as exc_info:
@@ -212,15 +219,15 @@ class TestConfigRouterFunctions:
         mock_crud.get_configuration_by_key_scope.return_value = mock_existing
 
         config_data = ConfigurationCreate(
-            key="duplicate_key",
-            value="test_value",
-            scope=ConfigScope.GLOBAL
+            key="duplicate_key", value="test_value", scope=ConfigScope.GLOBAL
         )
 
         with pytest.raises(Exception) as exc_info:
             await config.create_configuration(config_data=config_data, crud=mock_crud)
 
-        assert "Configuration with key 'duplicate_key' already exists" in str(exc_info.value)
+        assert "Configuration with key 'duplicate_key' already exists" in str(
+            exc_info.value
+        )
 
     @pytest.mark.asyncio
     async def test_get_configuration_success(self, mock_crud):
@@ -247,14 +254,11 @@ class TestConfigRouterFunctions:
     async def test_update_configuration_success(self, mock_crud):
         """Test successful configuration update."""
         update_data = ConfigurationUpdate(
-            value="updated_value",
-            description="Updated description"
+            value="updated_value", description="Updated description"
         )
 
         result = await config.update_configuration(
-            config_id=1,
-            config_data=update_data,
-            crud=mock_crud
+            config_id=1, config_data=update_data, crud=mock_crud
         )
 
         assert result["success"] is True
@@ -272,9 +276,7 @@ class TestConfigRouterFunctions:
 
         with pytest.raises(Exception) as exc_info:
             await config.update_configuration(
-                config_id=999,
-                config_data=update_data,
-                crud=mock_crud
+                config_id=999, config_data=update_data, crud=mock_crud
             )
 
         assert "Configuration with ID 999 not found" in str(exc_info.value)
@@ -291,9 +293,7 @@ class TestConfigRouterFunctions:
 
         with pytest.raises(Exception) as exc_info:
             await config.update_configuration(
-                config_id=1,
-                config_data=update_data,
-                crud=mock_crud
+                config_id=1, config_data=update_data, crud=mock_crud
             )
 
         assert "Cannot update read-only configuration" in str(exc_info.value)
@@ -351,10 +351,7 @@ class TestConfigRouterFunctions:
         mock_crud.get_configuration_by_key_scope.return_value = mock_config
 
         result = await config.get_configuration_by_key(
-            key="test_key",
-            scope=ConfigScope.GLOBAL,
-            instance_id=None,
-            crud=mock_crud
+            key="test_key", scope=ConfigScope.GLOBAL, instance_id=None, crud=mock_crud
         )
 
         assert result["success"] is True
@@ -374,7 +371,7 @@ class TestConfigRouterFunctions:
                 key="nonexistent",
                 scope=ConfigScope.GLOBAL,
                 instance_id=None,
-                crud=mock_crud
+                crud=mock_crud,
             )
 
         assert "Configuration with key 'nonexistent' not found" in str(exc_info.value)
@@ -400,9 +397,7 @@ class TestConfigRouterFunctions:
         mock_crud.get_configuration_by_key_scope.return_value = mock_config
 
         result = await config.get_resolved_configuration(
-            key="test_key",
-            instance_id=None,
-            crud=mock_crud
+            key="test_key", instance_id=None, crud=mock_crud
         )
 
         assert result["success"] is True
@@ -422,20 +417,18 @@ class TestConfigRouterFunctions:
 
         with pytest.raises(Exception) as exc_info:
             await config.get_resolved_configuration(
-                key="missing_key",
-                instance_id=None,
-                crud=mock_crud
+                key="missing_key", instance_id=None, crud=mock_crud
             )
 
         assert "Configuration with key 'missing_key' not found" in str(exc_info.value)
 
     @pytest.mark.asyncio
-    async def test_get_instance_configurations_success(self, mock_crud, pagination_params):
+    async def test_get_instance_configurations_success(
+        self, mock_crud, pagination_params
+    ):
         """Test successful retrieval of instance configurations."""
         result = await config.get_instance_configurations(
-            instance_id=1,
-            pagination=pagination_params,
-            crud=mock_crud
+            instance_id=1, pagination=pagination_params, crud=mock_crud
         )
 
         assert result["total"] == 1
@@ -444,33 +437,35 @@ class TestConfigRouterFunctions:
         # Verify instance check and filtering
         mock_crud.get_instance.assert_called_once_with(1)
         mock_crud.list_configurations.assert_called_once_with(
-            offset=0, limit=20, filters={"instance_id": 1, "scope": ConfigScope.INSTANCE}
+            offset=0,
+            limit=20,
+            filters={"instance_id": 1, "scope": ConfigScope.INSTANCE},
         )
 
     @pytest.mark.asyncio
-    async def test_get_instance_configurations_empty(self, mock_crud, pagination_params):
+    async def test_get_instance_configurations_empty(
+        self, mock_crud, pagination_params
+    ):
         """Test instance configurations when none exist."""
         mock_crud.list_configurations.return_value = ([], 0)
 
         result = await config.get_instance_configurations(
-            instance_id=1,
-            pagination=pagination_params,
-            crud=mock_crud
+            instance_id=1, pagination=pagination_params, crud=mock_crud
         )
 
         assert result["total"] == 0
         assert len(result["items"]) == 0
 
     @pytest.mark.asyncio
-    async def test_get_instance_configurations_not_found(self, mock_crud, pagination_params):
+    async def test_get_instance_configurations_not_found(
+        self, mock_crud, pagination_params
+    ):
         """Test instance configurations for non-existent instance."""
         mock_crud.get_instance.return_value = None
 
         with pytest.raises(Exception) as exc_info:
             await config.get_instance_configurations(
-                instance_id=999,
-                pagination=pagination_params,
-                crud=mock_crud
+                instance_id=999, pagination=pagination_params, crud=mock_crud
             )
 
         assert "Instance with ID 999 not found" in str(exc_info.value)
@@ -491,12 +486,14 @@ class TestConfigValidation:
             "is_secret": False,
             "is_readonly": False,
             "created_at": datetime.now(UTC),
-            "updated_at": datetime.now(UTC)
+            "updated_at": datetime.now(UTC),
         }
 
         response_model = ConfigurationResponse.model_validate(config_data)
         assert response_model.key == "test_key"
-        assert response_model.scope == ConfigScope.GLOBAL.value  # Pydantic converts to string
+        assert (
+            response_model.scope == ConfigScope.GLOBAL.value
+        )  # Pydantic converts to string
 
     def test_configuration_create_model_validation(self):
         """Test ConfigurationCreate model validation."""
@@ -504,12 +501,14 @@ class TestConfigValidation:
             "key": "new_key",
             "value": "new_value",
             "scope": ConfigScope.GLOBAL,
-            "description": "New config"
+            "description": "New config",
         }
 
         create_model = ConfigurationCreate.model_validate(create_data)
         assert create_model.key == "new_key"
-        assert create_model.scope == ConfigScope.GLOBAL.value  # Pydantic converts to string
+        assert (
+            create_model.scope == ConfigScope.GLOBAL.value
+        )  # Pydantic converts to string
 
     def test_config_scope_enum_values(self):
         """Test ConfigScope enum contains expected values."""
@@ -525,20 +524,20 @@ class TestConfigRouterDecorators:
     def test_decorators_applied_to_list_configurations(self):
         """Test that decorators are applied to list_configurations function."""
         func = config.list_configurations
-        assert hasattr(func, '__wrapped__') or hasattr(func, '__name__')
-        assert func.__name__ == 'list_configurations'
+        assert hasattr(func, "__wrapped__") or hasattr(func, "__name__")
+        assert func.__name__ == "list_configurations"
 
     def test_decorators_applied_to_create_configuration(self):
         """Test that decorators are applied to create_configuration function."""
         func = config.create_configuration
-        assert hasattr(func, '__wrapped__') or hasattr(func, '__name__')
-        assert func.__name__ == 'create_configuration'
+        assert hasattr(func, "__wrapped__") or hasattr(func, "__name__")
+        assert func.__name__ == "create_configuration"
 
     def test_decorators_applied_to_get_configuration(self):
         """Test that decorators are applied to get_configuration function."""
         func = config.get_configuration
-        assert hasattr(func, '__wrapped__') or hasattr(func, '__name__')
-        assert func.__name__ == 'get_configuration'
+        assert hasattr(func, "__wrapped__") or hasattr(func, "__name__")
+        assert func.__name__ == "get_configuration"
 
 
 class TestConfigRouterIntegration:

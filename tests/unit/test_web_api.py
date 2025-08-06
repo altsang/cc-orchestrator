@@ -166,6 +166,7 @@ class TestInstanceEndpoints:
         """Test creating a new instance."""
         # Get the mock CRUD from the client fixture and configure it
         from cc_orchestrator.web.dependencies import get_crud
+
         mock_crud = client.app.dependency_overrides[get_crud]()
 
         # Mock created instance
@@ -204,6 +205,7 @@ class TestInstanceEndpoints:
         """Test creating an instance with duplicate issue_id."""
         # Get the mock CRUD from the client fixture and configure it
         from cc_orchestrator.web.dependencies import get_crud
+
         mock_crud = client.app.dependency_overrides[get_crud]()
 
         # Mock existing instance to simulate duplicate
@@ -222,6 +224,7 @@ class TestInstanceEndpoints:
         """Test getting a non-existent instance."""
         # Get the mock CRUD from the client fixture and configure it
         from cc_orchestrator.web.dependencies import get_crud
+
         mock_crud = client.app.dependency_overrides[get_crud]()
 
         mock_crud.get_instance.return_value = None
@@ -252,6 +255,7 @@ class TestTaskEndpoints:
         """Test creating a new task."""
         # Get the mock CRUD from the client fixture and configure it
         from cc_orchestrator.web.dependencies import get_crud
+
         mock_crud = client.app.dependency_overrides[get_crud]()
 
         # Mock created task
@@ -289,6 +293,7 @@ class TestTaskEndpoints:
         """Test starting a task."""
         # Get the mock CRUD from the client fixture and configure it
         from cc_orchestrator.web.dependencies import get_crud
+
         mock_crud = client.app.dependency_overrides[get_crud]()
 
         # Mock existing task
@@ -357,6 +362,7 @@ class TestPaginationAndFiltering:
         """Test instance filtering by status and branch."""
         # Get the mock CRUD from the client fixture and configure it
         from cc_orchestrator.web.dependencies import get_crud
+
         mock_crud = client.app.dependency_overrides[get_crud]()
 
         # Reset the mock to track calls
@@ -411,6 +417,7 @@ class TestErrorHandling:
         """Test 404 error response format."""
         # Get the mock CRUD from the client fixture and configure it
         from cc_orchestrator.web.dependencies import get_crud
+
         mock_crud = client.app.dependency_overrides[get_crud]()
 
         # Configure to return None for not found
@@ -470,7 +477,9 @@ class TestAsyncEndpoints:
         """Test async health check endpoint."""
         app = create_app()
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as ac:
             response = await ac.get("/api/v1/health/")
             assert response.status_code == 200
 
