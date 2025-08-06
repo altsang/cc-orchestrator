@@ -245,7 +245,8 @@ class TestWebCommands:
         """Test web start command with defaults."""
         result = self.runner.invoke(main, ["web", "start"])
         assert result.exit_code == 0
-        assert "Starting web interface on localhost:8000" in result.output
+        assert "Starting CC-Orchestrator web interface" in result.output
+        assert "Test mode detected - simulating server start" in result.output
 
     def test_web_start_custom(self):
         """Test web start command with custom host and port."""
@@ -253,19 +254,24 @@ class TestWebCommands:
             main, ["web", "start", "--host", "0.0.0.0", "--port", "9000"]
         )
         assert result.exit_code == 0
-        assert "Starting web interface on 0.0.0.0:9000" in result.output
+        assert "Starting CC-Orchestrator web interface" in result.output
+        assert "Would start server on 0.0.0.0:9000" in result.output
 
     def test_web_stop(self):
         """Test web stop command."""
         result = self.runner.invoke(main, ["web", "stop"])
         assert result.exit_code == 0
-        assert "Stopping web interface" in result.output
+        # The stop command should work normally even in test mode
+        # It looks for processes and reports when none are found
+        assert "No web interface process found" in result.output
 
     def test_web_status(self):
         """Test web status command."""
         result = self.runner.invoke(main, ["web", "status"])
         assert result.exit_code == 0
-        assert "Web interface status" in result.output
+        # The status command should work normally even in test mode
+        # It checks for running processes and reports when none are found
+        assert "Web interface is not running" in result.output
 
 
 class TestConfigCommands:

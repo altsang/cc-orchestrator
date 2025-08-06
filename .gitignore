@@ -265,7 +265,6 @@ temp/
 ISSUE_*_IMPLEMENTATION_SUMMARY.md
 *_IMPLEMENTATION_SUMMARY.md
 debug_*.py
-test_*.py
 manual_*.py
 temp_*.*
 *.tmp
