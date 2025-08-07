@@ -762,3 +762,33 @@ class ConfigurationCRUD:
                 return config
 
         return None
+
+    @staticmethod
+    def get_exact_by_key_scope(
+        session: Session,
+        key: str,
+        scope: ConfigScope,
+        instance_id: int | None = None,
+    ) -> Configuration | None:
+        """Get configuration by exact key and scope match (no hierarchy).
+        
+        Args:
+            session: Database session.
+            key: Configuration key.
+            scope: Exact scope to match.
+            instance_id: Instance ID for instance-scoped configurations.
+            
+        Returns:
+            Configuration object or None if not found.
+        """
+        query = session.query(Configuration).filter(
+            Configuration.key == key,
+            Configuration.scope == scope,
+        )
+
+        if scope == ConfigScope.INSTANCE and instance_id:
+            query = query.filter(Configuration.instance_id == instance_id)
+        elif scope != ConfigScope.INSTANCE:
+            query = query.filter(Configuration.instance_id.is_(None))
+
+        return query.first()

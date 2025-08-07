@@ -32,21 +32,57 @@ async def get_db_session(
     """Get a database session for request handling."""
     session = None
     try:
+        # Create session
         session = db_manager.session_factory()
         api_logger.debug("Database session created")
+        
+        # Yield session to the endpoint
         yield session
-        session.commit()
-    except Exception as e:
-        if session:
+        
+        # Commit transaction if everything went well
+        try:
+            session.commit()
+            api_logger.debug("Database session committed")
+        except Exception as commit_error:
             session.rollback()
-        api_logger.error("Failed to create database session", error=str(e))
+            api_logger.error("Failed to commit database session", error=str(commit_error))
+            raise
+            
+    except HTTPException:
+        # Re-raise HTTP exceptions (like 409 Conflict) without wrapping
+        if session:
+            try:
+                session.rollback()
+                api_logger.debug("Database session rolled back")
+            except Exception as rollback_error:
+                api_logger.error("Failed to rollback session", error=str(rollback_error))
+        raise
+        
+    except Exception as e:
+        # Handle database session errors
+        if session:
+            try:
+                session.rollback()
+                api_logger.debug("Database session rolled back")
+            except Exception as rollback_error:
+                api_logger.error("Failed to rollback session", error=str(rollback_error))
+        
+        api_logger.error("Database session error", error=str(e), error_type=type(e).__name__)
+        # Include more error details for debugging
+        import traceback
+        api_logger.error("Database session traceback", traceback=traceback.format_exc())
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Database session creation failed",
+            detail=f"Database session failed: {str(e)}",
         )
     finally:
+        # Always close the session
         if session:
-            session.close()
+            try:
+                session.close()
+                api_logger.debug("Database session closed")
+            except Exception as close_error:
+                api_logger.error("Failed to close database session", error=str(close_error))
 
 
 async def get_crud(db_session: Session = Depends(get_db_session)) -> CRUDBase:

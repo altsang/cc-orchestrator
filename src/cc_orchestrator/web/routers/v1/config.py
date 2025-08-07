@@ -123,9 +123,9 @@ async def create_configuration(
                 detail=f"Instance with ID {config_data.instance_id} not found",
             )
 
-    # Check for duplicate key/scope combination
-    existing = await crud.get_configuration_by_key_scope(
-        config_data.key, config_data.scope, config_data.instance_id
+    # Check for duplicate key/scope combination (exact match, no hierarchy)
+    existing = await crud.get_exact_configuration_by_key_scope(
+        config_data.key, scope_value, config_data.instance_id
     )
     if existing:
         # Handle both enum and string values for scope in error message
@@ -139,7 +139,10 @@ async def create_configuration(
         )
 
     # Create the configuration
-    configuration = await crud.create_configuration(config_data.model_dump())
+    # Convert scope enum to string for database storage
+    config_dict = config_data.model_dump()
+    config_dict["scope"] = scope_value
+    configuration = await crud.create_configuration(config_dict)
 
     return {
         "success": True,

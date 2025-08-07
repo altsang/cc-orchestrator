@@ -516,6 +516,39 @@ class CRUDBase:
 
         return await asyncio.to_thread(_get_configuration_by_key_scope)
 
+    async def get_exact_configuration_by_key_scope(
+        self, key: str, scope: Any, instance_id: int | None = None
+    ) -> Configuration | None:
+        """Get configuration by exact key and scope match (no hierarchy)."""
+
+        def _get_exact_configuration_by_key_scope():
+            # Convert scope to enum if needed
+            if isinstance(scope, str):
+                from ..database.models import ConfigScope
+
+                if scope.lower() == "global":
+                    scope_enum = ConfigScope.GLOBAL
+                elif scope.lower() == "user":
+                    scope_enum = ConfigScope.USER
+                elif scope.lower() == "project":
+                    scope_enum = ConfigScope.PROJECT
+                elif scope.lower() == "instance":
+                    scope_enum = ConfigScope.INSTANCE
+                else:
+                    scope_enum = ConfigScope.GLOBAL
+            else:
+                scope_enum = scope
+
+            # Use the exact matching method
+            try:
+                return ConfigurationCRUD.get_exact_by_key_scope(
+                    self.session, key, scope_enum, instance_id
+                )
+            except Exception:
+                return None
+
+        return await asyncio.to_thread(_get_exact_configuration_by_key_scope)
+
     async def update_configuration(
         self, config_id: int, update_data: dict[str, Any]
     ) -> Configuration:
