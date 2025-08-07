@@ -68,7 +68,7 @@ def create(
     """
 
     # Parse environment variables
-    environment = {}
+    environment: dict[str, str] = {}
     for env_var in env:
         if "=" not in env_var:
             raise CliError(f"Invalid environment variable format: {env_var}")
@@ -84,7 +84,7 @@ def create(
         auto_attach=auto_attach,
     )
 
-    async def _create_session() -> dict:
+    async def _create_session() -> dict[str, Any]:
         tmux_service = get_tmux_service()
         session_info = await tmux_service.create_session(config)
         return {
@@ -129,7 +129,7 @@ def destroy(ctx: click.Context, session_name: str, force: bool) -> None:
     SESSION_NAME: Name of the session to destroy
     """
 
-    async def _destroy_session() -> dict:
+    async def _destroy_session() -> dict[str, Any]:
         tmux_service = get_tmux_service()
         success = await tmux_service.destroy_session(session_name, force=force)
         return {"success": success, "session_name": session_name}
@@ -159,7 +159,7 @@ def attach(ctx: click.Context, session_name: str) -> None:
     SESSION_NAME: Name of the session to attach to
     """
 
-    async def _attach_session() -> dict:
+    async def _attach_session() -> dict[str, Any]:
         tmux_service = get_tmux_service()
         success = await tmux_service.attach_session(session_name)
         return {"success": success, "session_name": session_name}
@@ -190,7 +190,7 @@ def detach(ctx: click.Context, session_name: str) -> None:
     SESSION_NAME: Name of the session to detach from
     """
 
-    async def _detach_session() -> dict:
+    async def _detach_session() -> dict[str, Any]:
         tmux_service = get_tmux_service()
         success = await tmux_service.detach_session(session_name)
         return {"success": success, "session_name": session_name}
@@ -276,7 +276,7 @@ def info(ctx: click.Context, session_name: str) -> None:
     SESSION_NAME: Name of the session to inspect
     """
 
-    async def _get_session_info() -> dict | None:
+    async def _get_session_info() -> dict[str, Any] | None:
         tmux_service = get_tmux_service()
         session_info = await tmux_service.get_session_info(session_name)
         if session_info:
@@ -341,7 +341,7 @@ def cleanup(ctx: click.Context, instance_id: str | None, force: bool) -> None:
     Removes sessions that are no longer needed or orphaned.
     """
 
-    async def _cleanup_sessions() -> dict:
+    async def _cleanup_sessions() -> dict[str, Any]:
         tmux_service = get_tmux_service()
         cleaned_up = await tmux_service.cleanup_sessions(
             instance_id=instance_id, force=force
@@ -375,7 +375,7 @@ def templates(ctx: click.Context) -> None:
     templates = tmux_service.get_layout_templates()
 
     if ctx.obj and ctx.obj.get("json"):
-        template_data = {}
+        template_data: dict[str, Any] = {}
         for name, template in templates.items():
             template_data[name] = {
                 "name": template.name,
@@ -426,7 +426,7 @@ def add_template(
     """
 
     # Parse window configurations
-    windows = []
+    windows: builtins.list[dict[str, Any]] = []
     for win_config in window:
         if ":" in win_config:
             name, command = win_config.split(":", 1)

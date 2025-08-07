@@ -45,11 +45,11 @@ class ProcessInfo:
 class ProcessManager:
     """Manages Claude Code processes with isolation and monitoring."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the process manager."""
         self._processes: dict[str, ProcessInfo] = {}
-        self._subprocess_map: dict[str, subprocess.Popen] = {}
-        self._monitoring_tasks: dict[str, asyncio.Task] = {}
+        self._subprocess_map: dict[str, subprocess.Popen[bytes]] = {}
+        self._monitoring_tasks: dict[str, asyncio.Task[None]] = {}
         self._shutdown_event = asyncio.Event()
         logger.info("Process manager initialized")
 
@@ -245,16 +245,16 @@ class ProcessManager:
         # Terminate all processes
         terminate_tasks = []
         for instance_id in list(self._processes.keys()):
-            task = asyncio.create_task(self.terminate_process(instance_id))
-            terminate_tasks.append(task)
+            terminate_task = asyncio.create_task(self.terminate_process(instance_id))
+            terminate_tasks.append(terminate_task)
 
         if terminate_tasks:
             await asyncio.gather(*terminate_tasks, return_exceptions=True)
 
         # Cancel monitoring tasks
-        for task in self._monitoring_tasks.values():
-            if not task.done():
-                task.cancel()
+        for monitor_task in self._monitoring_tasks.values():
+            if not monitor_task.done():
+                monitor_task.cancel()
 
         if self._monitoring_tasks:
             await asyncio.gather(
@@ -304,7 +304,7 @@ class ProcessManager:
 
     async def _start_process(
         self, command: list[str], working_directory: Path, environment: dict[str, str]
-    ) -> subprocess.Popen:
+    ) -> subprocess.Popen[bytes]:
         """Start a subprocess with the given parameters.
 
         Args:
@@ -313,7 +313,7 @@ class ProcessManager:
             environment: Environment variables
 
         Returns:
-            Started subprocess.Popen object
+            Started subprocess.Popen[bytes] object
         """
         logger.debug(
             "Starting subprocess",
@@ -335,13 +335,13 @@ class ProcessManager:
         return process
 
     async def _monitor_process(
-        self, instance_id: str, process: subprocess.Popen
+        self, instance_id: str, process: subprocess.Popen[bytes]
     ) -> None:
         """Monitor a process for status changes and resource usage.
 
         Args:
             instance_id: Instance identifier
-            process: subprocess.Popen object to monitor
+            process: subprocess.Popen[bytes] object to monitor
         """
         logger.debug("Starting process monitoring", instance_id=instance_id)
 
@@ -429,11 +429,11 @@ class ProcessManager:
                 "Error updating resource usage", instance_id=instance_id, error=str(e)
             )
 
-    async def _wait_for_process(self, process: subprocess.Popen) -> None:
+    async def _wait_for_process(self, process: subprocess.Popen[bytes]) -> None:
         """Wait for a process to terminate.
 
         Args:
-            process: subprocess.Popen object to wait for
+            process: subprocess.Popen[bytes] object to wait for
         """
         while process.poll() is None:
             await asyncio.sleep(0.1)

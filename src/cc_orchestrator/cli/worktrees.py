@@ -1,6 +1,8 @@
 """Git worktree management commands."""
 
+import builtins
 import json
+from typing import Any
 
 import click
 
@@ -28,7 +30,9 @@ def list(format: str, sync: bool) -> None:
     """List all git worktrees."""
     try:
         service = WorktreeService()
-        worktrees = service.list_worktrees(sync_with_git=sync)
+        worktrees: builtins.list[dict[str, Any]] = service.list_worktrees(
+            sync_with_git=sync
+        )
 
         if format == "json":
             # Convert datetime objects to strings for JSON serialization
@@ -91,7 +95,7 @@ def create(
     try:
         service = WorktreeService()
 
-        worktree = service.create_worktree(
+        worktree: dict[str, Any] = service.create_worktree(
             name=name,
             branch=branch_name,
             checkout_branch=from_branch,
@@ -136,7 +140,7 @@ def remove(path_or_id: str, force: bool) -> None:
         # Try to parse as int for ID, otherwise treat as path
         try:
             worktree_id = int(path_or_id)
-            removed = service.remove_worktree(worktree_id, force=force)
+            removed: bool = service.remove_worktree(worktree_id, force=force)
         except ValueError:
             removed = service.remove_worktree(path_or_id, force=force)
 
@@ -167,7 +171,7 @@ def cleanup(format: str) -> None:
     """Clean up stale worktree references."""
     try:
         service = WorktreeService()
-        result = service.cleanup_worktrees()
+        result: dict[str, Any] = service.cleanup_worktrees()
 
         if format == "json":
             click.echo(json.dumps(result, indent=2))
@@ -217,7 +221,7 @@ def status(path_or_id: str, format: str) -> None:
         # Try to parse as int for ID, otherwise treat as path
         try:
             worktree_id = int(path_or_id)
-            status_info = service.get_worktree_status(worktree_id)
+            status_info: dict[str, Any] = service.get_worktree_status(worktree_id)
         except ValueError:
             status_info = service.get_worktree_status(path_or_id)
 
@@ -234,7 +238,7 @@ def status(path_or_id: str, format: str) -> None:
             click.echo(f"Branch: {status_info['branch']}")
             click.echo(f"Database Status: {status_info['db_status']}")
 
-            git_status = status_info["git_status"]
+            git_status: dict[str, Any] = status_info["git_status"]
             click.echo("Git Status:")
             click.echo(f"  Current Commit: {git_status['commit'][:8]}...")
             click.echo(f"  Has Changes: {'Yes' if git_status['has_changes'] else 'No'}")

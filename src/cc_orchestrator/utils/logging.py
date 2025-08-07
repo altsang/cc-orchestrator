@@ -160,7 +160,7 @@ class StructuredFormatter(logging.Formatter):
                 log_data[key] = value
 
         # Add exception info if present
-        if record.exc_info:
+        if record.exc_info and record.exc_info[0] is not None:
             log_data["exception"] = {
                 "type": record.exc_info[0].__name__,
                 "message": str(record.exc_info[1]),
@@ -206,19 +206,21 @@ class ContextualLogger:
 
         self.logger.log(level, message, extra=extra)
 
-    def debug(self, message: str, **kwargs) -> None:
+    def debug(self, message: str, **kwargs: Any) -> None:
         """Log debug message with context."""
         self._log(logging.DEBUG, message, kwargs)
 
-    def info(self, message: str, **kwargs) -> None:
+    def info(self, message: str, **kwargs: Any) -> None:
         """Log info message with context."""
         self._log(logging.INFO, message, kwargs)
 
-    def warning(self, message: str, **kwargs) -> None:
+    def warning(self, message: str, **kwargs: Any) -> None:
         """Log warning message with context."""
         self._log(logging.WARNING, message, kwargs)
 
-    def error(self, message: str, exception: Exception | None = None, **kwargs) -> None:
+    def error(
+        self, message: str, exception: Exception | None = None, **kwargs: Any
+    ) -> None:
         """Log error message with context and optional exception."""
         if exception:
             self.logger.error(
@@ -235,7 +237,7 @@ class ContextualLogger:
             self._log(logging.ERROR, message, kwargs)
 
     def critical(
-        self, message: str, exception: Exception | None = None, **kwargs
+        self, message: str, exception: Exception | None = None, **kwargs: Any
     ) -> None:
         """Log critical message with context and optional exception."""
         if exception:
@@ -306,7 +308,7 @@ def setup_logging(
                     "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
                 )
             )
-        handlers.append(file_handler)
+        handlers.append(file_handler)  # type: ignore[arg-type]
 
     # Configure root logger
     root_logger = logging.getLogger()
@@ -327,10 +329,10 @@ def setup_logging(
 
 
 def handle_errors(
-    recovery_strategy: Callable | None = None,
+    recovery_strategy: Callable[..., Any] | None = None,
     log_context: LogContext = LogContext.ORCHESTRATOR,
     reraise: bool = True,
-):
+) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """
     Decorator for comprehensive error handling with logging and recovery.
 
@@ -340,9 +342,9 @@ def handle_errors(
         reraise: Whether to reraise the exception after handling
     """
 
-    def decorator(func: Callable) -> Callable:
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         @functools.wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
             logger = get_logger(func.__module__, log_context)
 
             try:
@@ -406,12 +408,14 @@ def handle_errors(
     return decorator
 
 
-def log_performance(log_context: LogContext = LogContext.ORCHESTRATOR):
+def log_performance(
+    log_context: LogContext = LogContext.ORCHESTRATOR,
+) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """Decorator to log function performance metrics."""
 
-    def decorator(func: Callable) -> Callable:
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         @functools.wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
             logger = get_logger(func.__module__, log_context)
 
             start_time = time.time()
@@ -451,12 +455,14 @@ def log_performance(log_context: LogContext = LogContext.ORCHESTRATOR):
     return decorator
 
 
-def audit_log(action: str, log_context: LogContext = LogContext.ORCHESTRATOR):
+def audit_log(
+    action: str, log_context: LogContext = LogContext.ORCHESTRATOR
+) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """Decorator for audit logging of important operations."""
 
-    def decorator(func: Callable) -> Callable:
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         @functools.wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
             logger = get_logger(f"{func.__module__}.audit", log_context)
 
             # Log start of operation

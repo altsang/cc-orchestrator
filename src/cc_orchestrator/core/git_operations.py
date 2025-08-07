@@ -3,6 +3,7 @@
 import os
 import shutil
 from pathlib import Path
+from typing import Any
 
 from git import Repo
 from git.exc import GitCommandError, InvalidGitRepositoryError
@@ -57,7 +58,7 @@ class GitWorktreeManager:
             worktree_output = self.repo.git.worktree("list", "--porcelain")
 
             worktrees = []
-            current_worktree = {}
+            current_worktree: dict[str, str] = {}
 
             for line in worktree_output.split("\n"):
                 if not line.strip():
@@ -278,7 +279,7 @@ class GitWorktreeManager:
             logger.error(f"Unexpected error during cleanup: {e}")
             raise GitWorktreeError(f"Unexpected error during cleanup: {e}") from e
 
-    def get_worktree_status(self, path: str) -> dict[str, any]:
+    def get_worktree_status(self, path: str) -> dict[str, Any]:
         """Get detailed status of a worktree.
 
         Args:

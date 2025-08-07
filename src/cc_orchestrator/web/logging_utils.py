@@ -8,10 +8,13 @@ This module provides specialized logging for:
 - Real-time event streaming
 """
 
+import asyncio
+import functools
+import time
 from collections.abc import Callable
 from typing import Any
 
-from ..utils.logging import LogContext, get_logger, handle_errors, log_performance
+from ..utils.logging import CCOrchestratorException, LogContext, get_logger
 
 # Web component loggers
 api_logger = get_logger(__name__ + ".api", LogContext.WEB)
@@ -167,15 +170,154 @@ def log_dashboard_access(
 
 
 # Decorator functions for web operations
+
+
 def handle_api_errors(
     recovery_strategy: Callable[..., Any] | None = None,
-) -> Callable[..., Any]:
-    """Decorator for API error handling."""
-    return handle_errors(
-        recovery_strategy=recovery_strategy, log_context=LogContext.WEB, reraise=True
-    )
+) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+    """Async-aware decorator for API error handling."""
+
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
+        if asyncio.iscoroutinefunction(func):
+
+            @functools.wraps(func)
+            async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
+                try:
+                    return await func(*args, **kwargs)
+                except Exception as e:
+                    # Re-raise HTTPExceptions to let FastAPI handle them
+                    from fastapi import HTTPException
+
+                    if isinstance(e, HTTPException):
+                        raise
+
+                    api_logger.error(
+                        f"API error in {func.__name__}: {str(e)}",
+                        function=func.__name__,
+                        error_type=type(e).__name__,
+                        error_message=str(e),
+                    )
+                    if recovery_strategy:
+                        try:
+                            if asyncio.iscoroutinefunction(recovery_strategy):
+                                return await recovery_strategy(*args, **kwargs)
+                            else:
+                                return recovery_strategy(*args, **kwargs)
+                        except Exception as recovery_error:
+                            api_logger.error(
+                                f"Recovery strategy failed: {str(recovery_error)}",
+                                function=func.__name__,
+                                recovery_error=str(recovery_error),
+                            )
+                    # Convert to CCOrchestratorException
+                    raise CCOrchestratorException(
+                        f"API error in {func.__name__}: {str(e)}"
+                    ) from e
+
+            return async_wrapper
+        else:
+
+            @functools.wraps(func)
+            def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    # Re-raise HTTPExceptions to let FastAPI handle them
+                    from fastapi import HTTPException
+
+                    if isinstance(e, HTTPException):
+                        raise
+
+                    api_logger.error(
+                        f"API error in {func.__name__}: {str(e)}",
+                        function=func.__name__,
+                        error_type=type(e).__name__,
+                        error_message=str(e),
+                    )
+                    if recovery_strategy:
+                        try:
+                            return recovery_strategy(*args, **kwargs)
+                        except Exception as recovery_error:
+                            api_logger.error(
+                                f"Recovery strategy failed: {str(recovery_error)}",
+                                function=func.__name__,
+                                recovery_error=str(recovery_error),
+                            )
+                    # Convert to CCOrchestratorException
+                    raise CCOrchestratorException(
+                        f"API error in {func.__name__}: {str(e)}"
+                    ) from e
+
+            return sync_wrapper
+
+    return decorator
 
 
-def track_api_performance() -> Callable[..., Any]:
-    """Decorator for API performance tracking."""
-    return log_performance(LogContext.WEB)
+def track_api_performance() -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+    """Async-aware decorator for API performance tracking."""
+
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
+        if asyncio.iscoroutinefunction(func):
+
+            @functools.wraps(func)
+            async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
+                start_time = time.time()
+                api_logger.debug(
+                    f"Performance tracking started for {func.__name__}",
+                    function=func.__name__,
+                )
+                try:
+                    result = await func(*args, **kwargs)
+                    execution_time = (time.time() - start_time) * 1000  # ms
+                    api_logger.info(
+                        f"Performance: {func.__name__} completed",
+                        function=func.__name__,
+                        execution_time_ms=execution_time,
+                        status="success",
+                    )
+                    return result
+                except Exception as e:
+                    execution_time = (time.time() - start_time) * 1000  # ms
+                    api_logger.warning(
+                        f"Performance: {func.__name__} failed",
+                        function=func.__name__,
+                        execution_time_ms=execution_time,
+                        status="error",
+                        error=str(e),
+                    )
+                    raise
+
+            return async_wrapper
+        else:
+
+            @functools.wraps(func)
+            def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
+                start_time = time.time()
+                api_logger.debug(
+                    f"Performance tracking started for {func.__name__}",
+                    function=func.__name__,
+                )
+                try:
+                    result = func(*args, **kwargs)
+                    execution_time = (time.time() - start_time) * 1000  # ms
+                    api_logger.info(
+                        f"Performance: {func.__name__} completed",
+                        function=func.__name__,
+                        execution_time_ms=execution_time,
+                        status="success",
+                    )
+                    return result
+                except Exception as e:
+                    execution_time = (time.time() - start_time) * 1000  # ms
+                    api_logger.warning(
+                        f"Performance: {func.__name__} failed",
+                        function=func.__name__,
+                        execution_time_ms=execution_time,
+                        status="error",
+                        error=str(e),
+                    )
+                    raise
+
+            return sync_wrapper
+
+    return decorator

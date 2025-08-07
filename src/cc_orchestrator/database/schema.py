@@ -11,7 +11,7 @@ def get_schema_version() -> str:
     return "1.0.0"
 
 
-def get_table_info() -> dict[str, dict[str, str]]:
+def get_table_info() -> dict[str, dict[str, str | list[str]]]:
     """Get information about all database tables.
 
     Returns:
@@ -21,32 +21,32 @@ def get_table_info() -> dict[str, dict[str, str]]:
         "instances": {
             "description": "Claude Code instance management",
             "primary_key": "id",
-            "unique_fields": ["issue_id"],
-            "indexed_fields": ["status", "created_at"],
+            "unique_fields": "issue_id",
+            "indexed_fields": "status,created_at",
         },
         "tasks": {
             "description": "Work items and task management",
             "primary_key": "id",
-            "foreign_keys": ["instance_id", "worktree_id"],
-            "indexed_fields": ["status", "priority", "created_at", "due_date"],
+            "foreign_keys": "instance_id,worktree_id",
+            "indexed_fields": "status,priority,created_at,due_date",
         },
         "worktrees": {
             "description": "Git worktree management",
             "primary_key": "id",
-            "unique_fields": ["path"],
-            "foreign_keys": ["instance_id"],
-            "indexed_fields": ["branch_name", "status"],
+            "unique_fields": "path",
+            "foreign_keys": "instance_id",
+            "indexed_fields": "branch_name,status",
         },
         "configurations": {
             "description": "System and user configuration settings",
             "primary_key": "id",
-            "foreign_keys": ["instance_id"],
-            "indexed_fields": ["key", "scope"],
+            "foreign_keys": "instance_id",
+            "indexed_fields": "key,scope",
         },
     }
 
 
-def get_model_classes() -> list[type]:
+def get_model_classes() -> list[type[Base]]:
     """Get all SQLAlchemy model classes.
 
     Returns:
@@ -79,12 +79,12 @@ def validate_schema(engine: Engine) -> dict[str, bool]:
     # Check for unexpected tables
     unexpected_tables = actual_tables - expected_tables
     if unexpected_tables:
-        results["unexpected_tables"] = list(unexpected_tables)
+        results["has_unexpected_tables"] = True
 
     return results
 
 
-def get_table_counts(engine: Engine) -> dict[str, int]:
+def get_table_counts(engine: Engine) -> dict[str, int | str]:
     """Get record counts for all tables.
 
     Args:
@@ -95,7 +95,7 @@ def get_table_counts(engine: Engine) -> dict[str, int]:
     """
     from sqlalchemy import text
 
-    counts = {}
+    counts: dict[str, int | str] = {}
     table_names = [table.__tablename__ for table in get_model_classes()]
 
     with engine.connect() as conn:
@@ -103,15 +103,19 @@ def get_table_counts(engine: Engine) -> dict[str, int]:
             try:
                 # Use parameterized query to avoid SQL injection
                 # Note: Table names cannot be parameterized, but we validate against known model table names
-                if table_name not in [
+                valid_table_names = [
                     table.__tablename__ for table in get_model_classes()
-                ]:
+                ]
+                if table_name not in valid_table_names:
                     counts[table_name] = "Error: Invalid table name"
                     continue
                 result = conn.execute(
                     text(f"SELECT COUNT(*) FROM {table_name}")  # nosec B608
                 )
-                counts[table_name] = result.scalar() or 0
+                count_result = result.scalar()
+                counts[table_name] = (
+                    int(count_result) if count_result is not None else 0
+                )
             except Exception as e:
                 counts[table_name] = f"Error: {e}"
 

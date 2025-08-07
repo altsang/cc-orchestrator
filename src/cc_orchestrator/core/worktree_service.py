@@ -2,6 +2,7 @@
 
 import os
 from pathlib import Path
+from typing import Any
 
 from ..database.connection import get_db_session
 from ..database.crud import WorktreeCRUD
@@ -45,7 +46,7 @@ class WorktreeService:
             f"Worktree service initialized with base directory: {self.base_worktree_dir}"
         )
 
-    def list_worktrees(self, sync_with_git: bool = True) -> list[dict[str, any]]:
+    def list_worktrees(self, sync_with_git: bool = True) -> list[dict[str, Any]]:
         """List all worktrees from database, optionally syncing with git.
 
         Args:
@@ -89,7 +90,7 @@ class WorktreeService:
         custom_path: str | None = None,
         instance_id: int | None = None,
         force: bool = False,
-    ) -> dict[str, any]:
+    ) -> dict[str, Any]:
         """Create a new git worktree and register it in the database.
 
         Args:
@@ -347,7 +348,7 @@ class WorktreeService:
             logger.error(f"Sync failed: {e}")
             raise WorktreeServiceError(f"Sync failed: {e}") from e
 
-    def get_worktree_status(self, path_or_id: str | int) -> dict[str, any]:
+    def get_worktree_status(self, path_or_id: str | int) -> dict[str, Any]:
         """Get detailed status of a worktree.
 
         Args:

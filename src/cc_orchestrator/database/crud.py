@@ -1,6 +1,6 @@
 """CRUD operations for database entities."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy.exc import IntegrityError
@@ -9,6 +9,8 @@ from sqlalchemy.orm import Session
 from .models import (
     ConfigScope,
     Configuration,
+    HealthCheck,
+    HealthStatus,
     Instance,
     InstanceStatus,
     Task,
@@ -371,7 +373,8 @@ class TaskCRUD:
         task.status = status
 
         # Update timestamps based on status
-        now = datetime.now()
+
+        now = datetime.now(UTC)
         if status == TaskStatus.IN_PROGRESS and not task.started_at:
             task.started_at = now
         elif status in (TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.CANCELLED):
@@ -379,10 +382,61 @@ class TaskCRUD:
                 task.completed_at = now
             # Calculate actual duration if we have start time
             if task.started_at:
-                duration = (now - task.started_at).total_seconds() / 60
+                # Handle both timezone-aware and timezone-naive started_at
+                started_at = task.started_at
+                if started_at.tzinfo is None:
+                    # If started_at is timezone-naive, assume it's UTC
+                    started_at = started_at.replace(tzinfo=UTC)
+                duration = (now - started_at).total_seconds() / 60
                 task.actual_duration = int(duration)
 
         task.updated_at = now
+        session.flush()
+        return task
+
+    @staticmethod
+    def update(
+        session: Session,
+        task_id: int,
+        **kwargs: Any,
+    ) -> Task:
+        """Update a task.
+
+        Args:
+            session: Database session.
+            task_id: Task ID.
+            **kwargs: Fields to update.
+
+        Returns:
+            Updated task.
+
+        Raises:
+            NotFoundError: If task not found.
+        """
+        task = TaskCRUD.get_by_id(session, task_id)
+
+        # Update allowed fields
+        allowed_fields = {
+            "title",
+            "description",
+            "priority",
+            "instance_id",
+            "worktree_id",
+            "due_date",
+            "estimated_duration",
+            "actual_duration",
+            "requirements",
+            "results",
+            "extra_metadata",
+        }
+
+        for field, value in kwargs.items():
+            if field in allowed_fields:
+                setattr(task, field, value)
+
+        from datetime import datetime
+
+        task.updated_at = datetime.now(UTC)
         session.flush()
         return task
 
@@ -638,7 +692,7 @@ class ConfigurationCRUD:
             Configuration value or None if not found.
         """
         # Define scope hierarchy (most specific first)
-        scopes_to_check = []
+        scopes_to_check: list[tuple[ConfigScope, int | None]] = []
 
         if scope == ConfigScope.INSTANCE and instance_id:
             scopes_to_check.append((ConfigScope.INSTANCE, instance_id))
@@ -664,3 +718,164 @@ class ConfigurationCRUD:
                 return config.value
 
         return None
+
+    @staticmethod
+    def get_by_key_scope(
+        session: Session,
+        key: str,
+        scope: ConfigScope = ConfigScope.GLOBAL,
+        instance_id: int | None = None,
+    ) -> Configuration | None:
+        """Get configuration object by key and scope with hierarchy.
+
+        Args:
+            session: Database session.
+            key: Configuration key.
+            scope: Preferred scope.
+            instance_id: Instance ID for instance-scoped lookup.
+
+        Returns:
+            Configuration object or None if not found.
+        """
+        # Define scope hierarchy (most specific first)
+        scopes_to_check: list[tuple[ConfigScope, int | None]] = []
+
+        if scope == ConfigScope.INSTANCE and instance_id:
+            scopes_to_check.append((ConfigScope.INSTANCE, instance_id))
+        if scope in (ConfigScope.INSTANCE, ConfigScope.PROJECT):
+            scopes_to_check.append((ConfigScope.PROJECT, None))
+        if scope in (ConfigScope.INSTANCE, ConfigScope.PROJECT, ConfigScope.USER):
+            scopes_to_check.append((ConfigScope.USER, None))
+        scopes_to_check.append((ConfigScope.GLOBAL, None))
+
+        for check_scope, check_instance_id in scopes_to_check:
+            query = session.query(Configuration).filter(
+                Configuration.key == key,
+                Configuration.scope == check_scope,
+            )
+
+            if check_instance_id:
+                query = query.filter(Configuration.instance_id == check_instance_id)
+            else:
+                query = query.filter(Configuration.instance_id.is_(None))
+
+            config = query.first()
+            if config:
+                return config
+
+        return None
+
+    @staticmethod
+    def get_exact_by_key_scope(
+        session: Session,
+        key: str,
+        scope: ConfigScope,
+        instance_id: int | None = None,
+    ) -> Configuration | None:
+        """Get configuration by exact key and scope match (no hierarchy).
+
+        Args:
+            session: Database session.
+            key: Configuration key.
+            scope: Exact scope to match.
+            instance_id: Instance ID for instance-scoped configurations.
+
+        Returns:
+            Configuration object or None if not found.
+        """
+        query = session.query(Configuration).filter(
+            Configuration.key == key,
+            Configuration.scope == scope,
+        )
+
+        if scope == ConfigScope.INSTANCE and instance_id:
+            query = query.filter(Configuration.instance_id == instance_id)
+        elif scope != ConfigScope.INSTANCE:
+            query = query.filter(Configuration.instance_id.is_(None))
+
+        return query.first()
+
+
+class HealthCheckCRUD:
+    """CRUD operations for HealthCheck entities."""
+
+    @staticmethod
+    def create(
+        session: Session,
+        instance_id: int,
+        overall_status: HealthStatus,
+        check_results: str,
+        duration_ms: float,
+        check_timestamp: datetime,
+    ) -> HealthCheck:
+        """Create a new health check record.
+
+        Args:
+            session: Database session.
+            instance_id: Instance ID.
+            overall_status: Overall health status.
+            check_results: JSON string of check results.
+            duration_ms: Duration of check in milliseconds.
+            check_timestamp: Timestamp of the check.
+
+        Returns:
+            Created health check.
+        """
+        health_check = HealthCheck(
+            instance_id=instance_id,
+            overall_status=overall_status,
+            check_results=check_results,
+            duration_ms=duration_ms,
+            check_timestamp=check_timestamp,
+        )
+
+        session.add(health_check)
+        session.flush()
+        return health_check
+
+    @staticmethod
+    def list_by_instance(
+        session: Session,
+        instance_id: int,
+        limit: int | None = None,
+        offset: int = 0,
+    ) -> list[HealthCheck]:
+        """List health checks for an instance.
+
+        Args:
+            session: Database session.
+            instance_id: Instance ID.
+            limit: Maximum number of results.
+            offset: Number of results to skip.
+
+        Returns:
+            List of health checks.
+        """
+        query = session.query(HealthCheck).filter(
+            HealthCheck.instance_id == instance_id
+        )
+        query = query.order_by(HealthCheck.check_timestamp.desc())
+
+        if offset:
+            query = query.offset(offset)
+        if limit:
+            query = query.limit(limit)
+
+        return query.all()
+
+    @staticmethod
+    def count_by_instance(session: Session, instance_id: int) -> int:
+        """Count health checks for an instance.
+
+        Args:
+            session: Database session.
+            instance_id: Instance ID.
+
+        Returns:
+            Total count of health checks.
+        """
+        return (
+            session.query(HealthCheck)
+            .filter(HealthCheck.instance_id == instance_id)
+            .count()
+        )

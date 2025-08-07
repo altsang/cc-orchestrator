@@ -35,6 +35,16 @@ class InstanceStatus(Enum):
     ERROR = "error"
 
 
+class HealthStatus(Enum):
+    """Health status of an instance."""
+
+    HEALTHY = "healthy"
+    DEGRADED = "degraded"
+    UNHEALTHY = "unhealthy"
+    CRITICAL = "critical"
+    UNKNOWN = "unknown"
+
+
 class TaskStatus(Enum):
     """Status of a task."""
 
@@ -87,6 +97,17 @@ class Instance(Base):
     tmux_session: Mapped[str | None] = mapped_column(String(255))
     process_id: Mapped[int | None] = mapped_column(Integer)
 
+    # Health monitoring attributes (from Issue #16)
+    health_status: Mapped[HealthStatus] = mapped_column(
+        SQLEnum(HealthStatus), nullable=False, default=HealthStatus.UNKNOWN
+    )
+    last_health_check: Mapped[datetime | None] = mapped_column(DateTime)
+    health_check_count: Mapped[int] = mapped_column(Integer, default=0)
+    healthy_check_count: Mapped[int] = mapped_column(Integer, default=0)
+    last_recovery_attempt: Mapped[datetime | None] = mapped_column(DateTime)
+    recovery_attempt_count: Mapped[int] = mapped_column(Integer, default=0)
+    health_check_details: Mapped[str | None] = mapped_column(Text)
+
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, default=datetime.now
@@ -101,7 +122,7 @@ class Instance(Base):
 
     # Relationships
     tasks: Mapped[list["Task"]] = relationship(
-        "Task", back_populates="instance", cascade="all, delete-orphan"
+        "Task", back_populates="instance", passive_deletes=True
     )
     worktree: Mapped[Optional["Worktree"]] = relationship(
         "Worktree", back_populates="instance", uselist=False
@@ -131,7 +152,7 @@ class Task(Base):
 
     # Foreign keys
     instance_id: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("instances.id"), nullable=True
+        Integer, ForeignKey("instances.id", ondelete="SET NULL"), nullable=True
     )
     worktree_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("worktrees.id"), nullable=True
@@ -219,6 +240,37 @@ class Worktree(Base):
         )
 
 
+class HealthCheck(Base):
+    """Health check record model."""
+
+    __tablename__ = "health_checks"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    instance_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("instances.id"), nullable=False
+    )
+    overall_status: Mapped[HealthStatus] = mapped_column(
+        SQLEnum(HealthStatus), nullable=False
+    )
+    check_results: Mapped[str] = mapped_column(Text, nullable=False)  # JSON string
+    duration_ms: Mapped[float] = mapped_column(Integer, nullable=False)
+    check_timestamp: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=datetime.now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=datetime.now, onupdate=datetime.now
+    )
+
+    # Relationships
+    instance: Mapped["Instance"] = relationship("Instance")
+
+    def __repr__(self) -> str:
+        return f"<HealthCheck(id={self.id}, instance_id={self.instance_id}, status='{self.overall_status.value}')>"
+
+
 class Configuration(Base):
     """Configuration settings model."""
 
@@ -283,3 +335,7 @@ Index("idx_worktrees_status", Worktree.status)
 # Configuration indexes
 Index("idx_configurations_key_scope", Configuration.key, Configuration.scope)
 Index("idx_configurations_instance_id", Configuration.instance_id)
+
+# Health check indexes
+Index("idx_health_checks_instance_id", HealthCheck.instance_id)
+Index("idx_health_checks_timestamp", HealthCheck.check_timestamp)

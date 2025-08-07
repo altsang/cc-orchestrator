@@ -4,6 +4,7 @@ import os
 from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
+from typing import Any
 
 from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
@@ -64,22 +65,21 @@ class DatabaseManager:
 
     def _create_engine(self) -> Engine:
         """Create the database engine with appropriate configuration."""
-        engine_kwargs = {
+        engine_kwargs: dict[str, Any] = {
             "echo": self.echo,
             "pool_pre_ping": self.pool_pre_ping,
         }
 
         # Special configuration for SQLite
         if self.database_url.startswith("sqlite"):
-            engine_kwargs.update(
-                {
-                    "poolclass": StaticPool,
-                    "connect_args": {
-                        "check_same_thread": False,  # Allow multi-threading
-                        "timeout": 30,  # 30 second timeout
-                    },
-                }
-            )
+            sqlite_config = {
+                "poolclass": StaticPool,
+                "connect_args": {
+                    "check_same_thread": False,  # Allow multi-threading
+                    "timeout": 30,  # 30 second timeout
+                },
+            }
+            engine_kwargs.update(sqlite_config)
 
         engine = create_engine(self.database_url, **engine_kwargs)
 
@@ -87,7 +87,9 @@ class DatabaseManager:
         if self.database_url.startswith("sqlite"):
 
             @event.listens_for(engine, "connect")
-            def set_sqlite_pragma(dbapi_connection, connection_record) -> None:
+            def set_sqlite_pragma(
+                dbapi_connection: Any, connection_record: Any
+            ) -> None:
                 cursor = dbapi_connection.cursor()
                 cursor.execute("PRAGMA foreign_keys=ON")
                 cursor.execute(
@@ -100,6 +102,17 @@ class DatabaseManager:
     def create_tables(self) -> None:
         """Create all database tables."""
         Base.metadata.create_all(self.engine)
+
+    async def initialize(self) -> None:
+        """Initialize the database asynchronously."""
+        self.create_tables()
+
+    def close(self) -> None:
+        """Close database connections."""
+        if self._engine:
+            self._engine.dispose()
+            self._engine = None
+        self._session_factory = None
 
     def drop_tables(self) -> None:
         """Drop all database tables."""
@@ -138,18 +151,11 @@ class DatabaseManager:
         """
         return self.session_factory()
 
-    def close(self) -> None:
-        """Close all connections and clean up resources."""
-        if self._engine is not None:
-            self._engine.dispose()
-            self._engine = None
-        self._session_factory = None
-
     def __enter__(self) -> "DatabaseManager":
         """Enter context manager."""
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """Exit context manager and clean up."""
         self.close()
 
