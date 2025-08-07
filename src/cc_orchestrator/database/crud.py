@@ -9,6 +9,8 @@ from sqlalchemy.orm import Session
 from .models import (
     ConfigScope,
     Configuration,
+    HealthCheck,
+    HealthStatus,
     Instance,
     InstanceStatus,
     Task,
@@ -771,13 +773,13 @@ class ConfigurationCRUD:
         instance_id: int | None = None,
     ) -> Configuration | None:
         """Get configuration by exact key and scope match (no hierarchy).
-        
+
         Args:
             session: Database session.
             key: Configuration key.
             scope: Exact scope to match.
             instance_id: Instance ID for instance-scoped configurations.
-            
+
         Returns:
             Configuration object or None if not found.
         """
@@ -792,3 +794,88 @@ class ConfigurationCRUD:
             query = query.filter(Configuration.instance_id.is_(None))
 
         return query.first()
+
+
+class HealthCheckCRUD:
+    """CRUD operations for HealthCheck entities."""
+
+    @staticmethod
+    def create(
+        session: Session,
+        instance_id: int,
+        overall_status: HealthStatus,
+        check_results: str,
+        duration_ms: float,
+        check_timestamp: datetime,
+    ) -> HealthCheck:
+        """Create a new health check record.
+
+        Args:
+            session: Database session.
+            instance_id: Instance ID.
+            overall_status: Overall health status.
+            check_results: JSON string of check results.
+            duration_ms: Duration of check in milliseconds.
+            check_timestamp: Timestamp of the check.
+
+        Returns:
+            Created health check.
+        """
+        health_check = HealthCheck(
+            instance_id=instance_id,
+            overall_status=overall_status,
+            check_results=check_results,
+            duration_ms=duration_ms,
+            check_timestamp=check_timestamp,
+        )
+
+        session.add(health_check)
+        session.flush()
+        return health_check
+
+    @staticmethod
+    def list_by_instance(
+        session: Session,
+        instance_id: int,
+        limit: int | None = None,
+        offset: int = 0,
+    ) -> list[HealthCheck]:
+        """List health checks for an instance.
+
+        Args:
+            session: Database session.
+            instance_id: Instance ID.
+            limit: Maximum number of results.
+            offset: Number of results to skip.
+
+        Returns:
+            List of health checks.
+        """
+        query = session.query(HealthCheck).filter(
+            HealthCheck.instance_id == instance_id
+        )
+        query = query.order_by(HealthCheck.check_timestamp.desc())
+
+        if offset:
+            query = query.offset(offset)
+        if limit:
+            query = query.limit(limit)
+
+        return query.all()
+
+    @staticmethod
+    def count_by_instance(session: Session, instance_id: int) -> int:
+        """Count health checks for an instance.
+
+        Args:
+            session: Database session.
+            instance_id: Instance ID.
+
+        Returns:
+            Total count of health checks.
+        """
+        return (
+            session.query(HealthCheck)
+            .filter(HealthCheck.instance_id == instance_id)
+            .count()
+        )

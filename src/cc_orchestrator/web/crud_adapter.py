@@ -13,12 +13,15 @@ from sqlalchemy.orm import Session
 
 from ..database.crud import (
     ConfigurationCRUD,
+    HealthCheckCRUD,
     InstanceCRUD,
     TaskCRUD,
     WorktreeCRUD,
 )
 from ..database.models import (
     Configuration,
+    HealthCheck,
+    HealthStatus,
     Instance,
     Task,
     Worktree,
@@ -38,20 +41,6 @@ class Alert:
             self.id = kwargs.get("id", 1)
         if not hasattr(self, "level"):
             self.level = kwargs.get("level", "info")
-
-
-class HealthCheck:
-    """Placeholder HealthCheck model."""
-
-    def __init__(self, **kwargs: Any) -> None:
-        for key, value in kwargs.items():
-            setattr(self, key, value)
-        now = datetime.now()
-        self.created_at = now
-        self.updated_at = now
-        # Ensure id attribute exists
-        if not hasattr(self, "id"):
-            self.id = kwargs.get("id", 1)
 
 
 class RecoveryAttempt:
@@ -592,19 +581,43 @@ class CRUDBase:
         self, offset: int = 0, limit: int = 20, filters: dict[str, Any] | None = None
     ) -> tuple[list[HealthCheck], int]:
         """List health checks with pagination and filtering."""
-        return [], 0
+
+        def _list_health_checks():
+            # Handle instance_id filter
+            if filters and "instance_id" in filters:
+                instance_id = filters["instance_id"]
+                health_checks = HealthCheckCRUD.list_by_instance(
+                    self.session, instance_id, limit=limit, offset=offset
+                )
+                total_count = HealthCheckCRUD.count_by_instance(
+                    self.session, instance_id
+                )
+                return health_checks, total_count
+            else:
+                # For now, return empty if no instance filter
+                return [], 0
+
+        return await asyncio.to_thread(_list_health_checks)
 
     async def create_health_check(self, check_data: dict[str, Any]) -> HealthCheck:
         """Create a new health check record."""
-        health_check = HealthCheck(
-            instance_id=check_data["instance_id"],
-            overall_status=check_data["overall_status"],
-            check_results=check_data["check_results"],
-            duration_ms=check_data["duration_ms"],
-            check_timestamp=check_data["check_timestamp"],
-        )
-        health_check.id = 1  # Simulate assigned ID
-        return health_check
+
+        def _create_health_check():
+            # Convert overall_status to enum if it's a string
+            overall_status = check_data["overall_status"]
+            if isinstance(overall_status, str):
+                overall_status = HealthStatus(overall_status.lower())
+
+            return HealthCheckCRUD.create(
+                self.session,
+                instance_id=check_data["instance_id"],
+                overall_status=overall_status,
+                check_results=check_data["check_results"],
+                duration_ms=check_data["duration_ms"],
+                check_timestamp=check_data["check_timestamp"],
+            )
+
+        return await asyncio.to_thread(_create_health_check)
 
     # Alert operations
     async def list_alerts(

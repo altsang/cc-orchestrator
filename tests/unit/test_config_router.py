@@ -122,6 +122,9 @@ class TestConfigRouterFunctions:
     @pytest.mark.asyncio
     async def test_create_configuration_global_success(self, mock_crud):
         """Test successful global configuration creation."""
+        # Mock the exact configuration lookup to return None (no existing config)
+        mock_crud.get_exact_configuration_by_key_scope.return_value = None
+
         config_data = ConfigurationCreate(
             key="test_key",
             value="test_value",
@@ -137,8 +140,8 @@ class TestConfigRouterFunctions:
         assert "Configuration created successfully" in result["message"]
         assert "data" in result
 
-        # Verify duplicate check and creation - enum is converted to string
-        mock_crud.get_configuration_by_key_scope.assert_called_once_with(
+        # Verify duplicate check and creation - using exact method now
+        mock_crud.get_exact_configuration_by_key_scope.assert_called_once_with(
             "test_key", "global", None
         )
         mock_crud.create_configuration.assert_called_once()
@@ -146,6 +149,10 @@ class TestConfigRouterFunctions:
     @pytest.mark.asyncio
     async def test_create_configuration_instance_success(self, mock_crud):
         """Test successful instance-scoped configuration creation."""
+        # Mock instance exists and no existing configuration
+        mock_crud.get_instance.return_value = Mock(id=1)  # Instance exists
+        mock_crud.get_exact_configuration_by_key_scope.return_value = None  # No existing config
+
         config_data = ConfigurationCreate(
             key="instance_key",
             value="instance_value",
@@ -160,9 +167,9 @@ class TestConfigRouterFunctions:
 
         assert result["success"] is True
 
-        # Verify instance validation
+        # Verify instance validation and exact duplicate check
         mock_crud.get_instance.assert_called_once_with(1)
-        mock_crud.get_configuration_by_key_scope.assert_called_once_with(
+        mock_crud.get_exact_configuration_by_key_scope.assert_called_once_with(
             "instance_key", "instance", 1
         )
 

@@ -35,7 +35,6 @@ from cc_orchestrator.database.models import (
 from cc_orchestrator.web.crud_adapter import (
     Alert,
     CRUDBase,
-    HealthCheck,
     RecoveryAttempt,
 )
 
@@ -757,18 +756,30 @@ class TestCRUDAdapter:
         assert result == ([], 0)
 
     @pytest.mark.asyncio
-    async def test_list_health_checks_with_filters(self, crud_adapter):
+    @patch("cc_orchestrator.web.crud_adapter.HealthCheckCRUD")
+    async def test_list_health_checks_with_filters(self, mock_crud, crud_adapter):
         """Test listing health checks with filters."""
+        # Mock the HealthCheckCRUD methods
+        mock_crud.list_by_instance.return_value = []
+        mock_crud.count_by_instance.return_value = 0
+
         filters = {"instance_id": 1, "overall_status": HealthStatus.HEALTHY}
         result = await crud_adapter.list_health_checks(
             offset=3, limit=15, filters=filters
         )
 
         assert result == ([], 0)
+        mock_crud.list_by_instance.assert_called_once_with(
+            crud_adapter.session, 1, limit=15, offset=3
+        )
+        mock_crud.count_by_instance.assert_called_once_with(crud_adapter.session, 1)
 
     @pytest.mark.asyncio
-    async def test_create_health_check_success(self, crud_adapter):
+    @patch("cc_orchestrator.web.crud_adapter.HealthCheckCRUD")
+    async def test_create_health_check_success(self, mock_crud, crud_adapter):
         """Test successful health check creation."""
+        from cc_orchestrator.database.models import HealthCheck
+
         check_data = {
             "instance_id": 1,
             "overall_status": HealthStatus.HEALTHY,
@@ -776,6 +787,18 @@ class TestCRUDAdapter:
             "duration_ms": 150.5,
             "check_timestamp": datetime.now(UTC),
         }
+
+        # Create a mock health check return object
+        mock_health_check = Mock(spec=HealthCheck)
+        mock_health_check.instance_id = 1
+        mock_health_check.overall_status = HealthStatus.HEALTHY
+        mock_health_check.check_results = '{"database": "healthy"}'
+        mock_health_check.duration_ms = 150.5
+        mock_health_check.check_timestamp = check_data["check_timestamp"]
+        mock_health_check.id = 1
+        mock_health_check.created_at = datetime.now(UTC)
+
+        mock_crud.create.return_value = mock_health_check
 
         result = await crud_adapter.create_health_check(check_data)
 
@@ -786,6 +809,15 @@ class TestCRUDAdapter:
         assert isinstance(result.check_timestamp, datetime)
         assert result.id == 1
         assert isinstance(result.created_at, datetime)
+
+        mock_crud.create.assert_called_once_with(
+            crud_adapter.session,
+            instance_id=1,
+            overall_status=HealthStatus.HEALTHY,
+            check_results='{"database": "healthy"}',
+            duration_ms=150.5,
+            check_timestamp=check_data["check_timestamp"],
+        )
 
     @pytest.mark.asyncio
     async def test_list_alerts_empty(self, crud_adapter):
@@ -864,33 +896,6 @@ class TestPlaceholderModels:
         assert alert.id == 1  # Default
         assert alert.level == "info"  # Default
         assert isinstance(alert.created_at, datetime)
-
-    def test_health_check_model_creation(self):
-        """Test HealthCheck placeholder model creation."""
-        check_data = {
-            "id": 1,
-            "instance_id": 1,
-            "overall_status": "healthy",
-            "check_results": '{"database": "ok"}',
-            "duration_ms": 150.0,
-        }
-
-        health_check = HealthCheck(**check_data)
-
-        assert health_check.id == 1
-        assert health_check.instance_id == 1
-        assert health_check.overall_status == "healthy"
-        assert health_check.check_results == '{"database": "ok"}'
-        assert health_check.duration_ms == 150.0
-        assert isinstance(health_check.created_at, datetime)
-
-    def test_health_check_model_defaults(self):
-        """Test HealthCheck model with default values."""
-        health_check = HealthCheck(instance_id=1)
-
-        assert health_check.instance_id == 1
-        assert health_check.id == 1  # Default
-        assert isinstance(health_check.created_at, datetime)
 
     def test_recovery_attempt_model_creation(self):
         """Test RecoveryAttempt placeholder model creation."""

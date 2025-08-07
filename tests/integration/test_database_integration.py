@@ -429,12 +429,11 @@ class TestCompleteWorkflow:
             with pytest.raises(NotFoundError):
                 InstanceCRUD.get_by_id(session=session, instance_id=instance_id)
 
-            # Tasks should be gone (cascade delete)
-            with pytest.raises(NotFoundError):
-                TaskCRUD.get_by_id(session=session, task_id=task1_id)
-
-            with pytest.raises(NotFoundError):
-                TaskCRUD.get_by_id(session=session, task_id=task2_id)
+            # Tasks should still exist but be unassigned (instance_id set to NULL)
+            task1_after = TaskCRUD.get_by_id(session=session, task_id=task1_id)
+            task2_after = TaskCRUD.get_by_id(session=session, task_id=task2_id)
+            assert task1_after.instance_id is None  # Should be unassigned
+            assert task2_after.instance_id is None  # Should be unassigned
 
             # Worktree should still exist (not cascade deleted)
             retrieved_worktree = WorktreeCRUD.get_by_path(
