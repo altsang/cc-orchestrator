@@ -144,7 +144,9 @@ class TestDatabaseDependencies:
         mock_session.close.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_get_db_session_general_exception(self, mock_db_manager, mock_session):
+    async def test_get_db_session_general_exception(
+        self, mock_db_manager, mock_session
+    ):
         """Test database session with general exception."""
         mock_db_manager.session_factory.return_value = mock_session
 
@@ -519,7 +521,9 @@ class TestDependencyIntegration:
         mock_request.client.host = "fallback-ip"
 
         # Test multiple IPs in X-Forwarded-For with spaces
-        mock_request.headers = {"x-forwarded-for": " 192.168.1.1 , 10.0.0.1 , 172.16.0.1 "}
+        mock_request.headers = {
+            "x-forwarded-for": " 192.168.1.1 , 10.0.0.1 , 172.16.0.1 "
+        }
         result = get_client_ip(mock_request)
         assert result == "192.168.1.1"
 
@@ -579,4 +583,3 @@ class TestDependencyIntegration:
             with pytest.raises(HTTPException) as exc_info:
                 validator(-1)
             assert exc_info.value.status_code == 400
-

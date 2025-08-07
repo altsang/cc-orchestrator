@@ -151,7 +151,9 @@ class TestConfigRouterFunctions:
         """Test successful instance-scoped configuration creation."""
         # Mock instance exists and no existing configuration
         mock_crud.get_instance.return_value = Mock(id=1)  # Instance exists
-        mock_crud.get_exact_configuration_by_key_scope.return_value = None  # No existing config
+        mock_crud.get_exact_configuration_by_key_scope.return_value = (
+            None  # No existing config
+        )
 
         config_data = ConfigurationCreate(
             key="instance_key",

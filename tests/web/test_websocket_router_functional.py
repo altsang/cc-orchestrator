@@ -58,7 +58,9 @@ class TestWebSocketEndpointsFunctional:
 
     @pytest.mark.asyncio
     @patch("cc_orchestrator.web.websocket.router.connection_manager")
-    async def test_websocket_endpoint_unknown_client(self, mock_manager, mock_websocket):
+    async def test_websocket_endpoint_unknown_client(
+        self, mock_manager, mock_websocket
+    ):
         """Test WebSocket endpoint with unknown client IP."""
         # Setup - no client info
         mock_websocket.client = None
@@ -342,7 +344,9 @@ class TestWebSocketEndpointVariations:
         for endpoint_func, args in endpoints:
             # Reset mock for each test
             mock_manager.reset_mock()
-            mock_manager.connect = AsyncMock(return_value=f"no-client-{endpoint_func.__name__}")
+            mock_manager.connect = AsyncMock(
+                return_value=f"no-client-{endpoint_func.__name__}"
+            )
             mock_manager.disconnect = AsyncMock()
             mock_manager.subscribe = AsyncMock()
 
@@ -388,7 +392,9 @@ class TestWebSocketEndpointVariations:
         for exception in exception_types:
             # Reset for each test
             mock_manager.reset_mock()
-            mock_manager.connect = AsyncMock(return_value=f"exception-{type(exception).__name__}")
+            mock_manager.connect = AsyncMock(
+                return_value=f"exception-{type(exception).__name__}"
+            )
             mock_manager.disconnect = AsyncMock()
             mock_websocket.receive_text.side_effect = exception
 
@@ -400,4 +406,3 @@ class TestWebSocketEndpointVariations:
             mock_manager.disconnect.assert_called_once()
             disconnect_call = mock_manager.disconnect.call_args[0]
             assert disconnect_call[1] == expected_error
-

@@ -229,7 +229,9 @@ class TestServerStartup:
 
     @patch("cc_orchestrator.web.server.uvicorn.run")
     @patch("cc_orchestrator.web.server.get_server_config")
-    def test_run_server_partial_parameter_overrides(self, mock_get_config, mock_uvicorn):
+    def test_run_server_partial_parameter_overrides(
+        self, mock_get_config, mock_uvicorn
+    ):
         """Test running server with partial parameter overrides."""
         # Mock configuration
         mock_config = {
@@ -357,4 +359,3 @@ class TestServerConfigurationEdgeCases:
 
         # Verify app is importable
         assert app is not None
-
