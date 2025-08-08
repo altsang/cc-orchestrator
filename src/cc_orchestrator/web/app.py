@@ -1,139 +1,128 @@
-"""
-FastAPI application for CC-Orchestrator with REST API and WebSocket support.
+"""FastAPI web application for CC-Orchestrator dashboard."""
 
-This module provides:
-- REST API endpoints for orchestrator operations
-- WebSocket endpoints for real-time updates (ready for Issue #19)
-- Connection management and database integration
-- Health monitoring and status reporting
-"""
-
+import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 
 from ..database.connection import DatabaseManager
-from .logging_utils import api_logger
-from .middleware import (
-    LoggingMiddleware,
-    RateLimitMiddleware,
-    RequestIDMiddleware,
-)
-from .routers import alerts, config, health, instances, tasks, worktrees
-from .routers.v1 import api_router_v1
+from .exceptions import CCOrchestratorAPIException
+from .routers import api_router, auth_router, websocket_router
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    """Manage application startup and shutdown events."""
+    """Manage application lifespan events."""
     # Startup
-    api_logger.info("Starting CC-Orchestrator API server")
-
-    # Initialize database connection (only if not already set for testing)
-    if not hasattr(app.state, "db_manager"):
-        try:
-            db_manager = DatabaseManager()
-            app.state.db_manager = db_manager
-            api_logger.info("Database connection initialized")
-        except Exception as e:
-            api_logger.error("Failed to initialize database", error=str(e))
-            # For testing/development, create a mock db_manager
-            app.state.db_manager = None
-
-    api_logger.info("CC-Orchestrator API server started successfully")
-
+    db_manager = DatabaseManager()
+    db_manager.create_tables()
     yield
-
-    # Shutdown
-    api_logger.info("Shutting down CC-Orchestrator API server")
-
-    # Close database connections
-    if hasattr(app.state, "db_manager") and app.state.db_manager:
-        await app.state.db_manager.close()
-        api_logger.info("Database connections closed")
-
-    api_logger.info("CC-Orchestrator API server shutdown complete")
+    # Shutdown - cleanup if needed
 
 
 def create_app() -> FastAPI:
     """Create and configure the FastAPI application."""
     app = FastAPI(
         title="CC-Orchestrator API",
-        description="REST API for managing Claude Code instances, tasks, and worktrees",
-        version="1.0.0",
-        docs_url="/docs",
-        redoc_url="/redoc",
-        openapi_url="/openapi.json",
+        description="Claude Code Orchestrator Dashboard API",
+        version="0.1.0",
         lifespan=lifespan,
     )
 
-    # Add CORS middleware
+    # Add CORS middleware with environment-based configuration
+    debug = os.getenv("DEBUG", "false").lower() == "true"
+    if debug:
+        # Development origins
+        allowed_origins = [
+            "http://localhost:3000",
+            "http://localhost:5173",
+        ]
+    else:
+        # Production validation - ensure required environment variables are set
+        frontend_url = os.getenv("FRONTEND_URL")
+        if not frontend_url:
+            raise ValueError(
+                "FRONTEND_URL must be set when DEBUG=false (production mode)"
+            )
+
+        # Validate the frontend URL format
+        if not (
+            frontend_url.startswith("http://") or frontend_url.startswith("https://")
+        ):
+            raise ValueError("FRONTEND_URL must be a valid HTTP(S) URL")
+
+        allowed_origins = [frontend_url]
+
+        # Additional production environment validation
+        if not os.getenv("JWT_SECRET_KEY"):
+            raise ValueError("JWT_SECRET_KEY must be set in production mode")
+
+        # Warn about HTTP in production
+        if frontend_url.startswith("http://") and not frontend_url.startswith(
+            "http://localhost"
+        ):
+            import logging
+
+            logging.warning(
+                "Using HTTP (not HTTPS) for FRONTEND_URL in production mode. "
+                "Consider using HTTPS for security."
+            )
+
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],  # Configure based on environment
+        allow_origins=allowed_origins,
         allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=["Content-Type", "Authorization", "Accept"],
     )
 
-    # Add custom middleware
-    app.add_middleware(RequestIDMiddleware)
-    app.add_middleware(LoggingMiddleware)
-    app.add_middleware(RateLimitMiddleware, requests_per_minute=60)
-
-    # Include routers
-    app.include_router(api_router_v1, prefix="/api/v1")
-
-    # Legacy routers (will be deprecated)
-    app.include_router(instances.router, prefix="/instances", tags=["instances"])
-    app.include_router(tasks.router, prefix="/tasks", tags=["tasks"])
-    app.include_router(worktrees.router, prefix="/worktrees", tags=["worktrees"])
-    app.include_router(config.router, prefix="/config", tags=["config"])
-    app.include_router(health.router, prefix="/health", tags=["health"])
-    app.include_router(alerts.router, prefix="/alerts", tags=["alerts"])
-
-    # Root endpoint
-    @app.get("/", summary="API Health Check")
-    async def root() -> dict[str, str]:
-        """Check if the API is running."""
-        return {
-            "message": "CC-Orchestrator API",
-            "status": "running",
-            "version": "1.0.0",
-            "docs": "/docs",
-        }
-
-    # Health check endpoint
-    @app.get("/ping", summary="Simple Health Check")
-    async def ping() -> dict[str, str]:
-        """Simple health check endpoint."""
-        return {"status": "ok"}
-
-    # Global exception handler
-    @app.exception_handler(Exception)
-    async def global_exception_handler(
-        request: Request, exc: Exception
+    # Add exception handlers
+    @app.exception_handler(CCOrchestratorAPIException)
+    async def api_exception_handler(
+        request: Request, exc: CCOrchestratorAPIException
     ) -> JSONResponse:
-        """Handle unexpected exceptions."""
-        api_logger.error(
-            "Unhandled exception",
-            path=str(request.url.path),
-            method=request.method,
-            error=str(exc),
-        )
+        """Handle custom API exceptions."""
         return JSONResponse(
-            status_code=500,
+            status_code=exc.status_code,
             content={
-                "error": "Internal server error",
-                "message": "An unexpected error occurred",
+                "error": exc.__class__.__name__,
+                "message": exc.message,
+                "status_code": exc.status_code,
             },
         )
+
+    # Include routers
+    app.include_router(auth_router, prefix="/auth")
+    app.include_router(api_router, prefix="/api/v1")
+    app.include_router(websocket_router, prefix="/ws")
+
+    @app.get("/", response_class=HTMLResponse)
+    async def root() -> str:
+        """Serve the dashboard root page."""
+        return """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>CC-Orchestrator Dashboard</title>
+        </head>
+        <body>
+            <h1>CC-Orchestrator Dashboard</h1>
+            <p>API Documentation: <a href="/docs">/docs</a></p>
+            <p>React Frontend will be served here</p>
+        </body>
+        </html>
+        """
+
+    @app.get("/health")
+    async def health_check() -> dict[str, str]:
+        """Health check endpoint."""
+        return {"status": "healthy"}
 
     return app
 
 
-# Create the FastAPI app instance
+# Create the application instance
 app = create_app()
