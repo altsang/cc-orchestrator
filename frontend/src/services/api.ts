@@ -96,15 +96,15 @@ class APIService {
   ): Promise<PaginatedResponse<Instance>> {
     const params = sanitizeObject({ page, size, ...filters });
     const response = await this.get<PaginatedResponse<Instance>>('/instances', params);
-    
+
     // Validate response structure
     const paginatedData = validateApiResponse(response, paginatedResponseSchema);
-    
+
     // Validate each instance in the items array
-    const validatedInstances = paginatedData.items.map(item => 
+    const validatedInstances = paginatedData.items.map(item =>
       validateApiResponse(item, instanceSchema)
     );
-    
+
     return {
       ...paginatedData,
       items: validatedInstances,

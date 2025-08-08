@@ -171,7 +171,7 @@ class WebSocketService {
         // Parse and validate the message
         const rawMessage = JSON.parse(event.data);
         const message = safeParseWebSocketMessage(rawMessage);
-        
+
         if (!message) {
           console.warn('Received invalid WebSocket message, ignoring:', rawMessage);
           return;

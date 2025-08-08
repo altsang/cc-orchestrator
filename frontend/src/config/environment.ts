@@ -13,7 +13,7 @@ const validateUrl = (url: string, name: string): string => {
   if (!url) {
     throw new Error(`${name} is required but not provided`);
   }
-  
+
   try {
     new URL(url);
     return url;
@@ -32,7 +32,7 @@ const validateEnvironment = (env: string): 'development' | 'staging' | 'producti
 
 const validateNumber = (value: string | undefined, defaultValue: number, min: number, max: number, name: string): number => {
   if (!value) return defaultValue;
-  
+
   const parsed = parseInt(value, 10);
   if (isNaN(parsed) || parsed < min || parsed > max) {
     console.warn(`Invalid ${name} '${value}', using default: ${defaultValue}`);
@@ -63,11 +63,11 @@ const loadEnvironmentConfig = (): EnvironmentConfig => {
     if (config.apiBaseUrl.includes('localhost') || config.wsBaseUrl.includes('localhost')) {
       throw new Error('Production environment cannot use localhost URLs');
     }
-    
+
     if (!config.apiBaseUrl.startsWith('https://')) {
       console.warn('Production API should use HTTPS for security');
     }
-    
+
     if (!config.wsBaseUrl.startsWith('wss://')) {
       console.warn('Production WebSocket should use WSS for security');
     }
@@ -80,11 +80,11 @@ const loadEnvironmentConfig = (): EnvironmentConfig => {
 export const environmentConfig = loadEnvironmentConfig();
 
 // Export individual values for convenience
-export const { 
-  apiBaseUrl, 
-  wsBaseUrl, 
-  environment, 
-  apiTimeout, 
-  wsReconnectInterval, 
-  wsMaxReconnectAttempts 
+export const {
+  apiBaseUrl,
+  wsBaseUrl,
+  environment,
+  apiTimeout,
+  wsReconnectInterval,
+  wsMaxReconnectAttempts
 } = environmentConfig;

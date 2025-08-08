@@ -27,7 +27,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     this.setState({ errorInfo });
-    
+
     // Log error to console in development
     if (environment === 'development') {
       console.error('Error Boundary caught an error:', error, errorInfo);
@@ -82,11 +82,11 @@ export class ErrorBoundary extends Component<Props, State> {
                   />
                 </svg>
               </div>
-              
+
               <h2 className="text-xl font-semibold text-gray-900 mb-2">
                 Something went wrong
               </h2>
-              
+
               <p className="text-gray-600 mb-4">
                 We're sorry, but something unexpected happened. Please try refreshing the page.
               </p>

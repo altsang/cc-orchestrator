@@ -95,7 +95,7 @@ export const sanitizeString = (input: string): string => {
 
 export const sanitizeObject = <T extends Record<string, any>>(obj: T): T => {
   const sanitized = { ...obj };
-  
+
   Object.keys(sanitized).forEach(key => {
     const value = sanitized[key];
     if (typeof value === 'string') {
@@ -104,7 +104,7 @@ export const sanitizeObject = <T extends Record<string, any>>(obj: T): T => {
       sanitized[key] = sanitizeObject(value);
     }
   });
-  
+
   return sanitized;
 };
 
