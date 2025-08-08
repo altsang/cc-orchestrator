@@ -1,74 +1,71 @@
 // Mobile navigation menu component
 
-import React, { useState } from 'react';
+import React from 'react';
 
-interface MobileMenuProps {
-  activeTab: string;
-  onTabChange: (tab: string) => void;
+interface Tab {
+  id: string;
+  label: string;
+  icon: string;
 }
 
-export const MobileMenu: React.FC<MobileMenuProps> = ({ activeTab, onTabChange }) => {
-  const [isOpen, setIsOpen] = useState(false);
+interface MobileMenuProps {
+  tabs: Tab[];
+  activeTab: string;
+  onTabChange: (tabId: string) => void;
+  isOpen: boolean;
+  onToggle: () => void;
+}
 
-  const tabs = [
-    { key: 'overview', label: 'Overview', icon: '📊' },
-    { key: 'instances', label: 'Instances', icon: '💻' },
-    { key: 'tasks', label: 'Tasks', icon: '📋' },
-  ];
-
+export const MobileMenu: React.FC<MobileMenuProps> = ({ tabs, activeTab, onTabChange, isOpen, onToggle }) => {
   const handleTabSelect = (tab: string) => {
     onTabChange(tab);
-    setIsOpen(false);
   };
 
-  return (
-    <div className="lg:hidden">
-      {/* Mobile menu button */}
+  if (!isOpen) {
+    return (
       <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
-        aria-expanded="false"
+        onClick={onToggle}
+        aria-expanded={false}
+        className="md:hidden flex items-center px-3 py-2 border rounded text-gray-500 border-gray-600 hover:text-white hover:border-white"
+        aria-label="Open menu"
       >
-        <span className="sr-only">Open main menu</span>
-        {!isOpen ? (
-          <svg className="block h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-        ) : (
-          <svg className="block h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        )}
+        <svg className="fill-current h-3 w-3" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+          <title>Menu</title>
+          <path d="M0 3h20v2H0V3zm0 6h20v2H0V9zm0 6h20v2H0v-2z"/>
+        </svg>
+      </button>
+    );
+  }
+
+  return (
+    <div className="md:hidden">
+      <button
+        onClick={onToggle}
+        aria-expanded={true}
+        className="flex items-center px-3 py-2 border rounded text-gray-500 border-gray-600 hover:text-white hover:border-white"
+        aria-label="Close menu"
+      >
+        <svg className="fill-current h-3 w-3" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+          <title>Close</title>
+          <path d="M10 8.586L2.929 1.515 1.515 2.929 8.586 10l-7.071 7.071 1.414 1.414L10 11.414l7.071 7.071 1.414-1.414L11.414 10l7.071-7.071-1.414-1.414L10 8.586z"/>
+        </svg>
       </button>
 
-      {/* Mobile menu overlay */}
-      {isOpen && (
-        <>
-          <div
-            className="fixed inset-0 z-40 bg-gray-600 bg-opacity-50"
-            onClick={() => setIsOpen(false)}
-          ></div>
-          <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-md shadow-lg z-50 border border-gray-200">
-            <div className="py-1">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.key}
-                  onClick={() => handleTabSelect(tab.key)}
-                  className={`flex items-center w-full px-4 py-2 text-sm text-left hover:bg-gray-100 ${
-                    activeTab === tab.key
-                      ? 'bg-blue-50 text-blue-700 font-medium'
-                      : 'text-gray-700'
-                  }`}
-                >
-                  <span className="mr-3 text-lg">{tab.icon}</span>
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        </>
-      )}
+      <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => handleTabSelect(tab.id)}
+            className={`block px-3 py-2 rounded-md text-base font-medium w-full text-left ${
+              activeTab === tab.id
+                ? 'text-blue-600 bg-blue-50'
+                : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 };

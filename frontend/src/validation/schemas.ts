@@ -27,8 +27,11 @@ export const instanceSchema = z.object({
 });
 
 // Task schemas
-export const taskStatusSchema = z.enum(['pending', 'in_progress', 'completed', 'cancelled']);
+export const taskStatusSchema = z.enum(['pending', 'running', 'in_progress', 'completed', 'failed', 'cancelled']);
 export const taskPrioritySchema = z.enum(['low', 'medium', 'high', 'urgent']);
+
+// Alert schemas
+export const alertSeveritySchema = z.enum(['low', 'medium', 'high', 'critical']);
 
 export const taskSchema = z.object({
   id: idSchema,
@@ -90,7 +93,7 @@ export const paginatedResponseSchema = z.object({
 export const sanitizeString = (input: string): string => {
   return input
     .trim()
-    .replace(/[<>]/g, '') // Remove potential HTML tags
+    .replace(/<[^>]*>/g, '') // Remove HTML tags completely
     .slice(0, 1000); // Limit length
 };
 
@@ -101,7 +104,11 @@ export const sanitizeObject = <T extends Record<string, any>>(obj: T): T => {
     const value = sanitized[key];
     if (typeof value === 'string') {
       sanitized[key] = sanitizeString(value);
-    } else if (value && typeof value === 'object' && !Array.isArray(value)) {
+    } else if (Array.isArray(value)) {
+      sanitized[key] = value.map(item =>
+        typeof item === 'string' ? sanitizeString(item) : item
+      );
+    } else if (value && typeof value === 'object') {
       sanitized[key] = sanitizeObject(value);
     }
   });

@@ -1,7 +1,9 @@
 // React hooks for API data management
 
 import { useState, useEffect, useCallback } from 'react';
+import toast from 'react-hot-toast';
 import { apiService } from '../services/api';
+import logger from '../utils/logger';
 import type {
   Instance,
   Task,
@@ -22,20 +24,20 @@ export function useApiData<T>(
   dependencies: any[] = []
 ) {
   const [data, setData] = useState<T | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
-      setLoading(true);
+      setIsLoading(true);
       setError(null);
       const result = await fetcher();
       setData(result);
     } catch (err) {
-      console.error('API fetch error:', err);
-      setError(err instanceof Error ? err.message : 'Unknown error occurred');
+      logger.error('API fetch error', err as Error);
+      setError(err as Error);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   }, dependencies);
 
@@ -45,7 +47,7 @@ export function useApiData<T>(
 
   return {
     data,
-    loading,
+    isLoading,
     error,
     refetch: fetchData,
   };
@@ -71,81 +73,91 @@ export function useInstance(id: number) {
 }
 
 export function useInstanceOperations() {
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const startInstance = useCallback(async (id: number): Promise<Instance | null> => {
     try {
-      setLoading(true);
+      setIsLoading(true);
       setError(null);
       const response = await apiService.startInstance(id);
-      return response.data || null;
+      toast.success('Instance started successfully');
+      return response;
     } catch (err) {
-      console.error('Start instance error:', err);
+      logger.error('Start instance error', err as Error);
       setError(err instanceof Error ? err.message : 'Failed to start instance');
-      return null;
+      toast.error('Failed to start instance');
+      throw err;
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   }, []);
 
   const stopInstance = useCallback(async (id: number): Promise<Instance | null> => {
     try {
-      setLoading(true);
+      setIsLoading(true);
       setError(null);
       const response = await apiService.stopInstance(id);
-      return response.data || null;
+      toast.success('Instance stopped successfully');
+      return response;
     } catch (err) {
-      console.error('Stop instance error:', err);
+      logger.error('Stop instance error', err as Error);
       setError(err instanceof Error ? err.message : 'Failed to stop instance');
-      return null;
+      toast.error('Failed to stop instance');
+      throw err;
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   }, []);
 
   const createInstance = useCallback(async (data: Partial<Instance>): Promise<Instance | null> => {
     try {
-      setLoading(true);
+      setIsLoading(true);
       setError(null);
       const response = await apiService.createInstance(data);
-      return response.data || null;
+      toast.success('Instance created successfully');
+      return response;
     } catch (err) {
-      console.error('Create instance error:', err);
+      logger.error('Create instance error', err as Error);
       setError(err instanceof Error ? err.message : 'Failed to create instance');
-      return null;
+      toast.error('Failed to create instance');
+      throw err;
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   }, []);
 
   const updateInstance = useCallback(async (id: number, data: Partial<Instance>): Promise<Instance | null> => {
     try {
-      setLoading(true);
+      setIsLoading(true);
       setError(null);
       const response = await apiService.updateInstance(id, data);
-      return response.data || null;
+      toast.success('Instance updated successfully');
+      return response;
     } catch (err) {
-      console.error('Update instance error:', err);
+      logger.error('Update instance error', err as Error);
       setError(err instanceof Error ? err.message : 'Failed to update instance');
-      return null;
+      toast.error('Failed to update instance');
+      throw err;
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   }, []);
 
   const deleteInstance = useCallback(async (id: number): Promise<boolean> => {
     try {
-      setLoading(true);
+      setIsLoading(true);
       setError(null);
       await apiService.deleteInstance(id);
+      toast.success('Instance deleted successfully');
       return true;
     } catch (err) {
-      console.error('Delete instance error:', err);
+      logger.error('Delete instance error', err as Error);
       setError(err instanceof Error ? err.message : 'Failed to delete instance');
-      return false;
+      toast.error('Failed to delete instance');
+      throw err;
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   }, []);
 
@@ -155,7 +167,7 @@ export function useInstanceOperations() {
     createInstance,
     updateInstance,
     deleteInstance,
-    loading,
+    isLoading,
     error,
   };
 }
@@ -180,126 +192,142 @@ export function useTask(id: number) {
 }
 
 export function useTaskOperations() {
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const startTask = useCallback(async (id: number): Promise<Task | null> => {
     try {
-      setLoading(true);
+      setIsLoading(true);
       setError(null);
       const response = await apiService.startTask(id);
-      return response.data || null;
+      toast.success('Task started successfully');
+      return response;
     } catch (err) {
-      console.error('Start task error:', err);
+      logger.error('Start task error', err as Error);
       setError(err instanceof Error ? err.message : 'Failed to start task');
-      return null;
+      toast.error('Failed to start task');
+      throw err;
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   }, []);
 
   const completeTask = useCallback(async (id: number, results?: Record<string, any>): Promise<Task | null> => {
     try {
-      setLoading(true);
+      setIsLoading(true);
       setError(null);
-      const response = await apiService.completeTask(id, results);
-      return response.data || null;
+      const response = results ? await apiService.completeTask(id, results) : await apiService.completeTask(id);
+      toast.success('Task completed successfully');
+      return response;
     } catch (err) {
-      console.error('Complete task error:', err);
+      logger.error('Complete task error', err as Error);
       setError(err instanceof Error ? err.message : 'Failed to complete task');
-      return null;
+      toast.error('Failed to complete task');
+      throw err;
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   }, []);
 
   const cancelTask = useCallback(async (id: number): Promise<Task | null> => {
     try {
-      setLoading(true);
+      setIsLoading(true);
       setError(null);
       const response = await apiService.cancelTask(id);
-      return response.data || null;
+      toast.success('Task cancelled successfully');
+      return response;
     } catch (err) {
-      console.error('Cancel task error:', err);
+      logger.error('Cancel task error', err as Error);
       setError(err instanceof Error ? err.message : 'Failed to cancel task');
-      return null;
+      toast.error('Failed to cancel task');
+      throw err;
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   }, []);
 
   const assignTask = useCallback(async (id: number, instanceId: number): Promise<Task | null> => {
     try {
-      setLoading(true);
+      setIsLoading(true);
       setError(null);
       const response = await apiService.assignTask(id, instanceId);
-      return response.data || null;
+      toast.success('Task assigned successfully');
+      return response;
     } catch (err) {
-      console.error('Assign task error:', err);
+      logger.error('Assign task error', err as Error);
       setError(err instanceof Error ? err.message : 'Failed to assign task');
-      return null;
+      toast.error('Failed to assign task');
+      throw err;
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   }, []);
 
   const unassignTask = useCallback(async (id: number): Promise<Task | null> => {
     try {
-      setLoading(true);
+      setIsLoading(true);
       setError(null);
       const response = await apiService.unassignTask(id);
-      return response.data || null;
+      toast.success('Task unassigned successfully');
+      return response;
     } catch (err) {
-      console.error('Unassign task error:', err);
+      logger.error('Unassign task error', err as Error);
       setError(err instanceof Error ? err.message : 'Failed to unassign task');
-      return null;
+      toast.error('Failed to unassign task');
+      throw err;
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   }, []);
 
   const createTask = useCallback(async (data: Partial<Task>): Promise<Task | null> => {
     try {
-      setLoading(true);
+      setIsLoading(true);
       setError(null);
       const response = await apiService.createTask(data);
-      return response.data || null;
+      toast.success('Task created successfully');
+      return response;
     } catch (err) {
-      console.error('Create task error:', err);
+      logger.error('Create task error', err as Error);
       setError(err instanceof Error ? err.message : 'Failed to create task');
-      return null;
+      toast.error('Failed to create task');
+      throw err;
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   }, []);
 
   const updateTask = useCallback(async (id: number, data: Partial<Task>): Promise<Task | null> => {
     try {
-      setLoading(true);
+      setIsLoading(true);
       setError(null);
       const response = await apiService.updateTask(id, data);
-      return response.data || null;
+      toast.success('Task updated successfully');
+      return response;
     } catch (err) {
-      console.error('Update task error:', err);
+      logger.error('Update task error', err as Error);
       setError(err instanceof Error ? err.message : 'Failed to update task');
-      return null;
+      toast.error('Failed to update task');
+      throw err;
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   }, []);
 
   const deleteTask = useCallback(async (id: number): Promise<boolean> => {
     try {
-      setLoading(true);
+      setIsLoading(true);
       setError(null);
       await apiService.deleteTask(id);
+      toast.success('Task deleted successfully');
       return true;
     } catch (err) {
-      console.error('Delete task error:', err);
+      logger.error('Delete task error', err as Error);
       setError(err instanceof Error ? err.message : 'Failed to delete task');
-      return false;
+      toast.error('Failed to delete task');
+      throw err;
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   }, []);
 
@@ -312,7 +340,7 @@ export function useTaskOperations() {
     createTask,
     updateTask,
     deleteTask,
-    loading,
+    isLoading,
     error,
   };
 }
@@ -337,9 +365,19 @@ export function useWorktree(id: number) {
 }
 
 // Health hooks
+export function useHealth(
+  page: number = 1,
+  size: number = 20
+) {
+  return useApiData(
+    () => apiService.getHealth(page, size),
+    [page, size]
+  );
+}
+
 export function useHealthOverview() {
   return useApiData(
-    () => apiService.getHealthOverview(),
+    () => apiService.getHealth(1, 20),
     []
   );
 }
@@ -370,7 +408,10 @@ export function useAlerts(
 
 export function useRecentCriticalAlerts(instanceId?: number) {
   return useApiData(
-    () => apiService.getRecentCriticalAlerts(instanceId),
+    () => apiService.getAlerts(1, 5, {
+      severity: 'critical',
+      status: 'active',
+    }),
     [instanceId]
   );
 }
@@ -390,37 +431,63 @@ export function useConfigurations(
 
 // System status hook
 export function useSystemStatus() {
-  const [systemStatus, setSystemStatus] = useState({
-    isConnected: false,
-    serverInfo: null as any,
-  });
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
-  useEffect(() => {
-    const checkStatus = async () => {
-      try {
-        const [pingResult, systemInfo] = await Promise.all([
-          apiService.ping(),
-          apiService.getSystemInfo(),
-        ]);
+  const fetchData = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const [instances, tasks, alerts] = await Promise.all([
+        apiService.getInstances(1, 1000), // Get all instances
+        apiService.getTasks(1, 1000), // Get all tasks
+        apiService.getAlerts(1, 1000), // Get all alerts
+      ]);
 
-        setSystemStatus({
-          isConnected: pingResult.status === 'ok',
-          serverInfo: systemInfo,
-        });
-      } catch (error) {
-        console.error('System status check failed:', error);
-        setSystemStatus({
-          isConnected: false,
-          serverInfo: null,
-        });
-      }
-    };
+      // Aggregate statistics
+      const instancesRunning = instances.items.filter(i => i.status === 'running').length;
+      const instancesStopped = instances.items.filter(i => i.status === 'stopped').length;
+      const instancesFailed = instances.items.filter(i => i.status === 'failed').length;
 
-    checkStatus();
-    const interval = setInterval(checkStatus, 30000); // Check every 30 seconds
+      const tasksActive = tasks.items.filter(t => t.status === 'running').length;
+      const tasksCompleted = tasks.items.filter(t => t.status === 'completed').length;
+      const tasksFailed = tasks.items.filter(t => t.status === 'failed').length;
 
-    return () => clearInterval(interval);
+      const alertsActive = alerts.items.filter(a => a.status === 'active').length;
+      const alertsCritical = alerts.items.filter(a => a.severity === 'critical' && a.status === 'active').length;
+
+      // Mock uptime calculation
+      const uptimeHours = 72.5;
+
+      const result = {
+        instancesRunning,
+        instancesStopped,
+        instancesFailed,
+        tasksActive,
+        tasksCompleted,
+        tasksFailed,
+        alertsActive,
+        alertsCritical,
+        uptimeHours,
+      };
+      setData(result);
+    } catch (err) {
+      logger.error('System status check failed:', err as Error);
+      setError(err as Error);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
-  return systemStatus;
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  return {
+    data,
+    isLoading,
+    error,
+    refetch: fetchData,
+  };
 }

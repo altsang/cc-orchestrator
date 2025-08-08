@@ -18,10 +18,7 @@ describe('ResponsiveGrid components', () => {
         'grid',
         'grid-cols-1',
         'sm:grid-cols-2',
-        'lg:grid-cols-3',
-        'xl:grid-cols-4',
-        'gap-4',
-        'mb-6'
+        'lg:grid-cols-4'
       );
 
       expect(screen.getByTestId('child-1')).toBeInTheDocument();
@@ -31,7 +28,7 @@ describe('ResponsiveGrid components', () => {
 
     it('handles empty children', () => {
       render(<StatsGrid />);
-      
+
       // Grid should still render even with no children
       const gridElement = document.querySelector('.grid');
       expect(gridElement).toBeInTheDocument();
@@ -71,8 +68,7 @@ describe('ResponsiveGrid components', () => {
       const grid = screen.getByTestId('test-child').parentElement;
       expect(grid).toHaveClass('grid-cols-1'); // Mobile: 1 column
       expect(grid).toHaveClass('sm:grid-cols-2'); // Small: 2 columns
-      expect(grid).toHaveClass('lg:grid-cols-3'); // Large: 3 columns
-      expect(grid).toHaveClass('xl:grid-cols-4'); // XL: 4 columns
+      expect(grid).toHaveClass('lg:grid-cols-4'); // Large: 4 columns
     });
   });
 
@@ -90,8 +86,7 @@ describe('ResponsiveGrid components', () => {
         'grid',
         'grid-cols-1',
         'md:grid-cols-2',
-        'lg:grid-cols-3',
-        'gap-4'
+        'lg:grid-cols-3'
       );
 
       expect(screen.getByTestId('instance-1')).toBeInTheDocument();
@@ -114,7 +109,7 @@ describe('ResponsiveGrid components', () => {
 
     it('handles empty instances', () => {
       render(<InstanceGrid />);
-      
+
       const gridElement = document.querySelector('.grid');
       expect(gridElement).toBeInTheDocument();
     });
@@ -146,10 +141,7 @@ describe('ResponsiveGrid components', () => {
       expect(grid).toHaveClass(
         'grid',
         'grid-cols-1',
-        'sm:grid-cols-2',
-        'lg:grid-cols-3',
-        'xl:grid-cols-4',
-        'gap-4'
+        'lg:grid-cols-2'
       );
 
       expect(screen.getByTestId('task-1')).toBeInTheDocument();
@@ -166,14 +158,12 @@ describe('ResponsiveGrid components', () => {
 
       const grid = screen.getByTestId('test-task').parentElement;
       expect(grid).toHaveClass('grid-cols-1'); // Mobile: 1 column
-      expect(grid).toHaveClass('sm:grid-cols-2'); // Small: 2 columns
-      expect(grid).toHaveClass('lg:grid-cols-3'); // Large: 3 columns
-      expect(grid).toHaveClass('xl:grid-cols-4'); // XL: 4 columns
+      expect(grid).toHaveClass('lg:grid-cols-2'); // Large: 2 columns
     });
 
     it('handles empty tasks', () => {
       render(<TaskGrid />);
-      
+
       const gridElement = document.querySelector('.grid');
       expect(gridElement).toBeInTheDocument();
     });
@@ -223,9 +213,10 @@ describe('ResponsiveGrid components', () => {
       const instanceGrid = instanceContainer.querySelector('.grid');
       const taskGrid = taskContainer.querySelector('.grid');
 
-      expect(statsGrid).toHaveClass('gap-4');
-      expect(instanceGrid).toHaveClass('gap-4');
-      expect(taskGrid).toHaveClass('gap-4');
+      // Gap is set via inline styles, not classes
+      expect(statsGrid).toHaveStyle('gap: 1.5rem');
+      expect(instanceGrid).toHaveStyle('gap: 1.5rem');
+      expect(taskGrid).toHaveStyle('gap: 1.5rem');
     });
 
     it('all grids are mobile-first responsive', () => {

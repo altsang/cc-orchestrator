@@ -18,7 +18,7 @@ export type MessageHandler = (message: WebSocketMessage) => void;
 export type ConnectionHandler = () => void;
 export type ErrorHandler = (error: Event | Error) => void;
 
-class WebSocketService {
+export class WebSocketService {
   private socket: WebSocket | null = null;
   private config: Required<WebSocketConfig>;
   private messageHandlers = new Set<MessageHandler>();
@@ -232,9 +232,9 @@ class WebSocketService {
     this.isReconnecting = true;
     this.reconnectAttempts++;
 
-    logger.websocketEvent('reconnecting', { 
-      attempt: this.reconnectAttempts, 
-      max: this.config.maxReconnectAttempts 
+    logger.websocketEvent('reconnecting', {
+      attempt: this.reconnectAttempts,
+      max: this.config.maxReconnectAttempts
     });
 
     this.reconnectTimer = setTimeout(() => {

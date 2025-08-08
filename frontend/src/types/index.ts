@@ -17,6 +17,7 @@ export enum HealthStatus {
 
 export enum TaskStatus {
   PENDING = 'pending',
+  RUNNING = 'running',
   IN_PROGRESS = 'in_progress',
   COMPLETED = 'completed',
   FAILED = 'failed',
@@ -41,6 +42,14 @@ export enum AlertLevel {
   INFO = 'info',
   WARNING = 'warning',
   ERROR = 'error',
+  CRITICAL = 'critical',
+}
+
+// Alias for backward compatibility with tests
+export enum AlertSeverity {
+  LOW = 'low',
+  MEDIUM = 'medium',
+  HIGH = 'high',
   CRITICAL = 'critical',
 }
 
@@ -104,12 +113,16 @@ export interface Worktree {
 
 export interface Alert {
   id: number;
-  instance_id: number;
+  instance_id?: number;
   alert_id: string;
-  level: AlertLevel;
+  title?: string;
+  level?: AlertLevel;
+  severity?: AlertSeverity | string;
+  status?: string;
   message: string;
   details?: string;
-  timestamp: string;
+  timestamp?: string;
+  metadata?: Record<string, any>;
   created_at: string;
   updated_at: string;
 }

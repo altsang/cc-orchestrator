@@ -14,7 +14,7 @@ describe('ErrorMessage', () => {
     render(<ErrorMessage message="Error text" />);
 
     const errorElement = screen.getByText('Error text');
-    expect(errorElement).toHaveClass('text-red-600');
+    expect(errorElement).toHaveClass('text-red-700');
   });
 
   it('renders with proper accessibility attributes', () => {
@@ -30,6 +30,7 @@ describe('ErrorMessage', () => {
 
     const errorElement = screen.getByRole('alert');
     expect(errorElement).toBeInTheDocument();
-    expect(errorElement).toHaveTextContent('');
+    // Just verify that the alert renders with the "Error" heading
+    expect(screen.getByText('Error')).toBeInTheDocument();
   });
 });

@@ -4,6 +4,7 @@ import { apiService } from '../../services/api';
 import logger from '../../utils/logger';
 import {
   useInstances,
+  useInstance,
   useTasks,
   useWorktrees,
   useHealth,
@@ -13,6 +14,7 @@ import {
   useSystemStatus,
   useHealthOverview,
   useRecentCriticalAlerts,
+  useConfigOperations,
 } from '../useApi';
 import { InstanceStatus, TaskStatus, AlertSeverity } from '../../types';
 
@@ -702,6 +704,66 @@ describe('useApi hooks', () => {
 
       expect(mockApiService.getInstances).toHaveBeenCalledWith(999, 1, undefined);
       expect(result.current.data?.page).toBe(999);
+    });
+  });
+
+  describe('additional edge cases for coverage', () => {
+    it('should handle useSystemStatus hook error recovery', async () => {
+      const { result } = renderHook(() => useSystemStatus());
+
+      // Mock error then success
+      mockApiService.ping.mockRejectedValueOnce(new Error('Network error'));
+      mockApiService.getSystemInfo.mockRejectedValueOnce(new Error('Network error'));
+
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 0));
+      });
+
+      // Should have error state
+      expect(result.current.error).toBeTruthy();
+    });
+
+    it('should test task operations with results parameter', async () => {
+      const { result } = renderHook(() => useTaskOperations());
+
+      const mockTask = {
+        id: 1,
+        title: 'Test Task',
+        status: TaskStatus.COMPLETED,
+        priority: 'HIGH',
+        requirements: {},
+        extra_metadata: {},
+        created_at: '2023-01-01T00:00:00Z',
+        updated_at: '2023-01-01T01:00:00Z',
+        results: { success: true },
+      };
+
+      // Test complete with results
+      mockApiService.completeTask.mockResolvedValue(mockTask);
+
+      await act(async () => {
+        const response = await result.current.completeTask(1, { result: 'success' });
+        expect(response).toEqual(mockTask);
+      });
+
+      expect(mockApiService.completeTask).toHaveBeenCalledWith(1, { result: 'success' });
+    });
+
+    it('should test delete operations error handling', async () => {
+      const { result } = renderHook(() => useInstanceOperations());
+
+      // Test delete instance error
+      mockApiService.deleteInstance.mockRejectedValue(new Error('Delete failed'));
+
+      await act(async () => {
+        try {
+          await result.current.deleteInstance(1);
+        } catch (error) {
+          expect(error.message).toBe('Delete failed');
+        }
+      });
+
+      expect(mockToast.error).toHaveBeenCalledWith('Failed to delete instance');
     });
   });
 });

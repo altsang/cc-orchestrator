@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useCallback } from 'react';
 import websocketService, { MessageHandler, ConnectionHandler, ErrorHandler } from '../services/websocket';
+import logger from '../utils/logger';
 import type { WebSocketMessage } from '../types';
 
 export interface UseWebSocketOptions {
@@ -47,7 +48,7 @@ export function useWebSocket(
 
   // Handle connection events
   const handleConnect = useCallback(() => {
-    console.log('WebSocket connected in useWebSocket hook');
+    logger.websocketEvent('connected');
     updateConnectionState();
 
     // Auto-subscribe to topics
@@ -58,13 +59,13 @@ export function useWebSocket(
   }, [subscribeToTopics, updateConnectionState]);
 
   const handleDisconnect = useCallback(() => {
-    console.log('WebSocket disconnected in useWebSocket hook');
+    logger.websocketEvent('disconnected');
     updateConnectionState();
     subscribedTopicsRef.current.clear();
   }, [updateConnectionState]);
 
   const handleError = useCallback((error: Event | Error) => {
-    console.error('WebSocket error in useWebSocket hook:', error);
+    logger.websocketError('WebSocket error in useWebSocket hook', error);
     updateConnectionState();
   }, [updateConnectionState]);
 
@@ -73,7 +74,7 @@ export function useWebSocket(
     try {
       await websocketService.connect(connectEndpoint || endpoint);
     } catch (error) {
-      console.error('Failed to connect WebSocket in hook:', error);
+      logger.websocketError('Failed to connect WebSocket in hook', error as Error | Event);
     }
   }, [endpoint]);
 

@@ -221,6 +221,14 @@ class APIService {
   }
 
   // Health API methods
+  async getHealth(
+    page: number = 1,
+    size: number = 20
+  ): Promise<PaginatedResponse<HealthCheck>> {
+    const params = { page, size };
+    return this.get<PaginatedResponse<HealthCheck>>('/health', params);
+  }
+
   async getHealthChecks(
     page: number = 1,
     size: number = 20,

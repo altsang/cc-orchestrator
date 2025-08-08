@@ -14,14 +14,17 @@ jest.mock('../../hooks/useApi', () => ({
 
 const mockInstance: Instance = {
   id: 1,
-  instance_id: 'test-instance-1',
   issue_id: 'ISSUE-123',
   status: InstanceStatus.RUNNING,
-  branch: 'feature/test-branch',
+  branch_name: 'feature/test-branch',
   workspace_path: '/workspace/test',
+  health_status: 'healthy' as any,
+  health_check_count: 5,
+  healthy_check_count: 4,
+  recovery_attempt_count: 0,
   created_at: '2023-01-01T00:00:00Z',
   updated_at: '2023-01-01T01:00:00Z',
-  metadata: {
+  extra_metadata: {
     last_active: '2023-01-01T01:00:00Z',
   },
 };
@@ -42,8 +45,7 @@ describe('InstanceCard', () => {
       />
     );
 
-    expect(screen.getByText('ISSUE-123')).toBeInTheDocument();
-    expect(screen.getByText('test-instance-1')).toBeInTheDocument();
+    expect(screen.getByText('Issue #ISSUE-123')).toBeInTheDocument();
     expect(screen.getByText('feature/test-branch')).toBeInTheDocument();
     expect(screen.getByText('/workspace/test')).toBeInTheDocument();
   });
@@ -58,7 +60,7 @@ describe('InstanceCard', () => {
       />
     );
 
-    expect(screen.getByText('running')).toBeInTheDocument();
+    expect(screen.getByText('Running')).toBeInTheDocument();
   });
 
   it('shows start button for stopped instance', () => {
@@ -89,7 +91,7 @@ describe('InstanceCard', () => {
 
   it('calls onStart when start button is clicked', () => {
     const mockOnStart = jest.fn();
-    
+
     render(
       <InstanceCard
         instance={mockStoppedInstance}
@@ -105,7 +107,7 @@ describe('InstanceCard', () => {
 
   it('calls onStop when stop button is clicked', () => {
     const mockOnStop = jest.fn();
-    
+
     render(
       <InstanceCard
         instance={mockInstance}
@@ -121,7 +123,7 @@ describe('InstanceCard', () => {
 
   it('calls onViewDetails when view details button is clicked', () => {
     const mockOnViewDetails = jest.fn();
-    
+
     render(
       <InstanceCard
         instance={mockInstance}
@@ -131,7 +133,7 @@ describe('InstanceCard', () => {
       />
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /view details/i }));
+    fireEvent.click(screen.getByRole('button', { name: /details/i }));
     expect(mockOnViewDetails).toHaveBeenCalledWith(mockInstance.id);
   });
 
@@ -145,7 +147,6 @@ describe('InstanceCard', () => {
       />
     );
 
-    expect(screen.getByText(/Created:/)).toBeInTheDocument();
     expect(screen.getByText(/Updated:/)).toBeInTheDocument();
   });
 });

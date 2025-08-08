@@ -182,7 +182,7 @@ describe('MobileMenu', () => {
       />
     );
 
-    menuButton = screen.getByRole('button');
+    menuButton = screen.getByRole('button', { name: /close menu/i });
     expect(menuButton).toHaveAttribute('aria-expanded', 'true');
   });
 

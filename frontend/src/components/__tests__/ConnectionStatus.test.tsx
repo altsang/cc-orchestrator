@@ -21,24 +21,24 @@ describe('ConnectionStatus', () => {
     render(<ConnectionStatus isConnected={true} />);
 
     const indicator = screen.getByRole('status');
-    expect(indicator).toContainHTML('circle');
+    expect(indicator).toContainHTML('rounded-full');
   });
 
   it('shows disconnection indicator icon when disconnected', () => {
     render(<ConnectionStatus isConnected={false} />);
 
     const indicator = screen.getByRole('status');
-    expect(indicator).toContainHTML('circle');
+    expect(indicator).toContainHTML('rounded-full');
   });
 
   it('applies correct styling based on connection state', () => {
     const { rerender } = render(<ConnectionStatus isConnected={true} />);
-    
+
     let statusElement = screen.getByRole('status');
     expect(statusElement).toHaveClass('text-green-600');
 
     rerender(<ConnectionStatus isConnected={false} />);
-    
+
     statusElement = screen.getByRole('status');
     expect(statusElement).toHaveClass('text-red-600');
   });
