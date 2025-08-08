@@ -4,6 +4,7 @@ import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import toast from 'react-hot-toast';
 import { apiBaseUrl, apiTimeout } from '../config/environment';
 import { validateApiResponse, sanitizeObject, paginatedResponseSchema, instanceSchema, taskSchema } from '../validation/schemas';
+import logger from '../utils/logger';
 import type {
   APIResponse,
   PaginatedResponse,
@@ -33,11 +34,11 @@ class APIService {
     // Request interceptor for logging and auth
     this.client.interceptors.request.use(
       (config) => {
-        console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`);
+        logger.apiRequest(config.method || 'GET', config.url || '');
         return config;
       },
       (error) => {
-        console.error('API Request Error:', error);
+        logger.apiError('Request interceptor error', error);
         return Promise.reject(error);
       }
     );
@@ -45,11 +46,11 @@ class APIService {
     // Response interceptor for error handling
     this.client.interceptors.response.use(
       (response) => {
-        console.log(`API Response: ${response.status} ${response.config.url}`);
+        logger.apiResponse(response.status, response.config.url || '');
         return response;
       },
       (error) => {
-        console.error('API Response Error:', error);
+        logger.apiError('Response interceptor error', error, error.config?.url);
 
         // Show user-friendly error messages
         if (error.response?.status === 404) {

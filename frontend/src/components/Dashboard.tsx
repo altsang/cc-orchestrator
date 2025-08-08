@@ -1,6 +1,7 @@
 // Main dashboard component for CC-Orchestrator
 
 import React, { useState, useEffect, useMemo } from 'react';
+import logger from '../utils/logger';
 import { LoadingSpinner } from './LoadingSpinner';
 import { ErrorMessage } from './ErrorMessage';
 import { ConnectionStatus } from './ConnectionStatus';
@@ -81,7 +82,7 @@ export const Dashboard: React.FC = () => {
 
   // WebSocket connection
   const websocket = useDashboardWebSocket((message: WebSocketMessage) => {
-    console.log('Dashboard received WebSocket message:', message);
+    logger.debug('Dashboard received WebSocket message', { type: message.type });
 
     switch (message.type) {
       case 'instance_update':
@@ -137,7 +138,7 @@ export const Dashboard: React.FC = () => {
 
   const handleViewInstanceDetails = (id: number) => {
     // TODO: Navigate to instance details page
-    console.log('View details for instance:', id);
+    logger.debug('View details for instance', { instanceId: id });
   };
 
   // Task operations handlers

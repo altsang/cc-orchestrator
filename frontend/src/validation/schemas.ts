@@ -1,6 +1,7 @@
 // Zod schemas for API response validation and input sanitization
 
 import { z } from 'zod';
+import logger from '../utils/logger';
 
 // Base schemas
 export const idSchema = z.number().int().positive();
@@ -114,7 +115,7 @@ export const validateApiResponse = <T>(data: unknown, schema: z.ZodSchema<T>): T
     return schema.parse(data);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      console.error('API response validation failed:', error.errors);
+      logger.error('API response validation failed', error, { errors: error.errors });
       throw new Error(`Invalid API response: ${error.errors.map(e => e.message).join(', ')}`);
     }
     throw error;
@@ -124,7 +125,7 @@ export const validateApiResponse = <T>(data: unknown, schema: z.ZodSchema<T>): T
 export const safeParseWebSocketMessage = (data: unknown) => {
   const result = webSocketMessageSchema.safeParse(data);
   if (!result.success) {
-    console.error('WebSocket message validation failed:', result.error.errors);
+    logger.error('WebSocket message validation failed', undefined, { errors: result.error.errors });
     return null;
   }
   return result.data;

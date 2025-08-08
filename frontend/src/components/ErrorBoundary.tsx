@@ -2,6 +2,7 @@
 
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { environment } from '../config/environment';
+import logger from '../utils/logger';
 
 interface Props {
   children: ReactNode;
@@ -28,9 +29,9 @@ export class ErrorBoundary extends Component<Props, State> {
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     this.setState({ errorInfo });
 
-    // Log error to console in development
+    // Log error in development
     if (environment === 'development') {
-      console.error('Error Boundary caught an error:', error, errorInfo);
+      logger.componentError('ErrorBoundary', error, errorInfo);
     }
 
     // Call custom error handler if provided
@@ -43,11 +44,8 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   private logErrorToService(error: Error, errorInfo: ErrorInfo) {
-    // Placeholder for error reporting service integration
-    // Example: Sentry, LogRocket, etc.
-    console.error('Production error logged:', {
-      message: error.message,
-      stack: error.stack,
+    // Production error reporting
+    logger.componentError('ErrorBoundary', error, {
       componentStack: errorInfo.componentStack,
       timestamp: new Date().toISOString(),
     });
@@ -183,7 +181,7 @@ export const WebSocketErrorBoundary: React.FC<{ children: ReactNode }> = ({ chil
       </div>
     }
     onError={(error, errorInfo) => {
-      console.error('WebSocket Error Boundary:', error, errorInfo);
+      logger.componentError('WebSocketErrorBoundary', error, errorInfo);
     }}
   >
     {children}

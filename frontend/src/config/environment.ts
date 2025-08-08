@@ -1,5 +1,7 @@
 // Environment configuration with validation and secure defaults
 
+import logger from '../utils/logger';
+
 export interface EnvironmentConfig {
   apiBaseUrl: string;
   wsBaseUrl: string;
@@ -24,7 +26,7 @@ const validateUrl = (url: string, name: string): string => {
 
 const validateEnvironment = (env: string): 'development' | 'staging' | 'production' => {
   if (!env || !['development', 'staging', 'production'].includes(env)) {
-    console.warn(`Invalid environment '${env}', defaulting to 'development'`);
+    logger.warn(`Invalid environment '${env}', defaulting to 'development'`);
     return 'development';
   }
   return env as 'development' | 'staging' | 'production';
@@ -35,7 +37,7 @@ const validateNumber = (value: string | undefined, defaultValue: number, min: nu
 
   const parsed = parseInt(value, 10);
   if (isNaN(parsed) || parsed < min || parsed > max) {
-    console.warn(`Invalid ${name} '${value}', using default: ${defaultValue}`);
+    logger.warn(`Invalid ${name} '${value}', using default: ${defaultValue}`);
     return defaultValue;
   }
   return parsed;
@@ -65,11 +67,11 @@ const loadEnvironmentConfig = (): EnvironmentConfig => {
     }
 
     if (!config.apiBaseUrl.startsWith('https://')) {
-      console.warn('Production API should use HTTPS for security');
+      logger.warn('Production API should use HTTPS for security');
     }
 
     if (!config.wsBaseUrl.startsWith('wss://')) {
-      console.warn('Production WebSocket should use WSS for security');
+      logger.warn('Production WebSocket should use WSS for security');
     }
   }
 

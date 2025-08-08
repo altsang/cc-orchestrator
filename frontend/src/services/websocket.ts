@@ -3,6 +3,7 @@
 import toast from 'react-hot-toast';
 import { wsBaseUrl, wsReconnectInterval, wsMaxReconnectAttempts } from '../config/environment';
 import { safeParseWebSocketMessage } from '../validation/schemas';
+import logger from '../utils/logger';
 import type { WebSocketMessage } from '../types';
 
 export interface WebSocketConfig {
@@ -55,13 +56,13 @@ class WebSocketService {
     this.shouldReconnect = true;
 
     const wsUrl = `${this.config.url}/${endpoint}`;
-    console.log(`Connecting to WebSocket: ${wsUrl}`);
+    logger.websocketEvent('connecting', { url: wsUrl });
 
     try {
       this.socket = new WebSocket(wsUrl);
       this.setupEventHandlers();
     } catch (error) {
-      console.error('WebSocket connection failed:', error);
+      logger.websocketError('Connection failed', error as Error);
       this.isConnecting = false;
       this.handleError(error as Error);
       throw error;
@@ -69,7 +70,7 @@ class WebSocketService {
   }
 
   disconnect(): void {
-    console.log('Disconnecting WebSocket...');
+    logger.websocketEvent('disconnecting');
     this.shouldReconnect = false;
     this.clearTimers();
 
@@ -93,7 +94,7 @@ class WebSocketService {
   // Message handling
   send(message: any): void {
     if (!this.isConnected()) {
-      console.warn('WebSocket not connected, cannot send message:', message);
+      logger.warn('WebSocket not connected, cannot send message');
       toast.error('Not connected to server');
       return;
     }
@@ -101,9 +102,9 @@ class WebSocketService {
     try {
       const payload = typeof message === 'string' ? message : JSON.stringify(message);
       this.socket!.send(payload);
-      console.log('Sent WebSocket message:', message);
+      logger.websocketEvent('message_sent', { type: message.type });
     } catch (error) {
-      console.error('Failed to send WebSocket message:', error);
+      logger.websocketError('Failed to send message', error as Error);
       this.handleError(error as Error);
     }
   }
@@ -151,7 +152,7 @@ class WebSocketService {
     if (!this.socket) return;
 
     this.socket.onopen = (event) => {
-      console.log('WebSocket connected');
+      logger.websocketEvent('connected');
       this.isConnecting = false;
       this.isReconnecting = false;
       this.reconnectAttempts = 0;
@@ -173,11 +174,11 @@ class WebSocketService {
         const message = safeParseWebSocketMessage(rawMessage);
 
         if (!message) {
-          console.warn('Received invalid WebSocket message, ignoring:', rawMessage);
+          logger.warn('Received invalid WebSocket message, ignoring');
           return;
         }
 
-        console.log('Received valid WebSocket message:', message);
+        logger.websocketEvent('message_received', { type: message.type });
 
         // Handle pong messages
         if (message.type === 'pong') {
@@ -190,16 +191,16 @@ class WebSocketService {
           try {
             handler(message);
           } catch (handlerError) {
-            console.error('WebSocket message handler error:', handlerError);
+            logger.error('WebSocket message handler error', handlerError as Error);
           }
         });
       } catch (error) {
-        console.error('Failed to parse WebSocket message:', error);
+        logger.websocketError('Failed to parse message', error as Error);
       }
     };
 
     this.socket.onclose = (event) => {
-      console.log('WebSocket disconnected:', event.code, event.reason);
+      logger.websocketEvent('disconnected', { code: event.code, reason: event.reason });
       this.isConnecting = false;
       this.clearTimers();
 
@@ -213,7 +214,7 @@ class WebSocketService {
     };
 
     this.socket.onerror = (error) => {
-      console.error('WebSocket error:', error);
+      logger.websocketError('WebSocket error event', error);
       this.isConnecting = false;
       this.handleError(error);
     };
@@ -222,7 +223,7 @@ class WebSocketService {
   private attemptReconnection(): void {
     if (this.isReconnecting || this.reconnectAttempts >= this.config.maxReconnectAttempts) {
       if (this.reconnectAttempts >= this.config.maxReconnectAttempts) {
-        console.error('Max reconnection attempts reached');
+        logger.error('Max reconnection attempts reached');
         toast.error('Connection lost - please refresh the page');
       }
       return;
@@ -231,11 +232,14 @@ class WebSocketService {
     this.isReconnecting = true;
     this.reconnectAttempts++;
 
-    console.log(`Attempting reconnection ${this.reconnectAttempts}/${this.config.maxReconnectAttempts}...`);
+    logger.websocketEvent('reconnecting', { 
+      attempt: this.reconnectAttempts, 
+      max: this.config.maxReconnectAttempts 
+    });
 
     this.reconnectTimer = setTimeout(() => {
       this.connect().catch(error => {
-        console.error('Reconnection failed:', error);
+        logger.websocketError('Reconnection failed', error);
         this.isReconnecting = false;
 
         // Try again after interval
@@ -258,7 +262,7 @@ class WebSocketService {
 
         // Start pong timeout
         this.pongTimer = setTimeout(() => {
-          console.warn('Pong timeout - connection may be stale');
+          logger.warn('Pong timeout - connection may be stale');
           this.socket?.close(1006, 'Pong timeout');
         }, this.config.pongTimeout);
       }
@@ -297,7 +301,7 @@ class WebSocketService {
   }
 
   private handleError(error: Event | Error): void {
-    console.error('WebSocket service error:', error);
+    logger.websocketError('WebSocket service error', error);
     this.errorHandlers.forEach(handler => handler(error));
   }
 
