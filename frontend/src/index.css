@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-lg border bg-card text-card-foreground shadow-sm;
+  }
+
+  .status-indicator {
+    @apply inline-flex items-center justify-center w-3 h-3 rounded-full;
+  }
+
+  .status-running {
+    @apply bg-green-500 animate-pulse;
+  }
+
+  .status-stopped {
+    @apply bg-gray-400;
+  }
+
+  .status-failed {
+    @apply bg-red-500;
+  }
+
+  .status-pending {
+    @apply bg-yellow-500 animate-pulse-slow;
+  }
+}
