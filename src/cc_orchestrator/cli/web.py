@@ -14,7 +14,7 @@ def web() -> None:
 
 @web.command()
 @click.option("--port", "-p", default=8000, help="Port to run on")
-@click.option("--host", "-h", default="0.0.0.0", help="Host to bind to")
+@click.option("--host", "-h", default="127.0.0.1", help="Host to bind to")
 @click.option("--reload", is_flag=True, help="Enable auto-reload for development")
 def start(port: int, host: str, reload: bool) -> None:
     """Start the web interface."""

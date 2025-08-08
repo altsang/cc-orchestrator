@@ -1,14 +1,16 @@
 """FastAPI web application for CC-Orchestrator dashboard."""
 
+import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 
 from ..database.connection import DatabaseManager
-from .routers import api_router, websocket_router
+from .exceptions import CCOrchestratorAPIException
+from .routers import api_router, auth_router, websocket_router
 
 
 @asynccontextmanager
@@ -30,19 +32,42 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # Add CORS middleware
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=[
+    # Add CORS middleware with environment-based configuration
+    debug = os.getenv("DEBUG", "false").lower() == "true"
+    if debug:
+        # Development origins
+        allowed_origins = [
             "http://localhost:3000",
             "http://localhost:5173",
-        ],  # React dev servers
+        ]
+    else:
+        # Production origins from environment
+        frontend_url = os.getenv("FRONTEND_URL", "")
+        allowed_origins = [frontend_url] if frontend_url else []
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=allowed_origins,
         allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=["Content-Type", "Authorization", "Accept"],
     )
 
+    # Add exception handlers
+    @app.exception_handler(CCOrchestratorAPIException)
+    async def api_exception_handler(request: Request, exc: CCOrchestratorAPIException) -> JSONResponse:
+        """Handle custom API exceptions."""
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={
+                "error": exc.__class__.__name__,
+                "message": exc.message,
+                "status_code": exc.status_code
+            }
+        )
+
     # Include routers
+    app.include_router(auth_router, prefix="/auth")
     app.include_router(api_router, prefix="/api/v1")
     app.include_router(websocket_router, prefix="/ws")
 
