@@ -2,13 +2,16 @@
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from ...database.connection import get_db_session
 from ...database.crud import InstanceCRUD
 from ...database.models import InstanceStatus
+from ..auth import get_current_user
+from ..exceptions import DatabaseOperationError, InstanceNotFoundError, InstanceOperationError
 from ..logging_utils import handle_api_errors, track_api_performance
+from ..rate_limiter import rate_limiter, get_client_ip
 from ..schemas import (
     InstanceCreate,
     InstanceListResponse,
@@ -23,8 +26,14 @@ router = APIRouter(tags=["instances"])
 @handle_api_errors()
 @track_api_performance()
 async def get_instances(
-    status_filter: InstanceStatus | None = None, db: Session = Depends(get_db_session)
+    request: Request,
+    status_filter: InstanceStatus | None = None, 
+    db: Session = Depends(get_db_session),
+    current_user: dict = Depends(get_current_user)
 ) -> InstanceListResponse:
+    # Apply rate limiting
+    client_ip = get_client_ip(request)
+    rate_limiter.check_rate_limit(client_ip, "GET:/api/v1/instances", 30, 60)
     """Get all instances with optional status filtering."""
     instances = InstanceCRUD.list_all(db, status=status_filter)
     return InstanceListResponse(
@@ -37,24 +46,30 @@ async def get_instances(
 @handle_api_errors()
 @track_api_performance()
 async def get_instance_by_id(
-    instance_id: int, db: Session = Depends(get_db_session)
+    instance_id: int, 
+    db: Session = Depends(get_db_session),
+    current_user: dict = Depends(get_current_user)
 ) -> InstanceResponse:
     """Get a specific instance by ID."""
     try:
         instance = InstanceCRUD.get_by_id(db, instance_id)
         return InstanceResponse.from_model(instance)
-    except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Instance not found"
-        )
+    except Exception as e:
+        raise InstanceNotFoundError(instance_id) from e
 
 
 @router.post("/instances", response_model=InstanceResponse)
 @handle_api_errors()
 @track_api_performance()
 async def create_instance(
-    instance_data: InstanceCreate, db: Session = Depends(get_db_session)
+    request: Request,
+    instance_data: InstanceCreate, 
+    db: Session = Depends(get_db_session),
+    current_user: dict = Depends(get_current_user)
 ) -> InstanceResponse:
+    # Apply stricter rate limiting for create operations
+    client_ip = get_client_ip(request)
+    rate_limiter.check_rate_limit(client_ip, "POST:/api/v1/instances", 10, 60)
     """Create a new instance."""
     instance = InstanceCRUD.create(
         db,
@@ -70,59 +85,72 @@ async def update_instance_status_endpoint(
     instance_id: int,
     status_update: InstanceStatusUpdate,
     db: Session = Depends(get_db_session),
+    current_user: dict = Depends(get_current_user)
 ) -> InstanceResponse:
     """Update instance status."""
     try:
         instance = InstanceCRUD.update(db, instance_id, status=status_update.status)
         return InstanceResponse.from_model(instance)
-    except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Instance not found"
-        )
+    except Exception as e:
+        raise InstanceNotFoundError(instance_id) from e
 
 
 @router.post("/instances/{instance_id}/start")
 @handle_api_errors()
 @track_api_performance()
 async def start_instance(
-    instance_id: int, db: Session = Depends(get_db_session)
+    request: Request,
+    instance_id: int, 
+    db: Session = Depends(get_db_session),
+    current_user: dict = Depends(get_current_user)
 ) -> dict[str, str]:
+    # Apply rate limiting for control operations
+    client_ip = get_client_ip(request)
+    rate_limiter.check_rate_limit(client_ip, "POST:/api/v1/instances/*/start", 20, 60)
     """Start an instance."""
     # TODO: Implement actual instance starting logic
     # For now, just update the status
     try:
         InstanceCRUD.update(db, instance_id, status=InstanceStatus.RUNNING)
         return {"message": "Instance start requested", "instance_id": str(instance_id)}
-    except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Instance not found"
-        )
+    except Exception as e:
+        raise InstanceOperationError("Failed to start instance", instance_id) from e
 
 
 @router.post("/instances/{instance_id}/stop")
 @handle_api_errors()
 @track_api_performance()
 async def stop_instance(
-    instance_id: int, db: Session = Depends(get_db_session)
+    request: Request,
+    instance_id: int, 
+    db: Session = Depends(get_db_session),
+    current_user: dict = Depends(get_current_user)
 ) -> dict[str, str]:
+    # Apply rate limiting for control operations
+    client_ip = get_client_ip(request)
+    rate_limiter.check_rate_limit(client_ip, "POST:/api/v1/instances/*/stop", 20, 60)
     """Stop an instance."""
     # TODO: Implement actual instance stopping logic
     # For now, just update the status
     try:
         InstanceCRUD.update(db, instance_id, status=InstanceStatus.STOPPED)
         return {"message": "Instance stop requested", "instance_id": str(instance_id)}
-    except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Instance not found"
-        )
+    except Exception as e:
+        raise InstanceOperationError("Failed to stop instance", instance_id) from e
 
 
 @router.post("/instances/{instance_id}/restart")
 @handle_api_errors()
 @track_api_performance()
 async def restart_instance(
-    instance_id: int, db: Session = Depends(get_db_session)
+    request: Request,
+    instance_id: int, 
+    db: Session = Depends(get_db_session),
+    current_user: dict = Depends(get_current_user)
 ) -> dict[str, str]:
+    # Apply rate limiting for control operations
+    client_ip = get_client_ip(request)
+    rate_limiter.check_rate_limit(client_ip, "POST:/api/v1/instances/*/restart", 20, 60)
     """Restart an instance."""
     # TODO: Implement actual instance restart logic
     # For now, just update the status
@@ -132,10 +160,8 @@ async def restart_instance(
             "message": "Instance restart requested",
             "instance_id": str(instance_id),
         }
-    except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Instance not found"
-        )
+    except Exception as e:
+        raise InstanceOperationError("Failed to restart instance", instance_id) from e
 
 
 # Health and monitoring endpoints
@@ -160,10 +186,8 @@ async def get_instance_health(
                 instance.updated_at.isoformat() if instance.updated_at else None
             ),
         }
-    except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Instance not found"
-        )
+    except Exception as e:
+        raise InstanceNotFoundError(instance_id) from e
 
 
 @router.get("/instances/{instance_id}/logs")
@@ -186,7 +210,5 @@ async def get_instance_logs(
             "limit": limit,
             "search": search,
         }
-    except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Instance not found"
-        )
+    except Exception as e:
+        raise InstanceNotFoundError(instance_id) from e
