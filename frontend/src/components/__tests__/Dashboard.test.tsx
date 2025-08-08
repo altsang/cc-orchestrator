@@ -147,7 +147,7 @@ describe('Dashboard', () => {
 
   it('renders dashboard header correctly', () => {
     render(<Dashboard />);
-    
+
     expect(screen.getByText('CC-Orchestrator')).toBeInTheDocument();
     expect(screen.getByText('Connected')).toBeInTheDocument();
     expect(screen.getByText('API Connected')).toBeInTheDocument();
@@ -155,7 +155,7 @@ describe('Dashboard', () => {
 
   it('displays system statistics correctly', () => {
     render(<Dashboard />);
-    
+
     expect(screen.getByText('Total Instances')).toBeInTheDocument();
     expect(screen.getByText('Health Status')).toBeInTheDocument();
     expect(screen.getByText('Active Tasks')).toBeInTheDocument();
@@ -164,7 +164,7 @@ describe('Dashboard', () => {
 
   it('renders overview tab by default', () => {
     render(<Dashboard />);
-    
+
     // Should show recent instances and tasks sections
     expect(screen.getByText('Recent Instances')).toBeInTheDocument();
     expect(screen.getByText('Recent Tasks')).toBeInTheDocument();
@@ -172,29 +172,29 @@ describe('Dashboard', () => {
 
   it('switches to instances tab and displays instances', () => {
     render(<Dashboard />);
-    
+
     // Click on instances tab (desktop navigation)
     const instancesTab = screen.getByText('Instances');
     fireEvent.click(instancesTab);
-    
+
     expect(screen.getByTestId('instance-card-1')).toBeInTheDocument();
     expect(screen.getByText('Instance issue-123')).toBeInTheDocument();
   });
 
   it('switches to tasks tab and displays tasks', () => {
     render(<Dashboard />);
-    
+
     // Click on tasks tab (desktop navigation)
     const tasksTab = screen.getByText('Tasks');
     fireEvent.click(tasksTab);
-    
+
     expect(screen.getByTestId('task-card-1')).toBeInTheDocument();
     expect(screen.getByText('Test Task')).toBeInTheDocument();
   });
 
   it('handles mobile navigation correctly', () => {
     render(<Dashboard />);
-    
+
     // Test that the mobile menu button exists
     const mobileMenuButtons = screen.getAllByRole('button');
     expect(mobileMenuButtons.length).toBeGreaterThan(0);
@@ -202,7 +202,7 @@ describe('Dashboard', () => {
 
   it('displays connection status correctly', () => {
     render(<Dashboard />);
-    
+
     // Should show connected status based on our mocks
     expect(screen.getByText('Connected')).toBeInTheDocument();
     expect(screen.getByText('API Connected')).toBeInTheDocument();
@@ -210,14 +210,14 @@ describe('Dashboard', () => {
 
   it('displays critical alerts section', () => {
     render(<Dashboard />);
-    
+
     // Should render without critical alerts errors
     expect(screen.getByText('CC-Orchestrator')).toBeInTheDocument();
   });
 
   it('calculates system statistics correctly', () => {
     render(<Dashboard />);
-    
+
     // Verify the statistics section exists
     expect(screen.getByText('Total Instances')).toBeInTheDocument();
     expect(screen.getByText('Health Status')).toBeInTheDocument();
@@ -227,7 +227,7 @@ describe('Dashboard', () => {
 
   it('renders responsive grid components', () => {
     render(<Dashboard />);
-    
+
     // Should render without errors and show basic structure
     expect(screen.getByText('CC-Orchestrator')).toBeInTheDocument();
     expect(screen.getByText('Overview')).toBeInTheDocument();

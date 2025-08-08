@@ -46,7 +46,7 @@ export const InstanceCard: React.FC<InstanceCardProps> = ({
               <code className="ml-2 bg-gray-100 px-1 py-0.5 rounded text-xs">{instance.workspace_path}</code>
             </div>
           )}
-          
+
           {instance.tmux_session && (
             <div className="text-sm">
               <span className="font-medium text-gray-700">Tmux Session:</span>
@@ -77,7 +77,7 @@ export const InstanceCard: React.FC<InstanceCardProps> = ({
               {instance.healthy_check_count}/{instance.health_check_count}
             </span>
           </div>
-          
+
           {instance.last_health_check && (
             <div className="text-xs text-gray-500 mt-1">
               Last check: {new Date(instance.last_health_check).toLocaleString()}
@@ -104,7 +104,7 @@ export const InstanceCard: React.FC<InstanceCardProps> = ({
           >
             Start
           </button>
-          
+
           <button
             onClick={handleStop}
             disabled={!canStop}
@@ -116,7 +116,7 @@ export const InstanceCard: React.FC<InstanceCardProps> = ({
           >
             Stop
           </button>
-          
+
           <button
             onClick={handleViewDetails}
             className="flex-1 sm:flex-initial px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors duration-200"

@@ -2,6 +2,8 @@
 
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import toast from 'react-hot-toast';
+import { apiBaseUrl, apiTimeout } from '../config/environment';
+import { validateApiResponse, sanitizeObject, paginatedResponseSchema, instanceSchema, taskSchema } from '../validation/schemas';
 import type {
   APIResponse,
   PaginatedResponse,
@@ -16,17 +18,13 @@ import type {
   WorktreeFilter,
 } from '../types';
 
-// API configuration
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
-const API_VERSION = '/api/v1';
-
 class APIService {
   private client: AxiosInstance;
 
   constructor() {
     this.client = axios.create({
-      baseURL: `${API_BASE_URL}${API_VERSION}`,
-      timeout: 10000,
+      baseURL: apiBaseUrl,
+      timeout: apiTimeout,
       headers: {
         'Content-Type': 'application/json',
       },
@@ -52,7 +50,7 @@ class APIService {
       },
       (error) => {
         console.error('API Response Error:', error);
-        
+
         // Show user-friendly error messages
         if (error.response?.status === 404) {
           toast.error('Resource not found');
@@ -63,7 +61,7 @@ class APIService {
         } else if (!error.response) {
           toast.error('Network error - please check your connection');
         }
-        
+
         return Promise.reject(error);
       }
     );
@@ -96,8 +94,21 @@ class APIService {
     size: number = 20,
     filters?: InstanceFilter
   ): Promise<PaginatedResponse<Instance>> {
-    const params = { page, size, ...filters };
-    return this.get<PaginatedResponse<Instance>>('/instances', params);
+    const params = sanitizeObject({ page, size, ...filters });
+    const response = await this.get<PaginatedResponse<Instance>>('/instances', params);
+    
+    // Validate response structure
+    const paginatedData = validateApiResponse(response, paginatedResponseSchema);
+    
+    // Validate each instance in the items array
+    const validatedInstances = paginatedData.items.map(item => 
+      validateApiResponse(item, instanceSchema)
+    );
+    
+    return {
+      ...paginatedData,
+      items: validatedInstances,
+    };
   }
 
   async getInstance(id: number): Promise<APIResponse<Instance>> {
@@ -287,12 +298,16 @@ class APIService {
 
   // Utility methods
   async ping(): Promise<{ status: string }> {
-    const response = await this.client.get(`${API_BASE_URL}/ping`);
+    const response = await this.client.get('/ping', {
+      baseURL: apiBaseUrl.replace('/api/v1', ''), // Use root endpoint for ping
+    });
     return response.data;
   }
 
   async getSystemInfo(): Promise<any> {
-    const response = await this.client.get(`${API_BASE_URL}/`);
+    const response = await this.client.get('/', {
+      baseURL: apiBaseUrl.replace('/api/v1', ''), // Use root endpoint for system info
+    });
     return response.data;
   }
 }

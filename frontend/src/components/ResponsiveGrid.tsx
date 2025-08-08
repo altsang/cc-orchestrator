@@ -29,9 +29,9 @@ export const ResponsiveGrid: React.FC<ResponsiveGridProps> = ({
 };
 
 // Pre-configured responsive grids
-export const InstanceGrid: React.FC<{ children: React.ReactNode; className?: string }> = ({ 
-  children, 
-  className = '' 
+export const InstanceGrid: React.FC<{ children: React.ReactNode; className?: string }> = ({
+  children,
+  className = ''
 }) => (
   <ResponsiveGrid
     minItemWidth="320px"
@@ -42,9 +42,9 @@ export const InstanceGrid: React.FC<{ children: React.ReactNode; className?: str
   </ResponsiveGrid>
 );
 
-export const TaskGrid: React.FC<{ children: React.ReactNode; className?: string }> = ({ 
-  children, 
-  className = '' 
+export const TaskGrid: React.FC<{ children: React.ReactNode; className?: string }> = ({
+  children,
+  className = ''
 }) => (
   <ResponsiveGrid
     minItemWidth="400px"
@@ -55,9 +55,9 @@ export const TaskGrid: React.FC<{ children: React.ReactNode; className?: string 
   </ResponsiveGrid>
 );
 
-export const StatsGrid: React.FC<{ children: React.ReactNode; className?: string }> = ({ 
-  children, 
-  className = '' 
+export const StatsGrid: React.FC<{ children: React.ReactNode; className?: string }> = ({
+  children,
+  className = ''
 }) => (
   <ResponsiveGrid
     minItemWidth="250px"

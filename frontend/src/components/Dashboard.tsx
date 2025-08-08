@@ -1,6 +1,6 @@
 // Main dashboard component for CC-Orchestrator
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { LoadingSpinner } from './LoadingSpinner';
 import { ErrorMessage } from './ErrorMessage';
 import { ConnectionStatus } from './ConnectionStatus';
@@ -9,9 +9,10 @@ import { TaskCard } from './TaskCard';
 import { StatusBadge } from './StatusBadge';
 import { MobileMenu } from './MobileMenu';
 import { StatsGrid, InstanceGrid, TaskGrid } from './ResponsiveGrid';
-import { 
-  useInstances, 
-  useTasks, 
+import { useDebouncedRefetchers } from '../hooks/useDebounce';
+import {
+  useInstances,
+  useTasks,
   useInstanceOperations,
   useTaskOperations,
   useSystemStatus,
@@ -20,12 +21,12 @@ import {
 } from '../hooks/useApi';
 import { useDashboardWebSocket } from '../hooks/useWebSocket';
 import toast from 'react-hot-toast';
-import type { 
-  WebSocketMessage, 
-  InstanceUpdate, 
-  TaskUpdate, 
+import type {
+  WebSocketMessage,
+  InstanceUpdate,
+  TaskUpdate,
   AlertMessage,
-  SystemStatusUpdate 
+  SystemStatusUpdate
 } from '../types';
 
 export const Dashboard: React.FC = () => {
@@ -41,22 +42,22 @@ export const Dashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'instances' | 'tasks'>('overview');
 
   // API hooks
-  const { 
-    data: instancesData, 
-    loading: instancesLoading, 
-    error: instancesError, 
-    refetch: refetchInstances 
+  const {
+    data: instancesData,
+    loading: instancesLoading,
+    error: instancesError,
+    refetch: refetchInstances
   } = useInstances(instanceFilter.page, instanceFilter.size);
 
-  const { 
-    data: tasksData, 
-    loading: tasksLoading, 
-    error: tasksError, 
-    refetch: refetchTasks 
+  const {
+    data: tasksData,
+    loading: tasksLoading,
+    error: tasksError,
+    refetch: refetchTasks
   } = useTasks(taskFilter.page, taskFilter.size);
 
-  const { 
-    data: healthOverview, 
+  const {
+    data: healthOverview,
     loading: healthLoading,
     refetch: refetchHealth
   } = useHealthOverview();
@@ -70,23 +71,31 @@ export const Dashboard: React.FC = () => {
   const taskOps = useTaskOperations();
   const systemStatus = useSystemStatus();
 
+  // Debounced refetchers to prevent excessive API calls from WebSocket messages
+  const debouncedRefetchers = useDebouncedRefetchers({
+    instances: refetchInstances,
+    tasks: refetchTasks,
+    health: refetchHealth,
+    alerts: refetchAlerts,
+  }, 1000); // 1 second debounce
+
   // WebSocket connection
   const websocket = useDashboardWebSocket((message: WebSocketMessage) => {
     console.log('Dashboard received WebSocket message:', message);
-    
+
     switch (message.type) {
       case 'instance_update':
         const instanceUpdate = message as InstanceUpdate;
         toast.success(`Instance ${instanceUpdate.data.issue_id} status updated to ${instanceUpdate.data.status}`);
-        refetchInstances();
+        debouncedRefetchers.instances();
         break;
-        
+
       case 'task_update':
         const taskUpdate = message as TaskUpdate;
         toast.success(`Task "${taskUpdate.data.title}" status updated to ${taskUpdate.data.status}`);
-        refetchTasks();
+        debouncedRefetchers.tasks();
         break;
-        
+
       case 'alert':
         const alertMessage = message as AlertMessage;
         if (alertMessage.data.level === 'critical') {
@@ -96,15 +105,15 @@ export const Dashboard: React.FC = () => {
         } else {
           toast(`${alertMessage.data.level.toUpperCase()}: ${alertMessage.data.message}`);
         }
-        refetchAlerts();
+        debouncedRefetchers.alerts();
         break;
-        
+
       case 'system_status':
         const statusUpdate = message as SystemStatusUpdate;
         if (statusUpdate.data.system_health === 'unhealthy') {
           toast.error('System health is unhealthy');
         }
-        refetchHealth();
+        debouncedRefetchers.health();
         break;
     }
   });
@@ -168,7 +177,7 @@ export const Dashboard: React.FC = () => {
   const getSystemStats = () => {
     const instances = instancesData?.items || [];
     const tasks = tasksData?.items || [];
-    
+
     return {
       totalInstances: instances.length,
       runningInstances: instances.filter(i => i.status === 'running').length,
@@ -193,13 +202,13 @@ export const Dashboard: React.FC = () => {
                 CC-Orchestrator
               </h1>
               <div className="ml-2 sm:ml-4 hidden sm:block">
-                <ConnectionStatus 
-                  isConnected={websocket.isConnected} 
-                  className="text-sm" 
+                <ConnectionStatus
+                  isConnected={websocket.isConnected}
+                  className="text-sm"
                 />
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-2 sm:space-x-4">
               {/* Mobile connection status */}
               <div className="sm:hidden">
@@ -219,7 +228,7 @@ export const Dashboard: React.FC = () => {
                     <span className="hidden md:inline">API Disconnected</span>
                   </div>
                 )}
-                
+
                 {criticalAlerts?.data && criticalAlerts.data.length > 0 && (
                   <div className="flex items-center text-sm text-red-600">
                     <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">

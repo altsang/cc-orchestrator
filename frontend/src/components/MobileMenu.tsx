@@ -45,8 +45,8 @@ export const MobileMenu: React.FC<MobileMenuProps> = ({ activeTab, onTabChange }
       {/* Mobile menu overlay */}
       {isOpen && (
         <>
-          <div 
-            className="fixed inset-0 z-40 bg-gray-600 bg-opacity-50" 
+          <div
+            className="fixed inset-0 z-40 bg-gray-600 bg-opacity-50"
             onClick={() => setIsOpen(false)}
           ></div>
           <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-md shadow-lg z-50 border border-gray-200">

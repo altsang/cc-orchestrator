@@ -24,7 +24,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   const handleStart = () => onStart?.(task.id);
   const handleComplete = () => onComplete?.(task.id);
   const handleCancel = () => onCancel?.(task.id);
-  
+
   const handleAssign = (e: React.FormEvent) => {
     e.preventDefault();
     const id = parseInt(instanceId);
@@ -40,7 +40,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   const canCancel = task.status === 'pending' || task.status === 'in_progress';
 
   const priorityColor = priorityColors[task.priority] || priorityColors.medium;
-  
+
   // Calculate duration display
   const getDurationDisplay = () => {
     if (task.status === 'completed' && task.actual_duration) {
@@ -194,7 +194,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
           >
             Start
           </button>
-          
+
           <button
             onClick={handleComplete}
             disabled={!canComplete}
@@ -206,7 +206,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
           >
             Complete
           </button>
-          
+
           <button
             onClick={handleCancel}
             disabled={!canCancel}

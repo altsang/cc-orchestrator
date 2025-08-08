@@ -8,10 +8,10 @@ interface ErrorMessageProps {
   className?: string;
 }
 
-export const ErrorMessage: React.FC<ErrorMessageProps> = ({ 
-  message, 
-  onRetry, 
-  className = '' 
+export const ErrorMessage: React.FC<ErrorMessageProps> = ({
+  message,
+  onRetry,
+  className = ''
 }) => {
   return (
     <div className={`bg-red-50 border border-red-200 rounded-lg p-4 ${className}`}>

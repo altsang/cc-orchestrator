@@ -10,19 +10,19 @@ const statusColors = {
   stopped: 'bg-gray-100 text-gray-800 border-gray-200',
   failed: 'bg-red-100 text-red-800 border-red-200',
   terminating: 'bg-orange-100 text-orange-800 border-orange-200',
-  
+
   // Task Status
   pending: 'bg-blue-100 text-blue-800 border-blue-200',
   in_progress: 'bg-purple-100 text-purple-800 border-purple-200',
   completed: 'bg-green-100 text-green-800 border-green-200',
   cancelled: 'bg-gray-100 text-gray-800 border-gray-200',
-  
+
   // Health Status
   healthy: 'bg-green-100 text-green-800 border-green-200',
   degraded: 'bg-yellow-100 text-yellow-800 border-yellow-200',
   unhealthy: 'bg-red-100 text-red-800 border-red-200',
   unknown: 'bg-gray-100 text-gray-800 border-gray-200',
-  
+
   // Worktree Status
   active: 'bg-green-100 text-green-800 border-green-200',
   inactive: 'bg-gray-100 text-gray-800 border-gray-200',
@@ -37,19 +37,19 @@ const statusIcons = {
   stopped: '⏹️',
   failed: '❌',
   terminating: '🔄',
-  
+
   // Task Status
   pending: '⏱️',
   in_progress: '🔄',
   completed: '✅',
   cancelled: '⏹️',
-  
+
   // Health Status
   healthy: '💚',
   degraded: '⚠️',
   unhealthy: '❌',
   unknown: '❓',
-  
+
   // Worktree Status
   active: '📁',
   inactive: '📂',
@@ -63,19 +63,19 @@ const sizeClasses = {
   lg: 'px-3 py-1.5 text-base',
 };
 
-export const StatusBadge: React.FC<StatusBadgeProps> = ({ 
-  status, 
-  size = 'md' 
+export const StatusBadge: React.FC<StatusBadgeProps> = ({
+  status,
+  size = 'md'
 }) => {
   const colorClass = statusColors[status] || 'bg-gray-100 text-gray-800 border-gray-200';
   const sizeClass = sizeClasses[size];
   const icon = statusIcons[status] || '❓';
-  
+
   // Format status text
   const displayText = status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-  
+
   return (
-    <span 
+    <span
       className={`inline-flex items-center gap-1 rounded-full border font-medium ${colorClass} ${sizeClass}`}
       title={`Status: ${displayText}`}
     >

@@ -8,10 +8,10 @@ interface ConnectionStatusProps {
   className?: string;
 }
 
-export const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ 
-  isConnected, 
+export const ConnectionStatus: React.FC<ConnectionStatusProps> = ({
+  isConnected,
   isReconnecting = false,
-  className = '' 
+  className = ''
 }) => {
   if (isConnected) {
     return (

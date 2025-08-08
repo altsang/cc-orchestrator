@@ -49,7 +49,7 @@ export function useWebSocket(
   const handleConnect = useCallback(() => {
     console.log('WebSocket connected in useWebSocket hook');
     updateConnectionState();
-    
+
     // Auto-subscribe to topics
     subscribeToTopics.forEach(topic => {
       websocketService.subscribe(topic);

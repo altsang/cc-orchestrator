@@ -1,6 +1,8 @@
 // WebSocket service for real-time communication with CC-Orchestrator backend
 
 import toast from 'react-hot-toast';
+import { wsBaseUrl, wsReconnectInterval, wsMaxReconnectAttempts } from '../config/environment';
+import { safeParseWebSocketMessage } from '../validation/schemas';
 import type { WebSocketMessage } from '../types';
 
 export interface WebSocketConfig {
@@ -22,21 +24,21 @@ class WebSocketService {
   private connectHandlers = new Set<ConnectionHandler>();
   private disconnectHandlers = new Set<ConnectionHandler>();
   private errorHandlers = new Set<ErrorHandler>();
-  
+
   private reconnectAttempts = 0;
   private reconnectTimer: NodeJS.Timeout | null = null;
   private pingTimer: NodeJS.Timeout | null = null;
   private pongTimer: NodeJS.Timeout | null = null;
-  
+
   private isConnecting = false;
   private isReconnecting = false;
   private shouldReconnect = true;
-  
+
   constructor(config: WebSocketConfig = {}) {
     this.config = {
-      url: process.env.REACT_APP_WS_URL || 'ws://localhost:8080/ws',
-      reconnectInterval: 3000,
-      maxReconnectAttempts: 10,
+      url: wsBaseUrl,
+      reconnectInterval: wsReconnectInterval,
+      maxReconnectAttempts: wsMaxReconnectAttempts,
       pingInterval: 30000,
       pongTimeout: 5000,
       ...config,
@@ -51,7 +53,7 @@ class WebSocketService {
 
     this.isConnecting = true;
     this.shouldReconnect = true;
-    
+
     const wsUrl = `${this.config.url}/${endpoint}`;
     console.log(`Connecting to WebSocket: ${wsUrl}`);
 
@@ -70,12 +72,12 @@ class WebSocketService {
     console.log('Disconnecting WebSocket...');
     this.shouldReconnect = false;
     this.clearTimers();
-    
+
     if (this.socket) {
       this.socket.close(1000, 'Client disconnect');
       this.socket = null;
     }
-    
+
     this.reconnectAttempts = 0;
   }
 
@@ -153,12 +155,12 @@ class WebSocketService {
       this.isConnecting = false;
       this.isReconnecting = false;
       this.reconnectAttempts = 0;
-      
+
       this.startPingTimer();
-      
+
       // Notify handlers
       this.connectHandlers.forEach(handler => handler());
-      
+
       if (this.reconnectAttempts > 0) {
         toast.success('Reconnected to server');
       }
@@ -166,17 +168,31 @@ class WebSocketService {
 
     this.socket.onmessage = (event) => {
       try {
-        const message: WebSocketMessage = JSON.parse(event.data);
-        console.log('Received WebSocket message:', message);
+        // Parse and validate the message
+        const rawMessage = JSON.parse(event.data);
+        const message = safeParseWebSocketMessage(rawMessage);
         
+        if (!message) {
+          console.warn('Received invalid WebSocket message, ignoring:', rawMessage);
+          return;
+        }
+
+        console.log('Received valid WebSocket message:', message);
+
         // Handle pong messages
         if (message.type === 'pong') {
           this.handlePong();
           return;
         }
-        
-        // Notify message handlers
-        this.messageHandlers.forEach(handler => handler(message));
+
+        // Notify message handlers with validated message
+        this.messageHandlers.forEach(handler => {
+          try {
+            handler(message);
+          } catch (handlerError) {
+            console.error('WebSocket message handler error:', handlerError);
+          }
+        });
       } catch (error) {
         console.error('Failed to parse WebSocket message:', error);
       }
@@ -186,10 +202,10 @@ class WebSocketService {
       console.log('WebSocket disconnected:', event.code, event.reason);
       this.isConnecting = false;
       this.clearTimers();
-      
+
       // Notify handlers
       this.disconnectHandlers.forEach(handler => handler());
-      
+
       // Attempt reconnection if needed
       if (this.shouldReconnect && event.code !== 1000) {
         this.attemptReconnection();
@@ -214,14 +230,14 @@ class WebSocketService {
 
     this.isReconnecting = true;
     this.reconnectAttempts++;
-    
+
     console.log(`Attempting reconnection ${this.reconnectAttempts}/${this.config.maxReconnectAttempts}...`);
-    
+
     this.reconnectTimer = setTimeout(() => {
       this.connect().catch(error => {
         console.error('Reconnection failed:', error);
         this.isReconnecting = false;
-        
+
         // Try again after interval
         if (this.shouldReconnect) {
           setTimeout(() => this.attemptReconnection(), this.config.reconnectInterval);
@@ -232,14 +248,14 @@ class WebSocketService {
 
   private startPingTimer(): void {
     this.clearPingTimer();
-    
+
     this.pingTimer = setInterval(() => {
       if (this.isConnected()) {
         this.send({
           type: 'ping',
           timestamp: new Date().toISOString(),
         });
-        
+
         // Start pong timeout
         this.pongTimer = setTimeout(() => {
           console.warn('Pong timeout - connection may be stale');
@@ -273,7 +289,7 @@ class WebSocketService {
       clearInterval(this.pingTimer);
       this.pingTimer = null;
     }
-    
+
     if (this.pongTimer) {
       clearTimeout(this.pongTimer);
       this.pongTimer = null;

@@ -9,15 +9,15 @@ const sizeClasses = {
   lg: 'w-8 h-8',
 };
 
-export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({ 
-  size = 'md', 
-  className = '' 
+export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
+  size = 'md',
+  className = ''
 }) => {
   const sizeClass = sizeClasses[size];
-  
+
   return (
     <div className={`flex items-center justify-center ${className}`}>
-      <div 
+      <div
         className={`${sizeClass} border-2 border-gray-200 border-t-blue-600 rounded-full animate-spin`}
         role="status"
         aria-label="Loading"
