@@ -44,21 +44,28 @@ def create_app() -> FastAPI:
         # Production validation - ensure required environment variables are set
         frontend_url = os.getenv("FRONTEND_URL")
         if not frontend_url:
-            raise ValueError("FRONTEND_URL must be set when DEBUG=false (production mode)")
-        
+            raise ValueError(
+                "FRONTEND_URL must be set when DEBUG=false (production mode)"
+            )
+
         # Validate the frontend URL format
-        if not (frontend_url.startswith("http://") or frontend_url.startswith("https://")):
+        if not (
+            frontend_url.startswith("http://") or frontend_url.startswith("https://")
+        ):
             raise ValueError("FRONTEND_URL must be a valid HTTP(S) URL")
-        
+
         allowed_origins = [frontend_url]
-        
+
         # Additional production environment validation
         if not os.getenv("JWT_SECRET_KEY"):
             raise ValueError("JWT_SECRET_KEY must be set in production mode")
-        
+
         # Warn about HTTP in production
-        if frontend_url.startswith("http://") and not frontend_url.startswith("http://localhost"):
+        if frontend_url.startswith("http://") and not frontend_url.startswith(
+            "http://localhost"
+        ):
             import logging
+
             logging.warning(
                 "Using HTTP (not HTTPS) for FRONTEND_URL in production mode. "
                 "Consider using HTTPS for security."
@@ -74,15 +81,17 @@ def create_app() -> FastAPI:
 
     # Add exception handlers
     @app.exception_handler(CCOrchestratorAPIException)
-    async def api_exception_handler(request: Request, exc: CCOrchestratorAPIException) -> JSONResponse:
+    async def api_exception_handler(
+        request: Request, exc: CCOrchestratorAPIException
+    ) -> JSONResponse:
         """Handle custom API exceptions."""
         return JSONResponse(
             status_code=exc.status_code,
             content={
                 "error": exc.__class__.__name__,
                 "message": exc.message,
-                "status_code": exc.status_code
-            }
+                "status_code": exc.status_code,
+            },
         )
 
     # Include routers
