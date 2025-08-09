@@ -65,7 +65,6 @@ def create_app() -> FastAPI:
             "http://localhost"
         ):
             import logging
-
             logging.warning(
                 "Using HTTP (not HTTPS) for FRONTEND_URL in production mode. "
                 "Consider using HTTPS for security."
