@@ -10,7 +10,10 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from passlib.context import CryptContext
 
 # Security configuration
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "dev-secret-key-change-in-production")
+SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+if not SECRET_KEY or SECRET_KEY == "dev-secret-key-change-in-production":
+    raise ValueError("JWT_SECRET_KEY must be set to a strong, unique secret key")
+
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
@@ -71,18 +74,30 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     return payload
 
 
-# Simple user store for development (should use database in production)
-DEMO_USERS = {
-    "admin": {
-        "username": "admin",
-        "hashed_password": get_password_hash("admin123"),  # Change in production
-        "role": "admin"
+# Development user store - REMOVE IN PRODUCTION
+# Use environment variable to enable demo users only in development
+_demo_enabled = os.getenv("ENABLE_DEMO_USERS", "false").lower() == "true"
+
+if _demo_enabled:
+    DEMO_USERS = {
+        "admin": {
+            "username": "admin",
+            "hashed_password": get_password_hash(os.getenv("DEMO_ADMIN_PASSWORD", "admin123")),
+            "role": "admin"
+        }
     }
-}
+else:
+    DEMO_USERS = {}
 
 
 def authenticate_user(username: str, password: str) -> dict[str, Any] | None:
     """Authenticate a user with username and password."""
+    if not _demo_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Authentication requires proper user management system. Demo users disabled."
+        )
+    
     user = DEMO_USERS.get(username)
     if not user or not verify_password(password, user["hashed_password"]):
         return None

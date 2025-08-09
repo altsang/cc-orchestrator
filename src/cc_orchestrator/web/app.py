@@ -41,9 +41,28 @@ def create_app() -> FastAPI:
             "http://localhost:5173",
         ]
     else:
-        # Production origins from environment
-        frontend_url = os.getenv("FRONTEND_URL", "")
-        allowed_origins = [frontend_url] if frontend_url else []
+        # Production validation - ensure required environment variables are set
+        frontend_url = os.getenv("FRONTEND_URL")
+        if not frontend_url:
+            raise ValueError("FRONTEND_URL must be set when DEBUG=false (production mode)")
+        
+        # Validate the frontend URL format
+        if not (frontend_url.startswith("http://") or frontend_url.startswith("https://")):
+            raise ValueError("FRONTEND_URL must be a valid HTTP(S) URL")
+        
+        allowed_origins = [frontend_url]
+        
+        # Additional production environment validation
+        if not os.getenv("JWT_SECRET_KEY"):
+            raise ValueError("JWT_SECRET_KEY must be set in production mode")
+        
+        # Warn about HTTP in production
+        if frontend_url.startswith("http://") and not frontend_url.startswith("http://localhost"):
+            import logging
+            logging.warning(
+                "Using HTTP (not HTTPS) for FRONTEND_URL in production mode. "
+                "Consider using HTTPS for security."
+            )
 
     app.add_middleware(
         CORSMiddleware,
