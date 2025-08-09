@@ -1,7 +1,8 @@
 """Pydantic schemas for API request/response validation."""
 
 from datetime import datetime
-from typing import Any
+from enum import Enum
+from typing import Any, Generic, TypeVar
 
 from pydantic import BaseModel, Field
 
@@ -51,6 +52,9 @@ __all__ = [
     "APIResponse",
     "ErrorResponse",
 ]
+
+# Generic type for paginated responses
+T = TypeVar("T")
 
 
 class InstanceBase(BaseModel):
@@ -155,3 +159,187 @@ class SystemStatus(BaseModel):
     system_cpu_usage: float = Field(ge=0.0, le=100.0)
     system_memory_usage: float = Field(ge=0.0, le=100.0)
     active_connections: int = Field(ge=0)
+
+
+# Common API Response Schemas
+class APIResponse(BaseModel, Generic[T]):
+    """Generic API response schema."""
+
+    success: bool = True
+    message: str = ""
+    data: T | None = None
+
+
+class PaginatedResponse(BaseModel, Generic[T]):
+    """Generic paginated response schema."""
+
+    items: list[T]
+    total: int
+    page: int = 1
+    page_size: int = 20
+    pages: int = 1
+
+
+# Instance Update Schema
+class InstanceUpdate(BaseModel):
+    """Schema for updating instances."""
+
+    status: InstanceStatus | None = None
+
+
+# Alert Schemas
+class AlertLevel(str, Enum):
+    """Alert severity levels."""
+
+    INFO = "info"
+    WARNING = "warning"
+    ERROR = "error"
+    CRITICAL = "critical"
+
+
+class AlertCreate(BaseModel):
+    """Schema for creating alerts."""
+
+    title: str = Field(min_length=1, max_length=200)
+    message: str = Field(min_length=1, max_length=1000)
+    level: AlertLevel
+    instance_id: int | None = None
+    alert_id: str | None = None
+
+
+class AlertResponse(BaseModel):
+    """Schema for alert responses."""
+
+    id: int
+    title: str
+    message: str
+    level: AlertLevel
+    instance_id: int | None = None
+    created_at: datetime
+    acknowledged: bool = False
+    acknowledged_at: datetime | None = None
+
+
+# Task Schemas
+class TaskCreate(BaseModel):
+    """Schema for creating tasks."""
+
+    name: str = Field(min_length=1, max_length=200)
+    description: str = ""
+    instance_id: int | None = None
+    command: str | None = None
+    schedule: str | None = None  # Cron expression
+    worktree_id: int | None = None
+
+
+class TaskUpdate(BaseModel):
+    """Schema for updating tasks."""
+
+    name: str | None = None
+    description: str | None = None
+    command: str | None = None
+    schedule: str | None = None
+    enabled: bool | None = None
+    instance_id: int | None = None
+    worktree_id: int | None = None
+
+
+class TaskResponse(BaseModel):
+    """Schema for task responses."""
+
+    id: int
+    name: str
+    description: str
+    instance_id: int | None = None
+    command: str | None = None
+    schedule: str | None = None
+    enabled: bool = True
+    created_at: datetime
+    updated_at: datetime | None = None
+    last_run: datetime | None = None
+    next_run: datetime | None = None
+    status: str = "pending"
+
+
+# Worktree Schemas
+class WorktreeCreate(BaseModel):
+    """Schema for creating worktrees."""
+
+    name: str = Field(min_length=1, max_length=100)
+    branch: str = Field(min_length=1, max_length=100)
+    base_branch: str = "main"
+    path: str | None = None
+    instance_id: int | None = None
+
+
+class WorktreeUpdate(BaseModel):
+    """Schema for updating worktrees."""
+
+    name: str | None = None
+    branch: str | None = None
+    active: bool | None = None
+    instance_id: int | None = None
+
+
+class WorktreeResponse(BaseModel):
+    """Schema for worktree responses."""
+
+    id: int
+    name: str
+    branch: str
+    base_branch: str
+    path: str
+    active: bool = True
+    created_at: datetime
+    updated_at: datetime | None = None
+
+
+# Configuration Schemas
+class ConfigurationCreate(BaseModel):
+    """Schema for creating configuration."""
+
+    key: str = Field(min_length=1, max_length=100)
+    value: str = Field(max_length=1000)
+    description: str = ""
+    category: str = "general"
+    scope: str = "global"
+    instance_id: int | None = None
+
+
+class ConfigurationUpdate(BaseModel):
+    """Schema for updating configuration."""
+
+    value: str | None = None
+    description: str | None = None
+    category: str | None = None
+
+
+class ConfigurationResponse(BaseModel):
+    """Schema for configuration responses."""
+
+    id: int
+    key: str
+    value: str
+    description: str
+    category: str
+    created_at: datetime
+    updated_at: datetime | None = None
+
+
+# Health Check Schemas
+class HealthStatus(str, Enum):
+    """Health check status values."""
+
+    HEALTHY = "healthy"
+    DEGRADED = "degraded"
+    UNHEALTHY = "unhealthy"
+
+
+class HealthCheckResponse(BaseModel):
+    """Schema for health check responses."""
+
+    status: HealthStatus
+    timestamp: datetime
+    checks: dict[str, Any] = Field(default_factory=dict)
+    uptime_seconds: int = 0
+    version: str = "unknown"

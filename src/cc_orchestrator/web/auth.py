@@ -10,7 +10,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from passlib.context import CryptContext
 
 # Security configuration
-SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+SECRET_KEY: str = os.getenv("JWT_SECRET_KEY") or ""
 if not SECRET_KEY or SECRET_KEY == "dev-secret-key-change-in-production":
     raise ValueError("JWT_SECRET_KEY must be set to a strong, unique secret key")
 
@@ -101,7 +101,8 @@ def authenticate_user(username: str, password: str) -> dict[str, Any] | None:
     if not _demo_enabled:
         raise HTTPException(
             status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail="Authentication requires proper user management system. Demo users disabled.",
+            detail="Authentication requires proper user management system. "
+            "Demo users disabled.",
         )
 
     user = DEMO_USERS.get(username)

@@ -94,7 +94,10 @@ async def create_worktree(
     - **instance_id**: Associated instance ID
     """
     # Check if worktree with this path already exists
-    existing = await crud.get_worktree_by_path(worktree_data.path)
+    if worktree_data.path:
+        existing = await crud.get_worktree_by_path(worktree_data.path)
+    else:
+        existing = None
     if existing:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,

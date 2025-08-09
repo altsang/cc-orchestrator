@@ -21,32 +21,34 @@ async def websocket_dashboard(websocket: WebSocket) -> None:
     """WebSocket endpoint for dashboard real-time updates."""
     # Authenticate WebSocket connection
     await websocket.accept()
-    
+
     try:
         # Wait for authentication message
         auth_data = await websocket.receive_text()
         auth_message = json.loads(auth_data)
-        
+
         if auth_message.get("type") != "auth":
-            await websocket.send_json({"type": "error", "message": "Authentication required"})
+            await websocket.send_json(
+                {"type": "error", "message": "Authentication required"}
+            )
             await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
             return
-            
+
         token = auth_message.get("token")
         if not token:
             await websocket.send_json({"type": "error", "message": "Token required"})
             await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
             return
-            
+
         # Verify the token
         user = verify_token(token)
         await websocket.send_json({"type": "auth_success", "user": user["sub"]})
-        
+
     except Exception:
         await websocket.send_json({"type": "error", "message": "Authentication failed"})
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return
-    
+
     connection_id = await ws_manager.connect(websocket)
 
     try:

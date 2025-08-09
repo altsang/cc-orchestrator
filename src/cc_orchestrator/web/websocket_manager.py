@@ -18,44 +18,50 @@ from .logging_utils import log_websocket_connection, log_websocket_message
 class WebSocketManager:
     """Manages WebSocket connections and message broadcasting."""
 
-    def __init__(self, max_connections: int = 100, max_connections_per_ip: int = 5) -> None:
+    def __init__(
+        self, max_connections: int = 100, max_connections_per_ip: int = 5
+    ) -> None:
         self.connections: dict[str, WebSocket] = {}
         self.subscriptions: dict[str, set[str]] = {}  # connection_id -> event_types
-        self.connection_timestamps: dict[str, float] = {}  # connection_id -> connect_time
+        self.connection_timestamps: dict[str, float] = {}  # connection_id -> time
         self.connections_per_ip: dict[str, int] = defaultdict(int)  # ip -> count
         self.connection_ip_map: dict[str, str] = {}  # connection_id -> ip
-        
+
         # Configuration
         self.max_connections = max_connections
         self.max_connections_per_ip = max_connections_per_ip
-        self.cleanup_task: asyncio.Task | None = None
+        self.cleanup_task: asyncio.Task[None] | None = None
         self._cleanup_started = False
 
     async def connect(self, websocket: WebSocket) -> str:
         """Accept a new WebSocket connection and return connection ID."""
         client_info = getattr(websocket, "client", None)
         client_ip = client_info.host if client_info else "unknown"
-        
+
         # Check connection limits
         if len(self.connections) >= self.max_connections:
-            await websocket.close(code=1013, reason="Server overloaded - too many connections")
+            await websocket.close(
+                code=1013, reason="Server overloaded - too many connections"
+            )
             raise RateLimitExceededError(self.max_connections, "total connections")
-        
+
         if self.connections_per_ip[client_ip] >= self.max_connections_per_ip:
             await websocket.close(code=1013, reason="Too many connections from this IP")
-            raise RateLimitExceededError(self.max_connections_per_ip, "connections per IP")
-        
+            raise RateLimitExceededError(
+                self.max_connections_per_ip, "connections per IP"
+            )
+
         await websocket.accept()
         connection_id = str(uuid.uuid4())
         current_time = time.time()
-        
+
         # Store connection info
         self.connections[connection_id] = websocket
         self.subscriptions[connection_id] = set()
         self.connection_timestamps[connection_id] = current_time
         self.connections_per_ip[client_ip] += 1
         self.connection_ip_map[connection_id] = client_ip
-        
+
         # Start cleanup task on first connection
         if not self._cleanup_started:
             self._start_cleanup_task()
@@ -87,14 +93,14 @@ class WebSocketManager:
             # Clean up all connection data
             del self.connections[connection_id]
             del self.subscriptions[connection_id]
-            
+
             if connection_id in self.connection_timestamps:
                 del self.connection_timestamps[connection_id]
-            
+
             if connection_id in self.connection_ip_map:
                 ip = self.connection_ip_map[connection_id]
                 del self.connection_ip_map[connection_id]
-                
+
                 # Decrement IP connection count
                 if self.connections_per_ip[ip] > 0:
                     self.connections_per_ip[ip] -= 1
@@ -231,17 +237,17 @@ class WebSocketManager:
         """Clean up connections that have been idle too long."""
         current_time = time.time()
         stale_connections = []
-        
+
         for connection_id, timestamp in self.connection_timestamps.items():
             if current_time - timestamp > max_age_seconds:
                 websocket = self.connections.get(connection_id)
                 if websocket and websocket.client_state != WebSocketState.CONNECTED:
                     stale_connections.append(connection_id)
-        
+
         # Clean up stale connections
         for connection_id in stale_connections:
             await self.disconnect(connection_id)
-        
+
         return len(stale_connections)
 
     def get_connection_stats(self) -> dict[str, Any]:
@@ -267,7 +273,7 @@ class WebSocketManager:
                 await self.cleanup_task
             except asyncio.CancelledError:
                 pass
-        
+
         # Close all connections
         for connection_id in list(self.connections.keys()):
             await self.disconnect(connection_id)

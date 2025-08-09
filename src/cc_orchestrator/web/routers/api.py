@@ -2,16 +2,19 @@
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
 from ...database.connection import get_db_session
 from ...database.crud import InstanceCRUD
 from ...database.models import InstanceStatus
 from ..auth import get_current_user
-from ..exceptions import DatabaseOperationError, InstanceNotFoundError, InstanceOperationError
+from ..exceptions import (
+    InstanceNotFoundError,
+    InstanceOperationError,
+)
 from ..logging_utils import handle_api_errors, track_api_performance
-from ..rate_limiter import rate_limiter, get_client_ip
+from ..rate_limiter import get_client_ip, rate_limiter
 from ..schemas import (
     InstanceCreate,
     InstanceListResponse,
@@ -27,15 +30,15 @@ router = APIRouter(tags=["instances"])
 @track_api_performance()
 async def get_instances(
     request: Request,
-    status_filter: InstanceStatus | None = None, 
+    status_filter: InstanceStatus | None = None,
     db: Session = Depends(get_db_session),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict[str, Any] = Depends(get_current_user),
 ) -> InstanceListResponse:
     """Get all instances with optional status filtering."""
     # Apply rate limiting
     client_ip = get_client_ip(request)
     rate_limiter.check_rate_limit(client_ip, "GET:/api/v1/instances", 30, 60)
-    
+
     instances = InstanceCRUD.list_all(db, status=status_filter)
     return InstanceListResponse(
         instances=[InstanceResponse.from_model(instance) for instance in instances],
@@ -47,9 +50,9 @@ async def get_instances(
 @handle_api_errors()
 @track_api_performance()
 async def get_instance_by_id(
-    instance_id: int, 
+    instance_id: int,
     db: Session = Depends(get_db_session),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict[str, Any] = Depends(get_current_user),
 ) -> InstanceResponse:
     """Get a specific instance by ID."""
     try:
@@ -64,9 +67,9 @@ async def get_instance_by_id(
 @track_api_performance()
 async def create_instance(
     request: Request,
-    instance_data: InstanceCreate, 
+    instance_data: InstanceCreate,
     db: Session = Depends(get_db_session),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict[str, Any] = Depends(get_current_user),
 ) -> InstanceResponse:
     """Create a new instance."""
     # Apply stricter rate limiting for create operations
@@ -87,7 +90,7 @@ async def update_instance_status_endpoint(
     instance_id: int,
     status_update: InstanceStatusUpdate,
     db: Session = Depends(get_db_session),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict[str, Any] = Depends(get_current_user),
 ) -> InstanceResponse:
     """Update instance status."""
     try:
@@ -102,10 +105,10 @@ async def update_instance_status_endpoint(
 @track_api_performance()
 async def start_instance(
     request: Request,
-    instance_id: int, 
+    instance_id: int,
     db: Session = Depends(get_db_session),
-    current_user: dict = Depends(get_current_user)
-) -> dict[str, str]:
+    current_user: dict[str, Any] = Depends(get_current_user),
+) -> dict[str, Any]:
     """Start an instance."""
     # Apply rate limiting for control operations
     client_ip = get_client_ip(request)
@@ -125,10 +128,10 @@ async def start_instance(
 @track_api_performance()
 async def stop_instance(
     request: Request,
-    instance_id: int, 
+    instance_id: int,
     db: Session = Depends(get_db_session),
-    current_user: dict = Depends(get_current_user)
-) -> dict[str, str]:
+    current_user: dict[str, Any] = Depends(get_current_user),
+) -> dict[str, Any]:
     """Stop an instance."""
     # Apply rate limiting for control operations
     client_ip = get_client_ip(request)
@@ -148,10 +151,10 @@ async def stop_instance(
 @track_api_performance()
 async def restart_instance(
     request: Request,
-    instance_id: int, 
+    instance_id: int,
     db: Session = Depends(get_db_session),
-    current_user: dict = Depends(get_current_user)
-) -> dict[str, str]:
+    current_user: dict[str, Any] = Depends(get_current_user),
+) -> dict[str, Any]:
     """Restart an instance."""
     # Apply rate limiting for control operations
     client_ip = get_client_ip(request)

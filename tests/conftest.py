@@ -5,6 +5,15 @@ Pytest configuration and shared fixtures for CC-Orchestrator tests.
 import logging
 import os
 
+# Set up environment variables BEFORE any imports to avoid collection errors
+os.environ.setdefault(
+    "JWT_SECRET_KEY", "test-secret-key-for-pytest-only-never-use-in-production"
+)
+os.environ.setdefault("FRONTEND_URL", "http://localhost:3000")
+os.environ.setdefault("ENABLE_DEMO_USERS", "true")
+os.environ.setdefault("DEBUG", "true")
+os.environ.setdefault("DEMO_ADMIN_PASSWORD", "test-admin-password")
+
 # Add src to path for imports
 import sys
 import tempfile
@@ -16,23 +25,25 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
+from cc_orchestrator.core.instance import ClaudeInstance, InstanceStatus
+from cc_orchestrator.core.orchestrator import Orchestrator
+
 
 @pytest.fixture(scope="session", autouse=True)
 def setup_test_environment():
     """Set up environment variables for testing."""
     # Set required environment variables for security fixes
-    os.environ["JWT_SECRET_KEY"] = "test-secret-key-for-pytest-only-never-use-in-production"
-    os.environ["ENABLE_DEMO_USERS"] = "true"  
+    os.environ["JWT_SECRET_KEY"] = (
+        "test-secret-key-for-pytest-only-never-use-in-production"
+    )
+    os.environ["ENABLE_DEMO_USERS"] = "true"
     os.environ["DEBUG"] = "true"
     os.environ["DEMO_ADMIN_PASSWORD"] = "test-admin-password"
-    
+
     yield
-    
+
     # Cleanup after tests if needed
     # Note: Don't cleanup environment variables as other tests might depend on them
-
-from cc_orchestrator.core.instance import ClaudeInstance, InstanceStatus
-from cc_orchestrator.core.orchestrator import Orchestrator
 
 
 @pytest.fixture

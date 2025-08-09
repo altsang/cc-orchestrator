@@ -1,21 +1,29 @@
 """Authentication endpoints."""
 
 from datetime import timedelta
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
-from ..auth import ACCESS_TOKEN_EXPIRE_MINUTES, authenticate_user, create_access_token, get_current_user
+from ..auth import (
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+    authenticate_user,
+    create_access_token,
+    get_current_user,
+)
 
 
 class LoginRequest(BaseModel):
     """Login request schema."""
+
     username: str
     password: str
 
 
 class TokenResponse(BaseModel):
     """Token response schema."""
+
     access_token: str
     token_type: str = "bearer"
     expires_in: int
@@ -23,6 +31,7 @@ class TokenResponse(BaseModel):
 
 class UserResponse(BaseModel):
     """User response schema."""
+
     username: str
     role: str
 
@@ -40,23 +49,21 @@ async def login(login_data: LoginRequest) -> TokenResponse:
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": user["username"], "role": user["role"]}, 
-        expires_delta=access_token_expires
+        data={"sub": user["username"], "role": user["role"]},
+        expires_delta=access_token_expires,
     )
-    
+
     return TokenResponse(
-        access_token=access_token,
-        expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60
+        access_token=access_token, expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60
     )
 
 
 @router.get("/me", response_model=UserResponse)
-async def get_current_user_info(current_user: dict = Depends(get_current_user)) -> UserResponse:
+async def get_current_user_info(
+    current_user: dict[str, Any] = Depends(get_current_user),
+) -> UserResponse:
     """Get current user information."""
-    return UserResponse(
-        username=current_user["sub"],
-        role=current_user["role"]
-    )
+    return UserResponse(username=current_user["sub"], role=current_user["role"])
