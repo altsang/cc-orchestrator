@@ -29,9 +29,7 @@ class WebSocketManager:
         self.max_connections = max_connections
         self.max_connections_per_ip = max_connections_per_ip
         self.cleanup_task: asyncio.Task | None = None
-        
-        # Start cleanup task
-        self._start_cleanup_task()
+        self._cleanup_started = False
 
     async def connect(self, websocket: WebSocket) -> str:
         """Accept a new WebSocket connection and return connection ID."""
@@ -57,6 +55,11 @@ class WebSocketManager:
         self.connection_timestamps[connection_id] = current_time
         self.connections_per_ip[client_ip] += 1
         self.connection_ip_map[connection_id] = client_ip
+        
+        # Start cleanup task on first connection
+        if not self._cleanup_started:
+            self._start_cleanup_task()
+            self._cleanup_started = True
 
         log_websocket_connection(client_ip, "connect", connection_id)
 
@@ -205,8 +208,12 @@ class WebSocketManager:
 
     def _start_cleanup_task(self) -> None:
         """Start the periodic cleanup task."""
-        if self.cleanup_task is None or self.cleanup_task.done():
-            self.cleanup_task = asyncio.create_task(self._periodic_cleanup())
+        try:
+            if self.cleanup_task is None or self.cleanup_task.done():
+                self.cleanup_task = asyncio.create_task(self._periodic_cleanup())
+        except RuntimeError:
+            # No event loop running, will start later
+            pass
 
     async def _periodic_cleanup(self) -> None:
         """Periodic cleanup of stale connections."""

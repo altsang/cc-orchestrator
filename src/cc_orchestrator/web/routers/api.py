@@ -31,10 +31,11 @@ async def get_instances(
     db: Session = Depends(get_db_session),
     current_user: dict = Depends(get_current_user)
 ) -> InstanceListResponse:
+    """Get all instances with optional status filtering."""
     # Apply rate limiting
     client_ip = get_client_ip(request)
     rate_limiter.check_rate_limit(client_ip, "GET:/api/v1/instances", 30, 60)
-    """Get all instances with optional status filtering."""
+    
     instances = InstanceCRUD.list_all(db, status=status_filter)
     return InstanceListResponse(
         instances=[InstanceResponse.from_model(instance) for instance in instances],
@@ -67,6 +68,7 @@ async def create_instance(
     db: Session = Depends(get_db_session),
     current_user: dict = Depends(get_current_user)
 ) -> InstanceResponse:
+    """Create a new instance."""
     # Apply stricter rate limiting for create operations
     client_ip = get_client_ip(request)
     rate_limiter.check_rate_limit(client_ip, "POST:/api/v1/instances", 10, 60)
@@ -104,6 +106,7 @@ async def start_instance(
     db: Session = Depends(get_db_session),
     current_user: dict = Depends(get_current_user)
 ) -> dict[str, str]:
+    """Start an instance."""
     # Apply rate limiting for control operations
     client_ip = get_client_ip(request)
     rate_limiter.check_rate_limit(client_ip, "POST:/api/v1/instances/*/start", 20, 60)
@@ -126,6 +129,7 @@ async def stop_instance(
     db: Session = Depends(get_db_session),
     current_user: dict = Depends(get_current_user)
 ) -> dict[str, str]:
+    """Stop an instance."""
     # Apply rate limiting for control operations
     client_ip = get_client_ip(request)
     rate_limiter.check_rate_limit(client_ip, "POST:/api/v1/instances/*/stop", 20, 60)
@@ -148,6 +152,7 @@ async def restart_instance(
     db: Session = Depends(get_db_session),
     current_user: dict = Depends(get_current_user)
 ) -> dict[str, str]:
+    """Restart an instance."""
     # Apply rate limiting for control operations
     client_ip = get_client_ip(request)
     rate_limiter.check_rate_limit(client_ip, "POST:/api/v1/instances/*/restart", 20, 60)
