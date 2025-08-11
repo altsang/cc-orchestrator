@@ -58,7 +58,6 @@ class TestProcessIntegration:
                 instance._process_manager, "get_process_info"
             ) as mock_get_info,
         ):
-
             # Mock successful process spawning
             process_info = ProcessInfo(
                 pid=12345,
@@ -318,7 +317,6 @@ class TestProcessIntegration:
                 instance._process_manager, "get_process_info"
             ) as mock_get_info,
         ):
-
             # First start - process starts successfully
             mock_spawn.return_value = crashed_process_info
             mock_terminate.return_value = True
@@ -440,7 +438,6 @@ class TestProcessIntegration:
                 "cc_orchestrator.utils.process.ProcessManager.list_processes"
             ) as mock_list,
         ):
-
             # Set up mock returns
             mock_spawn.side_effect = process_infos
             mock_terminate.return_value = True

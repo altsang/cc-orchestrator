@@ -188,6 +188,31 @@ class TestDatabaseDependencies:
         mock_session.close.assert_called_once()
 
     @pytest.mark.asyncio
+    async def test_get_db_session_http_exception_rollback_error(
+        self, mock_db_manager, mock_session
+    ):
+        """Test database session with HTTP exception and rollback error during cleanup."""
+        mock_db_manager.session_factory.return_value = mock_session
+        mock_session.rollback.side_effect = Exception("Rollback failed")
+
+        async_gen = get_db_session(mock_db_manager)
+        await async_gen.__anext__()
+
+        # Simulate HTTP exception that triggers rollback
+        http_exc = HTTPException(status_code=409, detail="Conflict")
+
+        try:
+            await async_gen.athrow(http_exc)
+        except HTTPException as e:
+            # Should still re-raise the original HTTP exception
+            assert e.status_code == 409
+            assert e.detail == "Conflict"
+
+        # Verify rollback was attempted despite failure and session was closed
+        mock_session.rollback.assert_called_once()
+        mock_session.close.assert_called_once()
+
+    @pytest.mark.asyncio
     async def test_get_db_session_close_error(self, mock_db_manager, mock_session):
         """Test database session with close error during cleanup."""
         mock_db_manager.session_factory.return_value = mock_session

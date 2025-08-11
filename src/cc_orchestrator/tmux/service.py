@@ -281,7 +281,7 @@ class TmuxService:
                 return False
 
             # Detach all clients from this session
-            session.cmd('detach-client', '-a')
+            session.cmd("detach-client", "-a")
 
             # Update session info
             if session_name in self._sessions:

@@ -50,7 +50,6 @@ class TestWorktreeService:
             ) as mock_git,
             patch("os.makedirs") as mock_makedirs,
         ):
-
             mock_git.return_value.repo_path = "/test/repo"
 
             service = WorktreeService()
@@ -99,7 +98,6 @@ class TestWorktreeService:
             patch.object(service, "sync_worktrees") as mock_sync,
             patch("cc_orchestrator.core.worktree_service.WorktreeCRUD") as mock_crud,
         ):
-
             mock_crud.list_all.return_value = []
 
             result = service.list_worktrees(sync_with_git=True)
@@ -137,7 +135,6 @@ class TestWorktreeService:
                 return_value="https://github.com/test/repo.git",
             ),
         ):
-
             mock_crud.create.return_value = mock_worktree
             mock_crud.update_status.return_value = mock_worktree
 
@@ -174,7 +171,6 @@ class TestWorktreeService:
             patch("cc_orchestrator.core.worktree_service.WorktreeCRUD") as mock_crud,
             patch.object(service, "_get_repository_url"),
         ):
-
             mock_crud.create.return_value = mock_worktree
             mock_crud.update_status.return_value = mock_worktree
 
@@ -300,7 +296,6 @@ class TestWorktreeService:
             patch("cc_orchestrator.core.worktree_service.WorktreeCRUD") as mock_crud,
             patch("os.path.exists") as mock_exists,
         ):
-
             mock_crud.list_all.return_value = [mock_worktree]
             mock_exists.return_value = False  # Path doesn't exist
 

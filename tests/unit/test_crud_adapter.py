@@ -967,7 +967,6 @@ class TestCRUDAdapterEdgeCases:
                 "cc_orchestrator.web.crud_adapter.WorktreeCRUD"
             ) as mock_worktree_crud,
         ):
-
             # Mock empty returns
             mock_instance_crud.list_all.return_value = []
             mock_task_crud.list_pending.return_value = []
@@ -993,7 +992,6 @@ class TestCRUDAdapterEdgeCases:
                 "cc_orchestrator.web.crud_adapter.WorktreeCRUD"
             ) as mock_worktree_crud,
         ):
-
             # Mock empty returns
             mock_instance_crud.list_all.return_value = []
             mock_task_crud.list_pending.return_value = []

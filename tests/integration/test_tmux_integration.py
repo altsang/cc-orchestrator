@@ -100,16 +100,16 @@ class TestTmuxIntegration:
             # Step 4: Detach from session
             detach_result = await tmux_service.detach_session("integration-test")
             assert detach_result is True
-            # kill() should be called once for detach
-            assert mock_libtmux["session"].kill.call_count == 1
+            # cmd() should be called once for safe detach
+            mock_libtmux["session"].cmd.assert_called_with("detach-client", "-a")
 
             # Step 5: Destroy session
             # Ensure session is not attached for destroy to work
-            mock_libtmux["session"].session_attached = False
+            mock_libtmux["session"].attached = False
             destroy_result = await tmux_service.destroy_session("integration-test")
             assert destroy_result is True
-            # kill() should now be called twice (once for detach, once for destroy)
-            assert mock_libtmux["session"].kill.call_count == 2
+            # kill() should be called once for destroy (not for detach)
+            assert mock_libtmux["session"].kill.call_count == 1
 
     @pytest.mark.asyncio
     async def test_session_with_environment_variables(self, tmux_service, mock_libtmux):

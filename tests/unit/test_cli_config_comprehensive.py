@@ -29,7 +29,7 @@ class TestConfigCommandsCoverage:
             )
             assert result.exit_code == 0
 
-            # Test setting Union type value (int | None)
+            # Test setting Union type value (int | None) - memory_limit is int | None
             # This should trigger the Union type handling code at lines 80-84
             result = self.runner.invoke(
                 main,
@@ -38,12 +38,27 @@ class TestConfigCommandsCoverage:
                     str(config_path),
                     "config",
                     "set",
-                    "instance_timeout",
-                    "300",
+                    "memory_limit",
+                    "1024",
                 ],
             )
             assert result.exit_code == 0
-            assert "Configuration updated: instance_timeout=300" in result.output
+            assert "Configuration updated: memory_limit=1024" in result.output
+
+            # Also test with a string Union type (str | None) - log_file is str | None
+            result = self.runner.invoke(
+                main,
+                [
+                    "--config",
+                    str(config_path),
+                    "config",
+                    "set",
+                    "log_file",
+                    "/tmp/test.log",
+                ],
+            )
+            assert result.exit_code == 0
+            assert "Configuration updated: log_file=/tmp/test.log" in result.output
 
     def test_config_set_invalid_float_error(self):
         """Test invalid float value error handling (lines 97-98)."""

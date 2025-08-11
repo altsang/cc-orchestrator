@@ -11,7 +11,7 @@ Tests cover:
 
 import json
 import logging
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from cc_orchestrator.utils.logging import (
     ContextualLogger,
@@ -222,6 +222,62 @@ class TestContextualLogger:
         assert args[0] == "Critical error occurred"
         assert kwargs["exc_info"] == exception
         assert kwargs["extra"]["context"] == "database"
+
+    @patch("cc_orchestrator.utils.logging.ContextualLogger._log")
+    def test_critical_logging_without_exception(self, mock_log):
+        """Test critical logging without exception (fallback path)."""
+        logger = get_logger("test.module", LogContext.DATABASE)
+
+        logger.critical("Critical error occurred")  # No exception parameter
+
+        # Should call _log with CRITICAL level (fallback path)
+        mock_log.assert_called_once_with(
+            logging.CRITICAL, "Critical error occurred", {}
+        )
+
+    def test_setup_logging_file_fallback_formatter(self):
+        """Test file logging setup with fallback formatter (line 310)."""
+        import tempfile
+        from pathlib import Path
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            log_file = Path(tmp_dir) / "test.log"
+
+            # Call setup_logging with file output and structured=False to trigger line 310
+            setup_logging(
+                log_level=LogLevel.INFO,
+                log_file=log_file,
+                enable_console=False,
+                enable_structured=False,  # This triggers the fallback formatter path at line 310
+            )
+
+            # Check that the file was created and log directory exists
+            assert log_file.parent.exists()
+
+    def test_handle_errors_recovery_failure(self):
+        """Test handle_errors decorator when recovery fails (lines 397-398)."""
+
+        from cc_orchestrator.utils.logging import handle_errors
+
+        def failing_recovery_strategy(*args, **kwargs):
+            """Recovery strategy that will fail."""
+            raise ValueError("Recovery failed")
+
+        # Create a function with error handling that has a failing recovery
+        @handle_errors(recovery_strategy=failing_recovery_strategy, reraise=False)
+        def failing_function():
+            raise RuntimeError("Primary function failed")
+
+        # Mock logger to capture the recovery failure
+        with patch("cc_orchestrator.utils.logging.get_logger") as mock_get_logger:
+            mock_logger = MagicMock()
+            mock_get_logger.return_value = mock_logger
+
+            # This should trigger both primary failure and recovery failure (lines 397-398)
+            failing_function()
+
+            # Should have logged both recovery attempt and failure
+            assert mock_logger.error.call_count >= 2
 
 
 class TestLogContextAndLevels:

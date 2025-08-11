@@ -58,7 +58,6 @@ class TestErrorHandler:
             raise CliError("Test CLI error", exit_code=2)
 
         with patch("click.echo") as mock_echo, patch("sys.exit") as mock_exit:
-
             failing_function()
 
             # Verify error message was echoed
@@ -78,7 +77,6 @@ class TestErrorHandler:
             raise ValueError("Generic error")
 
         with patch("click.echo") as mock_echo, patch("sys.exit") as mock_exit:
-
             failing_function()
 
             # Verify error message was echoed
@@ -182,7 +180,6 @@ class TestOutputFunctions:
     def test_handle_error(self):
         """Test handle_error function."""
         with patch("click.echo") as mock_echo, patch("sys.exit") as mock_exit:
-
             handle_error("Test error message", exit_code=3)
 
             # Verify error message was echoed
@@ -197,7 +194,6 @@ class TestOutputFunctions:
     def test_handle_error_default_exit_code(self):
         """Test handle_error function with default exit code."""
         with patch("click.echo") as mock_echo, patch("sys.exit") as mock_exit:
-
             handle_error("Test error")
 
             mock_echo.assert_called_once()

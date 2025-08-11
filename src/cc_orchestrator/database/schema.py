@@ -4,7 +4,7 @@ from sqlalchemy import MetaData
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import DeclarativeBase
 
-from .models import Base, Configuration, Instance, Task, Worktree
+from .models import Base, Configuration, HealthCheck, Instance, Task, Worktree
 
 
 def get_schema_version() -> str:
@@ -53,7 +53,7 @@ def get_model_classes() -> list[type[DeclarativeBase]]:
     Returns:
         List of model classes.
     """
-    return [Instance, Task, Worktree, Configuration]
+    return [Instance, Task, Worktree, Configuration, HealthCheck]
 
 
 def validate_schema(engine: Engine) -> dict[str, bool | list[str]]:
@@ -81,6 +81,7 @@ def validate_schema(engine: Engine) -> dict[str, bool | list[str]]:
     unexpected_tables = actual_tables - expected_tables
     if unexpected_tables:
         results["has_unexpected_tables"] = True
+        results["unexpected_tables"] = list(unexpected_tables)
 
     return results
 

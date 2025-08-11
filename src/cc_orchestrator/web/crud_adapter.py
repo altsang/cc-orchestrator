@@ -7,7 +7,7 @@ to make them compatible with FastAPI's async model.
 
 import asyncio
 from datetime import datetime
-from typing import Any, List, Tuple
+from typing import Any
 
 from sqlalchemy.orm import Session
 

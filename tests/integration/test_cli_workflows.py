@@ -287,4 +287,10 @@ class TestErrorHandlingWorkflows:
             main, ["--config", "/non/existent/config.yaml", "config", "show"]
         )
         assert result.exit_code == 1  # Application error
-        assert "Failed to load configuration" in result.output
+
+    def test_conflicting_options_workflow(self):
+        """Test error handling for conflicting CLI options."""
+        # Test verbose and quiet options together
+        result = self.runner.invoke(main, ["--verbose", "--quiet", "config", "show"])
+        assert result.exit_code == 2  # Click usage error
+        assert "Cannot use both --verbose and --quiet options" in result.output

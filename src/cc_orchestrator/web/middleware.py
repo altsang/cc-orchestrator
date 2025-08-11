@@ -10,7 +10,7 @@ import uuid
 from collections import defaultdict
 from collections.abc import Callable
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, cast
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -28,7 +28,7 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
         request_id = str(uuid.uuid4())
         request.state.request_id = request_id
 
-        response = await call_next(request)
+        response = cast(Response, await call_next(request))
         response.headers["X-Request-ID"] = request_id
 
         return response
@@ -58,7 +58,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         )
 
         # Process request
-        response = await call_next(request)
+        response = cast(Response, await call_next(request))
 
         # Calculate response time
         end_time = time.time()
@@ -132,7 +132,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self.client_requests[client_ip].append(now)
 
         # Process request
-        response = await call_next(request)
+        response = cast(Response, await call_next(request))
 
         # Add rate limit headers
         remaining = max(
@@ -168,7 +168,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         self, request: Request, call_next: Callable[..., Any]
     ) -> Response:
         """Add security headers to response."""
-        response = await call_next(request)
+        response = cast(Response, await call_next(request))
 
         # Security headers
         response.headers["X-Content-Type-Options"] = "nosniff"
