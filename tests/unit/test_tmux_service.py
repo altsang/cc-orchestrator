@@ -316,7 +316,7 @@ class TestTmuxService:
     async def test_destroy_session_success(self, tmux_service, mock_server):
         """Test successful session destruction."""
         mock_session = MagicMock()
-        mock_session.session_attached = False
+        mock_session.attached = False
         mock_server.sessions.get.return_value = mock_session
 
         # Add session to tracking
@@ -332,7 +332,7 @@ class TestTmuxService:
 
         result = await tmux_service.destroy_session("test-session")
         assert result is True
-        mock_session.kill.assert_called_once()
+        mock_session.kill.assert_called_once()  # destroy_session should still use kill()
         assert "cc-orchestrator-test-session" not in tmux_service._sessions
 
     @pytest.mark.asyncio
@@ -384,7 +384,7 @@ class TestTmuxService:
     async def test_destroy_session_exception_handling(self, tmux_service, mock_server):
         """Test destroy_session exception handling."""
         mock_session = MagicMock()
-        mock_session.session_attached = False
+        mock_session.attached = False
         mock_session.kill.side_effect = Exception("Kill failed")
         mock_server.sessions.get.return_value = mock_session
 
@@ -469,7 +469,7 @@ class TestTmuxService:
             result = await tmux_service.detach_session("test-session")
 
         assert result is True
-        mock_session.kill.assert_called_once()
+        mock_session.cmd.assert_called_once_with('detach-client', '-a')
         assert session_info.status == SessionStatus.DETACHED
         assert session_info.last_activity == 1234567900.0
 
@@ -485,7 +485,7 @@ class TestTmuxService:
     async def test_detach_session_exception_handling(self, tmux_service, mock_server):
         """Test detach_session exception handling."""
         mock_session = MagicMock()
-        mock_session.kill.side_effect = Exception("Detach failed")
+        mock_session.cmd.side_effect = Exception("Detach failed")
         mock_server.sessions.get.return_value = mock_session
 
         result = await tmux_service.detach_session("test-session")
