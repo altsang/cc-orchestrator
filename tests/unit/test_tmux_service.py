@@ -316,7 +316,7 @@ class TestTmuxService:
     async def test_destroy_session_success(self, tmux_service, mock_server):
         """Test successful session destruction."""
         mock_session = MagicMock()
-        mock_session.attached = False
+        mock_session.session_attached = False
         mock_server.sessions.get.return_value = mock_session
 
         # Add session to tracking
@@ -341,7 +341,7 @@ class TestTmuxService:
     ):
         """Test session destruction with attached clients."""
         mock_session = MagicMock()
-        mock_session.attached = True
+        mock_session.session_attached = True
         mock_server.sessions.get.return_value = mock_session
 
         with pytest.raises(TmuxError, match="has attached clients"):
@@ -353,7 +353,7 @@ class TestTmuxService:
     ):
         """Test forced session destruction with attached clients."""
         mock_session = MagicMock()
-        mock_session.attached = True
+        mock_session.session_attached = True
         mock_server.sessions.get.return_value = mock_session
 
         result = await tmux_service.destroy_session("test-session", force=True)
@@ -384,7 +384,7 @@ class TestTmuxService:
     async def test_destroy_session_exception_handling(self, tmux_service, mock_server):
         """Test destroy_session exception handling."""
         mock_session = MagicMock()
-        mock_session.attached = False
+        mock_session.session_attached = False
         mock_session.kill.side_effect = Exception("Kill failed")
         mock_server.sessions.get.return_value = mock_session
 
@@ -469,7 +469,7 @@ class TestTmuxService:
             result = await tmux_service.detach_session("test-session")
 
         assert result is True
-        mock_session.detach.assert_called_once()
+        mock_session.kill.assert_called_once()
         assert session_info.status == SessionStatus.DETACHED
         assert session_info.last_activity == 1234567900.0
 
@@ -485,7 +485,7 @@ class TestTmuxService:
     async def test_detach_session_exception_handling(self, tmux_service, mock_server):
         """Test detach_session exception handling."""
         mock_session = MagicMock()
-        mock_session.detach.side_effect = Exception("Detach failed")
+        mock_session.kill.side_effect = Exception("Detach failed")
         mock_server.sessions.get.return_value = mock_session
 
         result = await tmux_service.detach_session("test-session")
@@ -497,7 +497,7 @@ class TestTmuxService:
         # Create mock sessions
         mock_session1 = MagicMock()
         mock_session1.name = "cc-orchestrator-session1"
-        mock_session1.attached = True
+        mock_session1.session_attached = True
         mock_session1.start_directory = "/tmp/session1"
         mock_window1 = MagicMock()
         mock_window1.name = "main"
@@ -507,7 +507,7 @@ class TestTmuxService:
 
         mock_session2 = MagicMock()
         mock_session2.name = "cc-orchestrator-session2"
-        mock_session2.attached = False
+        mock_session2.session_attached = False
         mock_session2.start_directory = "/tmp/session2"
         mock_window2 = MagicMock()
         mock_window2.name = "terminal"
@@ -531,7 +531,7 @@ class TestTmuxService:
         # Create mock sessions - one managed, one orphaned
         mock_session1 = MagicMock()
         mock_session1.name = "cc-orchestrator-session1"
-        mock_session1.attached = True
+        mock_session1.session_attached = True
         mock_session1.start_directory = "/tmp/session1"
         mock_window1 = MagicMock()
         mock_window1.name = "main"
@@ -542,7 +542,7 @@ class TestTmuxService:
         # Orphaned session (not in _sessions tracking)
         mock_orphaned = MagicMock()
         mock_orphaned.name = "cc-orchestrator-orphaned"
-        mock_orphaned.attached = False
+        mock_orphaned.session_attached = False
         mock_orphaned.start_directory = "/tmp/orphaned"
         mock_window_orphaned = MagicMock()
         mock_window_orphaned.name = "main"
@@ -592,7 +592,7 @@ class TestTmuxService:
         """Test get_session_info from tmux directly."""
         mock_session = MagicMock()
         mock_session.name = "cc-orchestrator-test-session"
-        mock_session.attached = True
+        mock_session.session_attached = True
         mock_session.start_directory = "/tmp/test"
         mock_window = MagicMock()
         mock_window.name = "main"

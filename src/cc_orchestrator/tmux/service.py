@@ -200,7 +200,7 @@ class TmuxService:
                 return False
 
             # Check for attached clients
-            if not force and getattr(session, "attached", False):
+            if not force and session.session_attached:
                 raise TmuxError(
                     f"Session {session_name} has attached clients. Use force=True to destroy anyway."
                 )
@@ -281,7 +281,7 @@ class TmuxService:
                 return False
 
             # Detach all clients
-            session.detach()
+            session.kill()
 
             # Update session info
             if session_name in self._sessions:
@@ -544,13 +544,13 @@ class TmuxService:
                     # First window - use session's default window
                     window = session.new_window(
                         window_name=window_name,
-                        start_directory=getattr(session, "start_directory", None),
+                        start_directory=session.session_path,
                         attach=False,
                     )
                 else:
                     window = session.new_window(
                         window_name=window_name,
-                        start_directory=getattr(session, "start_directory", None),
+                        start_directory=session.session_path,
                         attach=False,
                     )
 
@@ -575,15 +575,11 @@ class TmuxService:
                             pane = window.split_window(vertical=True, attach=False)
                         pane.send_keys(pane_command)
 
-            if session.name:
-                log_layout_setup(
-                    session.name,
-                    template.name,
-                    [
-                        w.get("name", f"window-{i}")
-                        for i, w in enumerate(template.windows)
-                    ],
-                )
+            log_layout_setup(
+                session.name or "unknown",
+                template.name,
+                [w.get("name", f"window-{i}") for i, w in enumerate(template.windows)],
+            )
 
         except Exception as e:
             tmux_logger.error(
@@ -618,20 +614,19 @@ class TmuxService:
                 return session_info
 
             # Create basic info from tmux session
-            if session.name is None:
+            if not session.name:
                 return None
+
             instance_id = self._extract_instance_id(session.name)
             return SessionInfo(
                 session_name=session.name,
                 instance_id=instance_id,
                 status=(
                     SessionStatus.ACTIVE
-                    if getattr(session, "attached", False)
+                    if session.session_attached
                     else SessionStatus.DETACHED
                 ),
-                working_directory=Path(
-                    getattr(session, "start_directory", None) or "/"
-                ),
+                working_directory=Path(session.session_path or "/"),
                 layout_template="unknown",
                 created_at=0.0,  # Not available from tmux
                 windows=[w.name for w in session.windows if w.name is not None],

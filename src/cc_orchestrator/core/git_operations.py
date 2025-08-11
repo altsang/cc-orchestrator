@@ -57,7 +57,7 @@ class GitWorktreeManager:
             # Use git worktree list command
             worktree_output = self.repo.git.worktree("list", "--porcelain")
 
-            worktrees = []
+            worktrees: list[dict[str, str]] = []
             current_worktree: dict[str, str] = {}
 
             for line in worktree_output.split("\n"):
