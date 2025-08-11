@@ -68,7 +68,7 @@ class CRUDBase:
     ) -> tuple[list[Instance], int]:
         """List instances with pagination and filtering."""
 
-        def _list_instances():
+        def _list_instances() -> tuple[list[Instance], int]:
             # Convert filters to appropriate parameters for InstanceCRUD.list_all
             status = None
             if filters and "status" in filters:
@@ -95,7 +95,7 @@ class CRUDBase:
     async def create_instance(self, instance_data: dict[str, Any]) -> Instance:
         """Create a new instance."""
 
-        def _create_instance():
+        def _create_instance() -> Instance:
             # Create the instance first
             instance = InstanceCRUD.create(
                 self.session,
@@ -126,7 +126,7 @@ class CRUDBase:
     async def get_instance(self, instance_id: int) -> Instance | None:
         """Get instance by ID."""
 
-        def _get_instance():
+        def _get_instance() -> Instance | None:
             try:
                 # Check if session is still valid
                 if hasattr(self.session, "is_active") and not self.session.is_active:
@@ -141,7 +141,7 @@ class CRUDBase:
     async def get_instance_by_issue_id(self, issue_id: str) -> Instance | None:
         """Get instance by issue ID."""
 
-        def _get_instance_by_issue_id():
+        def _get_instance_by_issue_id() -> Instance | None:
             try:
                 return InstanceCRUD.get_by_issue_id(self.session, issue_id)
             except Exception:
@@ -154,7 +154,7 @@ class CRUDBase:
     ) -> Instance:
         """Update an instance."""
 
-        def _update_instance():
+        def _update_instance() -> Instance:
             # Convert status string to enum if needed
             if "status" in update_data:
                 status_value = update_data["status"]
@@ -172,8 +172,8 @@ class CRUDBase:
     async def delete_instance(self, instance_id: int) -> None:
         """Delete an instance."""
 
-        def _delete_instance():
-            return InstanceCRUD.delete(self.session, instance_id)
+        def _delete_instance() -> None:
+            InstanceCRUD.delete(self.session, instance_id)
 
         await asyncio.to_thread(_delete_instance)
 
@@ -183,7 +183,7 @@ class CRUDBase:
     ) -> tuple[list[Task], int]:
         """List tasks with pagination and filtering."""
 
-        def _list_tasks():
+        def _list_tasks() -> tuple[list[Task], int]:
             # Handle instance_id filter for list_by_instance
             if filters and "instance_id" in filters:
                 instance_id = filters["instance_id"]
@@ -222,7 +222,7 @@ class CRUDBase:
     async def create_task(self, task_data: dict[str, Any]) -> Task:
         """Create a new task."""
 
-        def _create_task():
+        def _create_task() -> Task:
             # Convert priority to enum if needed
             priority = task_data.get("priority", 2)  # Default to MEDIUM (2)
             if isinstance(priority, str):
@@ -259,7 +259,7 @@ class CRUDBase:
     async def get_task(self, task_id: int) -> Task | None:
         """Get task by ID."""
 
-        def _get_task():
+        def _get_task() -> Task | None:
             try:
                 return TaskCRUD.get_by_id(self.session, task_id)
             except Exception:
@@ -270,7 +270,7 @@ class CRUDBase:
     async def update_task(self, task_id: int, update_data: dict[str, Any]) -> Task:
         """Update a task."""
 
-        def _update_task():
+        def _update_task() -> Task:
             # Handle status updates with special logic for status transitions
             if "status" in update_data:
                 status_value = update_data["status"]
@@ -291,7 +291,7 @@ class CRUDBase:
     async def delete_task(self, task_id: int) -> None:
         """Delete a task."""
 
-        def _delete_task():
+        def _delete_task() -> None:
             # TaskCRUD doesn't have a delete method, so we'll need to implement it
             # For now, just validate the task exists
             TaskCRUD.get_by_id(self.session, task_id)
@@ -305,7 +305,7 @@ class CRUDBase:
     ) -> tuple[list[Worktree], int]:
         """List worktrees with pagination and filtering."""
 
-        def _list_worktrees():
+        def _list_worktrees() -> tuple[list[Worktree], int]:
             # Handle status filter
             if filters and "status" in filters:
                 from ..database.models import WorktreeStatus
@@ -332,7 +332,7 @@ class CRUDBase:
     async def create_worktree(self, worktree_data: dict[str, Any]) -> Worktree:
         """Create a new worktree."""
 
-        def _create_worktree():
+        def _create_worktree() -> Worktree:
             return WorktreeCRUD.create(
                 self.session,
                 name=worktree_data["name"],
@@ -349,7 +349,7 @@ class CRUDBase:
     async def get_worktree(self, worktree_id: int) -> Worktree | None:
         """Get worktree by ID."""
 
-        def _get_worktree():
+        def _get_worktree() -> Worktree | None:
             try:
                 return WorktreeCRUD.get_by_id(self.session, worktree_id)
             except Exception:
@@ -360,7 +360,7 @@ class CRUDBase:
     async def get_worktree_by_path(self, path: str) -> Worktree | None:
         """Get worktree by path."""
 
-        def _get_worktree_by_path():
+        def _get_worktree_by_path() -> Worktree | None:
             try:
                 return WorktreeCRUD.get_by_path(self.session, path)
             except Exception:
@@ -373,7 +373,7 @@ class CRUDBase:
     ) -> Worktree:
         """Update a worktree."""
 
-        def _update_worktree():
+        def _update_worktree() -> Worktree:
             # Check if this is a status update with git info or just git info update
             if (
                 "status" in update_data
@@ -411,8 +411,8 @@ class CRUDBase:
     async def delete_worktree(self, worktree_id: int) -> None:
         """Delete a worktree."""
 
-        def _delete_worktree():
-            return WorktreeCRUD.delete(self.session, worktree_id)
+        def _delete_worktree() -> None:
+            WorktreeCRUD.delete(self.session, worktree_id)
 
         await asyncio.to_thread(_delete_worktree)
 
@@ -422,7 +422,7 @@ class CRUDBase:
     ) -> tuple[list[Configuration], int]:
         """List configurations with pagination and filtering."""
 
-        def _list_configurations():
+        def _list_configurations() -> tuple[list[Configuration], int]:
             # ConfigurationCRUD doesn't have a list method, so we'll return empty for now
             # TODO: Implement list_all method in ConfigurationCRUD
             return [], 0
@@ -432,7 +432,7 @@ class CRUDBase:
     async def create_configuration(self, config_data: dict[str, Any]) -> Configuration:
         """Create a new configuration."""
 
-        def _create_configuration():
+        def _create_configuration() -> Configuration:
             # Convert scope string to enum if needed
             scope = config_data.get("scope", "global")
             if isinstance(scope, str):
@@ -465,7 +465,7 @@ class CRUDBase:
     async def get_configuration(self, config_id: int) -> Configuration | None:
         """Get configuration by ID."""
 
-        def _get_configuration():
+        def _get_configuration() -> Configuration | None:
             # ConfigurationCRUD doesn't have get_by_id, so we'll return None for now
             # TODO: Implement get_by_id method in ConfigurationCRUD
             return None
@@ -477,7 +477,7 @@ class CRUDBase:
     ) -> Configuration | None:
         """Get configuration by key and scope."""
 
-        def _get_configuration_by_key_scope():
+        def _get_configuration_by_key_scope() -> Configuration | None:
             # Convert scope to enum if needed
             if isinstance(scope, str):
                 from ..database.models import ConfigScope
@@ -510,7 +510,7 @@ class CRUDBase:
     ) -> Configuration | None:
         """Get configuration by exact key and scope match (no hierarchy)."""
 
-        def _get_exact_configuration_by_key_scope():
+        def _get_exact_configuration_by_key_scope() -> Configuration | None:
             # Convert scope to enum if needed
             if isinstance(scope, str):
                 from ..database.models import ConfigScope
@@ -543,7 +543,7 @@ class CRUDBase:
     ) -> Configuration:
         """Update a configuration."""
 
-        def _update_configuration():
+        def _update_configuration() -> Configuration:
             # ConfigurationCRUD doesn't have an update method
             # TODO: Implement update method in ConfigurationCRUD
             # For now, create a dummy config object
@@ -569,7 +569,7 @@ class CRUDBase:
     async def delete_configuration(self, config_id: int) -> None:
         """Delete a configuration."""
 
-        def _delete_configuration():
+        def _delete_configuration() -> None:
             # ConfigurationCRUD doesn't have a delete method
             # TODO: Implement delete method in ConfigurationCRUD
             pass
@@ -582,7 +582,7 @@ class CRUDBase:
     ) -> tuple[list[HealthCheck], int]:
         """List health checks with pagination and filtering."""
 
-        def _list_health_checks():
+        def _list_health_checks() -> tuple[list[HealthCheck], int]:
             # Handle instance_id filter
             if filters and "instance_id" in filters:
                 instance_id = filters["instance_id"]
@@ -602,7 +602,7 @@ class CRUDBase:
     async def create_health_check(self, check_data: dict[str, Any]) -> HealthCheck:
         """Create a new health check record."""
 
-        def _create_health_check():
+        def _create_health_check() -> HealthCheck:
             # Convert overall_status to enum if it's a string
             overall_status = check_data["overall_status"]
             if isinstance(overall_status, str):

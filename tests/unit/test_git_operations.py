@@ -107,7 +107,6 @@ branch refs/heads/feature-branch"""
             patch.object(manager.repo, "git") as mock_git,
             patch("cc_orchestrator.core.git_operations.Repo") as mock_repo_class,
         ):
-
             # Mock the git worktree add command
             mock_git.show_ref.return_value = None  # main branch exists
 
@@ -143,7 +142,6 @@ branch refs/heads/feature-branch"""
             patch.object(manager.repo, "git") as mock_git,
             patch("cc_orchestrator.core.git_operations.Repo") as mock_repo_class,
         ):
-
             mock_git.show_ref.return_value = None
             mock_worktree_repo = Mock()
             mock_worktree_repo.head.commit.hexsha = "abcd1234"
@@ -178,7 +176,6 @@ branch refs/heads/feature-branch"""
             patch.object(manager.repo, "git") as mock_git,
             patch("cc_orchestrator.core.git_operations.Repo") as mock_repo_class,
         ):
-
             mock_repo_class.return_value = Mock()  # Valid worktree repo
 
             result = manager.remove_worktree(str(worktree_path))
@@ -205,7 +202,6 @@ branch refs/heads/feature-branch"""
             patch.object(manager.repo, "git") as mock_git,
             patch("cc_orchestrator.core.git_operations.Repo") as mock_repo_class,
         ):
-
             mock_repo_class.return_value = Mock()
 
             result = manager.remove_worktree(str(worktree_path), force=True)
@@ -227,7 +223,6 @@ branch refs/heads/feature-branch"""
             patch.object(manager.repo, "git") as mock_git,
             patch("cc_orchestrator.core.git_operations.Repo") as mock_repo_class,
         ):
-
             mock_repo_class.return_value = Mock()
             mock_git.worktree.side_effect = GitCommandError("worktree", 1, "error")
 
@@ -251,7 +246,6 @@ branch refs/heads/feature-branch"""
             patch.object(manager, "list_worktrees") as mock_list,
             patch.object(manager.repo, "git") as mock_git,
         ):
-
             mock_list.return_value = [
                 {"path": manager.repo_path},  # Main repo
                 {"path": stale_paths[0]},

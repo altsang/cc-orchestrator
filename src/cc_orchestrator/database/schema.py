@@ -2,8 +2,9 @@
 
 from sqlalchemy import MetaData
 from sqlalchemy.engine import Engine
+from sqlalchemy.orm import DeclarativeBase
 
-from .models import Base, Configuration, Instance, Task, Worktree
+from .models import Base, Configuration, HealthCheck, Instance, Task, Worktree
 
 
 def get_schema_version() -> str:
@@ -46,16 +47,16 @@ def get_table_info() -> dict[str, dict[str, str | list[str]]]:
     }
 
 
-def get_model_classes() -> list[type[Base]]:
+def get_model_classes() -> list[type[DeclarativeBase]]:
     """Get all SQLAlchemy model classes.
 
     Returns:
         List of model classes.
     """
-    return [Instance, Task, Worktree, Configuration]
+    return [Instance, Task, Worktree, Configuration, HealthCheck]
 
 
-def validate_schema(engine: Engine) -> dict[str, bool]:
+def validate_schema(engine: Engine) -> dict[str, bool | list[str]]:
     """Validate that the database schema matches the expected structure.
 
     Args:
@@ -70,7 +71,7 @@ def validate_schema(engine: Engine) -> dict[str, bool]:
     expected_tables = {table.__tablename__ for table in get_model_classes()}
     actual_tables = set(metadata.tables.keys())
 
-    results = {}
+    results: dict[str, bool | list[str]] = {}
 
     # Check if all expected tables exist
     for table_name in expected_tables:
@@ -80,6 +81,7 @@ def validate_schema(engine: Engine) -> dict[str, bool]:
     unexpected_tables = actual_tables - expected_tables
     if unexpected_tables:
         results["has_unexpected_tables"] = True
+        results["unexpected_tables"] = list(unexpected_tables)
 
     return results
 
@@ -112,10 +114,8 @@ def get_table_counts(engine: Engine) -> dict[str, int | str]:
                 result = conn.execute(
                     text(f"SELECT COUNT(*) FROM {table_name}")  # nosec B608
                 )
-                count_result = result.scalar()
-                counts[table_name] = (
-                    int(count_result) if count_result is not None else 0
-                )
+                count_value = result.scalar()
+                counts[table_name] = int(count_value) if count_value is not None else 0
             except Exception as e:
                 counts[table_name] = f"Error: {e}"
 

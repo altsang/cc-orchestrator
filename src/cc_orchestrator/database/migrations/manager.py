@@ -164,7 +164,7 @@ class MigrationManager:
                 and issubclass(obj, Migration)
                 and obj is not Migration
             ):
-                return obj()  # type: ignore[call-arg]  # Migration subclasses override __init__
+                return obj()  # type: ignore[call-arg]
 
         return None
 

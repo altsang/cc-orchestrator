@@ -6,6 +6,7 @@ sessions, authentication, and other shared resources.
 """
 
 from collections.abc import AsyncGenerator
+from typing import cast
 
 from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
@@ -23,7 +24,7 @@ async def get_database_manager(request: Request) -> DatabaseManager:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Database connection not available",
         )
-    return request.app.state.db_manager
+    return cast(DatabaseManager, request.app.state.db_manager)
 
 
 async def get_db_session(

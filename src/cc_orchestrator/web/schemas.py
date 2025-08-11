@@ -20,6 +20,51 @@ from ..database.models import (
     WorktreeStatus,
 )
 
+# Explicit exports for mypy
+__all__ = [
+    "HealthStatus",
+    "InstanceStatus",
+    "TaskStatus",
+    "TaskPriority",
+    "WorktreeStatus",
+    "ConfigScope",
+    "AlertLevel",
+    "BaseSchema",
+    "TimestampMixin",
+    "InstanceBase",
+    "InstanceCreate",
+    "InstanceUpdate",
+    "InstanceResponse",
+    "TaskBase",
+    "TaskCreate",
+    "TaskUpdate",
+    "TaskResponse",
+    "WorktreeBase",
+    "WorktreeCreate",
+    "WorktreeUpdate",
+    "WorktreeResponse",
+    "ConfigurationBase",
+    "ConfigurationCreate",
+    "ConfigurationUpdate",
+    "ConfigurationResponse",
+    "HealthCheckBase",
+    "HealthCheckCreate",
+    "HealthCheckResponse",
+    "AlertBase",
+    "AlertCreate",
+    "AlertResponse",
+    "RecoveryAttemptBase",
+    "RecoveryAttemptCreate",
+    "RecoveryAttemptResponse",
+    "PaginationParams",
+    "PaginatedResponse",
+    "InstanceFilter",
+    "TaskFilter",
+    "WorktreeFilter",
+    "APIResponse",
+    "ErrorResponse",
+]
+
 
 class AlertLevel(Enum):
     """Alert severity levels."""

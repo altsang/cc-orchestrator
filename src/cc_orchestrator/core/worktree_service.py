@@ -304,7 +304,6 @@ class WorktreeService:
                                 or worktree.has_uncommitted_changes
                                 != status_info["has_changes"]
                             ):
-
                                 WorktreeCRUD.update_status(
                                     session=session,
                                     worktree_id=worktree.id,

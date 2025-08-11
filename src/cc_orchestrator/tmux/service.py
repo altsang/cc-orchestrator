@@ -280,8 +280,8 @@ class TmuxService:
             if not session:
                 return False
 
-            # Detach all clients
-            session.detach()
+            # Detach all clients from this session
+            session.cmd("detach-client", "-a")
 
             # Update session info
             if session_name in self._sessions:
@@ -575,15 +575,11 @@ class TmuxService:
                             pane = window.split_window(vertical=True, attach=False)
                         pane.send_keys(pane_command)
 
-            if session.name:
-                log_layout_setup(
-                    session.name,
-                    template.name,
-                    [
-                        w.get("name", f"window-{i}")
-                        for i, w in enumerate(template.windows)
-                    ],
-                )
+            log_layout_setup(
+                session.name or "unknown",
+                template.name,
+                [w.get("name", f"window-{i}") for i, w in enumerate(template.windows)],
+            )
 
         except Exception as e:
             tmux_logger.error(
@@ -618,8 +614,9 @@ class TmuxService:
                 return session_info
 
             # Create basic info from tmux session
-            if session.name is None:
+            if not session.name:
                 return None
+
             instance_id = self._extract_instance_id(session.name)
             return SessionInfo(
                 session_name=session.name,
@@ -629,9 +626,7 @@ class TmuxService:
                     if getattr(session, "attached", False)
                     else SessionStatus.DETACHED
                 ),
-                working_directory=Path(
-                    getattr(session, "start_directory", None) or "/"
-                ),
+                working_directory=Path(getattr(session, "start_directory", "/") or "/"),
                 layout_template="unknown",
                 created_at=0.0,  # Not available from tmux
                 windows=[w.name for w in session.windows if w.name is not None],

@@ -332,7 +332,7 @@ class TestTmuxService:
 
         result = await tmux_service.destroy_session("test-session")
         assert result is True
-        mock_session.kill.assert_called_once()
+        mock_session.kill.assert_called_once()  # destroy_session should still use kill()
         assert "cc-orchestrator-test-session" not in tmux_service._sessions
 
     @pytest.mark.asyncio
@@ -341,7 +341,7 @@ class TestTmuxService:
     ):
         """Test session destruction with attached clients."""
         mock_session = MagicMock()
-        mock_session.attached = True
+        mock_session.session_attached = True
         mock_server.sessions.get.return_value = mock_session
 
         with pytest.raises(TmuxError, match="has attached clients"):
@@ -353,7 +353,7 @@ class TestTmuxService:
     ):
         """Test forced session destruction with attached clients."""
         mock_session = MagicMock()
-        mock_session.attached = True
+        mock_session.session_attached = True
         mock_server.sessions.get.return_value = mock_session
 
         result = await tmux_service.destroy_session("test-session", force=True)
@@ -469,7 +469,7 @@ class TestTmuxService:
             result = await tmux_service.detach_session("test-session")
 
         assert result is True
-        mock_session.detach.assert_called_once()
+        mock_session.cmd.assert_called_once_with("detach-client", "-a")
         assert session_info.status == SessionStatus.DETACHED
         assert session_info.last_activity == 1234567900.0
 
@@ -485,7 +485,7 @@ class TestTmuxService:
     async def test_detach_session_exception_handling(self, tmux_service, mock_server):
         """Test detach_session exception handling."""
         mock_session = MagicMock()
-        mock_session.detach.side_effect = Exception("Detach failed")
+        mock_session.cmd.side_effect = Exception("Detach failed")
         mock_server.sessions.get.return_value = mock_session
 
         result = await tmux_service.detach_session("test-session")
@@ -542,7 +542,7 @@ class TestTmuxService:
         # Orphaned session (not in _sessions tracking)
         mock_orphaned = MagicMock()
         mock_orphaned.name = "cc-orchestrator-orphaned"
-        mock_orphaned.attached = False
+        mock_orphaned.session_attached = False
         mock_orphaned.start_directory = "/tmp/orphaned"
         mock_window_orphaned = MagicMock()
         mock_window_orphaned.name = "main"
@@ -592,7 +592,7 @@ class TestTmuxService:
         """Test get_session_info from tmux directly."""
         mock_session = MagicMock()
         mock_session.name = "cc-orchestrator-test-session"
-        mock_session.attached = True
+        mock_session.session_attached = True
         mock_session.start_directory = "/tmp/test"
         mock_window = MagicMock()
         mock_window.name = "main"
@@ -689,6 +689,31 @@ class TestTmuxService:
         assert result == 1
         mock_destroy.assert_called_once_with("cc-orchestrator-session1", force=False)
 
+    @pytest.mark.asyncio
+    async def test_cleanup_sessions_exception_handling(self, tmux_service, mock_server):
+        """Test cleanup_sessions exception handling."""
+        # Add a session to tracking to trigger cleanup
+        session_info = SessionInfo(
+            session_name="cc-orchestrator-session1",
+            instance_id="instance1",
+            status=SessionStatus.ACTIVE,
+            working_directory=Path("/tmp"),
+            layout_template="default",
+            created_at=1234567890.0,
+            windows=["main"],
+        )
+        tmux_service._sessions = {"cc-orchestrator-session1": session_info}
+
+        # Mock destroy_session to raise an exception
+        with patch.object(
+            tmux_service, "destroy_session", side_effect=Exception("Cleanup failed")
+        ) as mock_destroy:
+            result = await tmux_service.cleanup_sessions()
+
+        # Should return 0 due to exception, but not crash
+        assert result == 0
+        mock_destroy.assert_called_once_with("cc-orchestrator-session1", force=False)
+
     def test_add_layout_template(self, tmux_service):
         """Test adding custom layout template."""
         template = LayoutTemplate(
@@ -742,6 +767,93 @@ class TestTmuxService:
 
         with pytest.raises(TmuxError, match="Failed to apply layout template"):
             await tmux_service._apply_layout_template(mock_session, template)
+
+    @pytest.mark.asyncio
+    async def test_apply_layout_template_with_vertical_split(self, tmux_service):
+        """Test _apply_layout_template with vertical pane splitting."""
+        mock_session = MagicMock()
+        mock_session.name = "test-session"
+        mock_session.windows = []
+
+        # Mock window creation
+        mock_window = MagicMock()
+        mock_window.name = "test-window"
+        mock_session.new_window.return_value = mock_window
+
+        # Mock pane splitting
+        mock_pane = MagicMock()
+        mock_window.split_window.return_value = mock_pane
+
+        template = LayoutTemplate(
+            name="vertical-template",
+            description="Template with vertical split",
+            windows=[
+                {
+                    "name": "test-window",
+                    "command": "bash",
+                    "panes": [
+                        {"command": "bash"},
+                        {
+                            "command": "htop",
+                            "split": "vertical",
+                        },  # This should trigger vertical split
+                    ],
+                }
+            ],
+        )
+
+        await tmux_service._apply_layout_template(mock_session, template)
+
+        # Verify vertical split was used (vertical=True)
+        mock_window.split_window.assert_called_with(vertical=True, attach=False)
+        mock_pane.send_keys.assert_called_with("htop")
+
+    @pytest.mark.asyncio
+    async def test_get_session_info_with_no_name(self, tmux_service):
+        """Test _get_session_info with session that has no name."""
+        mock_session = MagicMock()
+        mock_session.name = None  # Session with no name
+
+        result = await tmux_service._get_session_info(mock_session)
+
+        # Should return None for sessions with no name
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_list_sessions_orphaned_detection_exception(
+        self, tmux_service, mock_server
+    ):
+        """Test list_sessions with exception during orphaned session detection."""
+        # Create a mock session that will cause an exception
+        mock_session = MagicMock()
+        mock_session.name = "cc-orchestrator-test"
+
+        # Mock sessions list to raise exception during iteration
+        def mock_sessions_iter():
+            yield mock_session
+            raise Exception("Server error during iteration")
+
+        mock_server.sessions.__iter__ = mock_sessions_iter
+
+        # Should not crash, just return empty list
+        sessions = await tmux_service.list_sessions(include_orphaned=True)
+
+        # Should handle exception gracefully and return empty list
+        assert sessions == []
+
+    @pytest.mark.asyncio
+    async def test_detect_orphaned_sessions_exception(self, tmux_service, mock_server):
+        """Test _detect_orphaned_sessions with exception during iteration."""
+        # Mock server sessions to raise an exception during iteration
+        mock_server.sessions.__iter__.side_effect = Exception(
+            "Session detection failed"
+        )
+
+        # Should handle exception gracefully and return empty list
+        result = await tmux_service._detect_orphaned_sessions()
+
+        # Should return empty list on exception
+        assert result == []
 
     @pytest.mark.asyncio
     async def test_get_session_info_from_tracking_with_update(self, tmux_service):

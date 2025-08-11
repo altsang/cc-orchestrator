@@ -52,6 +52,83 @@ class TestProcessManager:
         with patch.object(
             process_manager, "_start_process", return_value=mock_process
         ) as mock_start:
+            with patch.object(process_manager, "_monitor_process", return_value=None):
+                with patch("asyncio.create_task") as mock_create_task:
+                    mock_task = AsyncMock()
+                    mock_create_task.return_value = mock_task
+
+                    result = await process_manager.spawn_claude_process(
+                        instance_id=instance_id,
+                        working_directory=temp_dir,
+                        tmux_session="test-session",
+                        environment={"TEST_VAR": "value"},
+                    )
+
+                    # Verify process was created and stored
+                    assert instance_id in process_manager._processes
+                    assert instance_id in process_manager._subprocess_map
+                    assert instance_id in process_manager._monitoring_tasks
+
+                    # Verify returned ProcessInfo
+                    assert isinstance(result, ProcessInfo)
+                    assert result.pid == 12345
+                    assert result.status == ProcessStatus.STARTING
+                    assert result.working_directory == temp_dir
+
+                    # Verify monitoring task was created
+                    mock_create_task.assert_called_once()
+                    mock_start.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_spawn_claude_process_duplicate_instance(
+        self, process_manager, temp_dir
+    ):
+        """Test spawning process for existing instance ID."""
+        instance_id = "test-instance-1"
+
+        # Add existing process info
+        process_manager._processes[instance_id] = ProcessInfo(
+            pid=123,
+            status=ProcessStatus.RUNNING,
+            command=["claude"],
+            working_directory=temp_dir,
+            environment={},
+            started_at=0.0,
+        )
+
+        with pytest.raises(ProcessError, match="already exists"):
+            await process_manager.spawn_claude_process(
+                instance_id=instance_id,
+                working_directory=temp_dir,
+            )
+
+    @pytest.mark.asyncio
+    async def test_spawn_claude_process_failure(self, process_manager, temp_dir):
+        """Test process spawning failure."""
+        instance_id = "test-instance-fail"
+
+        with patch.object(
+            process_manager, "_start_process", side_effect=OSError("Failed to start")
+        ):
+            with pytest.raises(ProcessError, match="Failed to spawn process"):
+                await process_manager.spawn_claude_process(
+                    instance_id=instance_id,
+                    working_directory=temp_dir,
+                )
+
+            # Verify no state was left behind
+            assert instance_id not in process_manager._processes
+            assert instance_id not in process_manager._subprocess_map
+            assert instance_id not in process_manager._monitoring_tasks
+
+        # Create mock process for the second test scenario
+        mock_process = MagicMock()
+        mock_process.pid = 12345
+        mock_process.poll.return_value = None  # Process is running
+
+        with patch.object(
+            process_manager, "_start_process", return_value=mock_process
+        ) as mock_start:
             with patch("asyncio.create_task") as mock_create_task:
                 mock_task = AsyncMock()
                 mock_create_task.return_value = mock_task
@@ -79,41 +156,6 @@ class TestProcessManager:
                 # Verify mocks were called
                 mock_start.assert_called_once()
                 mock_create_task.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_spawn_claude_process_duplicate_instance(
-        self, process_manager, temp_dir
-    ):
-        """Test spawning process for existing instance ID."""
-        instance_id = "test-instance-1"
-
-        # Add an existing process
-        process_manager._processes[instance_id] = ProcessInfo(
-            pid=123,
-            status=ProcessStatus.RUNNING,
-            command=["test"],
-            working_directory=temp_dir,
-            environment={},
-            started_at=0.0,
-        )
-
-        with pytest.raises(ProcessError, match="already exists"):
-            await process_manager.spawn_claude_process(
-                instance_id=instance_id, working_directory=temp_dir
-            )
-
-    @pytest.mark.asyncio
-    async def test_spawn_claude_process_failure(self, process_manager, temp_dir):
-        """Test process spawn failure."""
-        instance_id = "test-instance-1"
-
-        with patch.object(
-            process_manager, "_start_process", side_effect=OSError("Failed to start")
-        ):
-            with pytest.raises(ProcessError, match="Failed to spawn process"):
-                await process_manager.spawn_claude_process(
-                    instance_id=instance_id, working_directory=temp_dir
-                )
 
     @pytest.mark.asyncio
     async def test_terminate_process_success(self, process_manager, temp_dir):

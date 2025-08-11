@@ -14,12 +14,14 @@ from cc_orchestrator.database import (
 )
 from cc_orchestrator.database.crud import (
     ConfigurationCRUD,
+    HealthCheckCRUD,
     InstanceCRUD,
     NotFoundError,
     TaskCRUD,
     ValidationError,
     WorktreeCRUD,
 )
+from cc_orchestrator.database.models import HealthStatus, Worktree
 
 
 @pytest.fixture
@@ -422,6 +424,35 @@ class TestWorktreeCRUD:
                 session=db_session, name="test", path="/tmp/test", branch_name=""
             )
 
+    def test_get_worktree_not_found(self, db_session):
+        """Test getting worktree that doesn't exist raises NotFoundError."""
+        with pytest.raises(NotFoundError, match="Worktree with ID 999 not found"):
+            WorktreeCRUD.get_by_id(session=db_session, worktree_id=999)
+
+    def test_list_worktrees_by_status(self, db_session):
+        """Test listing worktrees filtered by status."""
+        # Create worktrees with different statuses
+        w1 = WorktreeCRUD.create(
+            session=db_session, name="active", path="/tmp/active", branch_name="main"
+        )
+        w1.status = WorktreeStatus.ACTIVE
+
+        w2 = WorktreeCRUD.create(
+            session=db_session,
+            name="inactive",
+            path="/tmp/inactive",
+            branch_name="main",
+        )
+        w2.status = WorktreeStatus.INACTIVE
+        db_session.commit()
+
+        # Test filtering by status
+        active_worktrees = WorktreeCRUD.list_by_status(
+            session=db_session, status=WorktreeStatus.ACTIVE
+        )
+        assert len(active_worktrees) == 1
+        assert active_worktrees[0].name == "active"
+
     def test_create_duplicate_path(self, db_session):
         """Test creating worktrees with duplicate paths."""
         WorktreeCRUD.create(
@@ -459,6 +490,42 @@ class TestWorktreeCRUD:
             NotFoundError, match="Worktree with path '/nonexistent' not found"
         ):
             WorktreeCRUD.get_by_path(session=db_session, path="/nonexistent")
+
+    def test_worktree_delete(self, db_session):
+        """Test WorktreeCRUD.delete method (lines 621-624)."""
+        # Create an instance first
+        InstanceCRUD.create(
+            session=db_session,
+            issue_id="test-123",
+            workspace_path="/tmp/test-workspace",
+            branch_name="feature/delete-test",
+            tmux_session="test-session",
+        )
+
+        # Create a worktree
+        worktree = WorktreeCRUD.create(
+            session=db_session,
+            name="test-worktree",
+            path="/tmp/test-worktree",
+            branch_name="feature-branch",
+            repository_url="https://github.com/test/repo.git",
+            git_config={"remote.origin.url": "https://github.com/test/repo.git"},
+            extra_metadata={"purpose": "testing"},
+        )
+        worktree_id = worktree.id
+
+        # Delete the worktree (this covers lines 621-624)
+        result = WorktreeCRUD.delete(session=db_session, worktree_id=worktree_id)
+
+        # Should return True
+        assert result is True
+
+        # Worktree should be deleted
+        db_session.commit()
+        deleted_worktree = (
+            db_session.query(Worktree).filter(Worktree.id == worktree_id).first()
+        )
+        assert deleted_worktree is None
 
 
 class TestConfigurationCRUD:
@@ -559,3 +626,71 @@ class TestConfigurationCRUD:
             session=db_session, key="nonexistent.setting"
         )
         assert value is None
+
+    def test_configuration_get_by_key_not_found(self, db_session):
+        """Test ConfigurationCRUD.get_by_key when no config found (line 766)."""
+        # Create an instance first
+        instance = InstanceCRUD.create(
+            session=db_session,
+            issue_id="test-456",
+            workspace_path="/tmp/test-config",
+            branch_name="feature/config-test",
+            tmux_session="config-session",
+        )
+
+        # Try to get a non-existent configuration key
+        # This should trigger the fallback return None at line 766
+        config = ConfigurationCRUD.get_by_key_scope(
+            session=db_session,
+            key="nonexistent.key",
+            scope=ConfigScope.INSTANCE,
+            instance_id=instance.id,
+        )
+
+        # Should return None (line 766)
+        assert config is None
+
+
+class TestHealthCheckCRUD:
+    """Test HealthCheck CRUD operations."""
+
+    def test_health_check_list_with_offset(self, db_session):
+        """Test HealthCheckCRUD.list_by_instance with offset (line 860)."""
+        from datetime import datetime
+
+        from cc_orchestrator.database.models import HealthCheck
+
+        # Create an instance first
+        instance = InstanceCRUD.create(
+            session=db_session,
+            issue_id="test-789",
+            workspace_path="/tmp/test-health",
+            branch_name="feature/health-test",
+            tmux_session="health-session",
+        )
+
+        # Create multiple health checks
+        health_checks = []
+        for i in range(5):
+            health_check = HealthCheck(
+                instance_id=instance.id,
+                overall_status=HealthStatus.HEALTHY,
+                check_results=f"{{'message': 'Check {i}'}}",
+                duration_ms=100,
+                check_timestamp=datetime.now(),
+            )
+            db_session.add(health_check)
+            health_checks.append(health_check)
+
+        db_session.commit()
+
+        # Test with offset (this covers line 860)
+        result = HealthCheckCRUD.list_by_instance(
+            session=db_session,
+            instance_id=instance.id,
+            offset=2,  # This triggers the offset condition at line 860
+            limit=2,
+        )
+
+        # Should return 2 health checks starting from offset 2
+        assert len(result) == 2

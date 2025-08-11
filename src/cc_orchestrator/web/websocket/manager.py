@@ -59,9 +59,9 @@ class WebSocketConfig:
     heartbeat_timeout: int = 120  # seconds (increased from 60 for reliability)
 
     # CORS settings
-    cors_origins: list[str] = None
+    cors_origins: list[str] | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Validate configuration after initialization."""
         if self.heartbeat_timeout < (2 * self.heartbeat_interval):
             raise ValueError(

@@ -243,16 +243,21 @@ class ProcessManager:
         self._shutdown_event.set()
 
         # Terminate all processes
-        terminate_tasks = []
+        terminate_tasks: list[asyncio.Task[bool]] = []
         for instance_id in list(self._processes.keys()):
-            terminate_task = asyncio.create_task(self.terminate_process(instance_id))
-            terminate_tasks.append(terminate_task)
+            task: asyncio.Task[bool] = asyncio.create_task(
+                self.terminate_process(instance_id)
+            )
+            terminate_tasks.append(task)
 
         if terminate_tasks:
             await asyncio.gather(*terminate_tasks, return_exceptions=True)
 
         # Cancel monitoring tasks
-        for monitor_task in self._monitoring_tasks.values():
+        monitoring_tasks: list[asyncio.Task[None]] = list(
+            self._monitoring_tasks.values()
+        )
+        for monitor_task in monitoring_tasks:
             if not monitor_task.done():
                 monitor_task.cancel()
 

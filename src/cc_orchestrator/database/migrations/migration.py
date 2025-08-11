@@ -1,10 +1,16 @@
 """Base migration class and utilities."""
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Table
 from sqlalchemy.engine import Engine
+
+if TYPE_CHECKING:
+    from sqlalchemy import Table
 
 
 class Migration(ABC):

@@ -1,0 +1,1063 @@
+"""Unit tests for CLI commands."""
+
+import json
+from pathlib import Path
+from unittest.mock import AsyncMock, Mock, patch
+
+from click.testing import CliRunner
+
+from cc_orchestrator.cli.main import main
+from cc_orchestrator.core.instance import ClaudeInstance, InstanceStatus
+from cc_orchestrator.utils.process import ProcessInfo, ProcessStatus
+
+
+class TestCLICommands:
+    """Test suite for CLI commands."""
+
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.runner = CliRunner()
+
+    def test_main_help(self):
+        """Test main command help output."""
+        result = self.runner.invoke(main, ["--help"])
+        assert result.exit_code == 0
+        assert "Claude Code Orchestrator" in result.output
+        assert "Manage multiple Claude instances" in result.output
+
+    def test_main_version(self):
+        """Test version flag."""
+        result = self.runner.invoke(main, ["--version"])
+        assert result.exit_code == 0
+        assert "0.1.0" in result.output
+
+    def test_json_flag(self):
+        """Test JSON output flag."""
+        result = self.runner.invoke(main, ["--json", "--help"])
+        assert result.exit_code == 0
+        # JSON flag should be accepted but help overrides
+
+    def test_quiet_flag(self):
+        """Test quiet flag."""
+        result = self.runner.invoke(main, ["--quiet", "--help"])
+        assert result.exit_code == 0
+
+    def test_verbose_and_quiet_conflict(self):
+        """Test that verbose and quiet flags conflict."""
+        result = self.runner.invoke(main, ["--verbose", "--quiet", "instances", "list"])
+        assert result.exit_code == 2  # Usage error
+        assert "Cannot use both --verbose and --quiet" in result.output
+
+    def test_verbose_flag(self):
+        """Test verbose flag is passed to context."""
+        result = self.runner.invoke(main, ["--verbose", "instances", "list"])
+        assert result.exit_code == 0
+        # Context object should contain verbose=True
+
+    def test_config_flag(self):
+        """Test config flag is passed to context."""
+        result = self.runner.invoke(
+            main, ["--config", "/path/to/config", "instances", "list"]
+        )
+        assert result.exit_code == 0
+        # Context object should contain config path
+
+    def test_invalid_command(self):
+        """Test invalid command."""
+        result = self.runner.invoke(main, ["invalid"])
+        assert result.exit_code == 2  # Click error for unknown command
+        assert "No such command" in result.output
+
+
+class TestInstanceCommands:
+    """Test suite for instance command group."""
+
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.runner = CliRunner()
+
+    def test_instances_help(self):
+        """Test instances command group help."""
+        result = self.runner.invoke(main, ["instances", "--help"])
+        assert result.exit_code == 0
+        assert "Manage Claude Code instances" in result.output
+
+    @patch("cc_orchestrator.cli.instances.Orchestrator")
+    def test_status_no_instances(self, mock_orchestrator_class):
+        """Test status command with no instances."""
+        # Setup mock
+        mock_orchestrator = Mock()
+        mock_orchestrator.initialize = AsyncMock()
+        mock_orchestrator.cleanup = AsyncMock()
+        mock_orchestrator.list_instances.return_value = []
+        mock_orchestrator_class.return_value = mock_orchestrator
+
+        result = self.runner.invoke(main, ["instances", "status"])
+        assert result.exit_code == 0
+        assert "No active instances found" in result.output
+        mock_orchestrator.initialize.assert_called_once()
+        mock_orchestrator.cleanup.assert_called_once()
+
+    @patch("cc_orchestrator.cli.instances.Orchestrator")
+    def test_status_no_instances_json(self, mock_orchestrator_class):
+        """Test status command with no instances in JSON format."""
+        # Setup mock
+        mock_orchestrator = Mock()
+        mock_orchestrator.initialize = AsyncMock()
+        mock_orchestrator.cleanup = AsyncMock()
+        mock_orchestrator.list_instances.return_value = []
+        mock_orchestrator_class.return_value = mock_orchestrator
+
+        result = self.runner.invoke(main, ["instances", "status", "--json"])
+        assert result.exit_code == 0
+
+        output_data = json.loads(result.output)
+        assert output_data == {"instances": [], "total": 0}
+        mock_orchestrator.initialize.assert_called_once()
+        mock_orchestrator.cleanup.assert_called_once()
+
+    @patch("cc_orchestrator.cli.instances.Orchestrator")
+    def test_status_with_instances(self, mock_orchestrator_class):
+        """Test status command with instances."""
+        # Create mock instance
+        mock_instance = Mock(spec=ClaudeInstance)
+        mock_instance.get_info.return_value = {
+            "issue_id": "test-123",
+            "status": "running",
+            "workspace_path": "/test/workspace",
+            "branch_name": "feature/test-123",
+            "tmux_session": "claude-test-123",
+            "process_id": 12345
+        }
+        mock_instance.get_process_status.return_value = ProcessInfo(
+            pid=12345,
+            status=ProcessStatus.RUNNING,
+            cpu_percent=25.5,
+            memory_mb=128.0
+        )
+
+        # Setup orchestrator mock
+        mock_orchestrator = AsyncMock()
+        mock_orchestrator_class.return_value = mock_orchestrator
+        mock_orchestrator.list_instances.return_value = [mock_instance]
+
+        result = self.runner.invoke(main, ["instances", "status"])
+        assert result.exit_code == 0
+        assert "Active Claude Instances (1)" in result.output
+        assert "Issue ID: test-123" in result.output
+        assert "Status: running" in result.output
+        assert "Process ID: 12345" in result.output
+        assert "CPU: 25.5%" in result.output
+        assert "Memory: 128.0 MB" in result.output
+
+    @patch("cc_orchestrator.cli.instances.Orchestrator")
+    def test_status_error_handling(self, mock_orchestrator_class):
+        """Test status command error handling."""
+        # Setup orchestrator mock to raise exception
+        mock_orchestrator = AsyncMock()
+        mock_orchestrator_class.return_value = mock_orchestrator
+        mock_orchestrator.initialize.side_effect = Exception("Test error")
+
+        result = self.runner.invoke(main, ["instances", "status"])
+        assert result.exit_code == 0
+        assert "Error: Test error" in result.output
+
+    @patch("cc_orchestrator.cli.instances.Orchestrator")
+    def test_start_new_instance(self, mock_orchestrator_class):
+        """Test start command for new instance."""
+        # Create mock instance
+        mock_instance = Mock(spec=ClaudeInstance)
+        mock_instance.get_info.return_value = {
+            "issue_id": "test-123",
+            "status": "running",
+            "workspace_path": "/test/workspace",
+            "branch_name": "feature/test-123",
+            "tmux_session": "claude-test-123",
+            "process_id": 12345
+        }
+        mock_instance.start.return_value = True
+
+        # Setup orchestrator mock
+        mock_orchestrator = AsyncMock()
+        mock_orchestrator_class.return_value = mock_orchestrator
+        mock_orchestrator.get_instance.return_value = None  # No existing instance
+        mock_orchestrator.create_instance.return_value = mock_instance
+
+        result = self.runner.invoke(main, ["instances", "start", "test-123"])
+        assert result.exit_code == 0
+        assert "Successfully started Claude instance for issue test-123" in result.output
+        assert "Process ID: 12345" in result.output
+        mock_orchestrator.create_instance.assert_called_once_with("test-123")
+
+    @patch("cc_orchestrator.cli.instances.Orchestrator")
+    def test_start_existing_running_instance(self, mock_orchestrator_class):
+        """Test start command for already running instance."""
+        # Create mock existing instance
+        mock_instance = Mock(spec=ClaudeInstance)
+        mock_instance.is_running.return_value = True
+
+        # Setup orchestrator mock
+        mock_orchestrator = AsyncMock()
+        mock_orchestrator_class.return_value = mock_orchestrator
+        mock_orchestrator.get_instance.return_value = mock_instance
+
+        result = self.runner.invoke(main, ["instances", "start", "test-123"])
+        assert result.exit_code == 0
+        assert "Instance for issue test-123 is already running" in result.output
+
+    @patch("cc_orchestrator.cli.instances.Orchestrator")
+    def test_start_new_instance_failure(self, mock_orchestrator_class):
+        """Test start command when new instance fails to start."""
+        # Create mock instance that fails to start
+        mock_instance = Mock(spec=ClaudeInstance)
+        mock_instance.start.return_value = False
+
+        # Setup orchestrator mock
+        mock_orchestrator = AsyncMock()
+        mock_orchestrator_class.return_value = mock_orchestrator
+        mock_orchestrator.get_instance.return_value = None
+        mock_orchestrator.create_instance.return_value = mock_instance
+
+        result = self.runner.invoke(main, ["instances", "start", "test-123"])
+        assert result.exit_code == 0
+        assert "Failed to start instance for issue test-123" in result.output
+
+    @patch("cc_orchestrator.cli.instances.Orchestrator")
+    def test_stop_no_instance(self, mock_orchestrator_class):
+        """Test stop command with no instance found."""
+        # Setup orchestrator mock
+        mock_orchestrator = AsyncMock()
+        mock_orchestrator_class.return_value = mock_orchestrator
+        mock_orchestrator.get_instance.return_value = None
+
+        result = self.runner.invoke(main, ["instances", "stop", "test-123"])
+        assert result.exit_code == 0
+        assert "No instance found for issue test-123" in result.output
+        mock_orchestrator.cleanup.assert_called_once()
+
+    @patch("cc_orchestrator.cli.instances.Orchestrator")
+    def test_stop_running_instance_success(self, mock_orchestrator_class):
+        """Test stop command with running instance that stops successfully."""
+        # Create mock instance that is running and can be stopped
+        mock_instance = Mock(spec=ClaudeInstance)
+        mock_instance.is_running.return_value = True
+        mock_instance.stop.return_value = True
+
+        # Setup orchestrator mock
+        mock_orchestrator = AsyncMock()
+        mock_orchestrator_class.return_value = mock_orchestrator
+        mock_orchestrator.get_instance.return_value = mock_instance
+
+        result = self.runner.invoke(main, ["instances", "stop", "test-123"])
+        assert result.exit_code == 0
+        assert "Successfully stopped instance for issue test-123" in result.output
+        mock_instance.stop.assert_called_once()
+        mock_orchestrator.cleanup.assert_called_once()
+
+    @patch("cc_orchestrator.cli.instances.Orchestrator")
+    def test_list_no_instances(self, mock_orchestrator_class):
+        """Test list command with no instances."""
+        # Setup mock
+        mock_orchestrator = AsyncMock()
+        mock_orchestrator_class.return_value = mock_orchestrator
+        mock_orchestrator.list_instances.return_value = []
+
+        result = self.runner.invoke(main, ["instances", "list"])
+        assert result.exit_code == 0
+        assert "No active instances found" in result.output
+        mock_orchestrator.cleanup.assert_called_once()
+
+    @patch("cc_orchestrator.cli.instances.Orchestrator")
+    def test_list_with_instances(self, mock_orchestrator_class):
+        """Test list command with instances."""
+        # Create mock instances
+        mock_instance1 = Mock(spec=ClaudeInstance)
+        mock_instance1.get_info.return_value = {
+            "issue_id": "test-123",
+            "status": "running",
+            "workspace_path": "/test/workspace1",
+            "process_id": 12345
+        }
+        mock_instance1.get_process_status.return_value = ProcessInfo(
+            pid=12345,
+            status=ProcessStatus.RUNNING,
+            cpu_percent=25.5,
+            memory_mb=128.0
+        )
+
+        # Setup orchestrator mock
+        mock_orchestrator = AsyncMock()
+        mock_orchestrator_class.return_value = mock_orchestrator
+        mock_orchestrator.list_instances.return_value = [mock_instance1]
+
+        result = self.runner.invoke(main, ["instances", "list"])
+        assert result.exit_code == 0
+        assert "Active Claude Instances (1)" in result.output
+        assert "🟢 test-123" in result.output
+        assert "PID: 12345" in result.output
+        assert "Resources: 25.5% CPU, 128.0 MB RAM" in result.output
+
+    # Additional comprehensive tests for CLI instances module coverage
+
+    @patch("cc_orchestrator.cli.instances.Orchestrator")
+    def test_status_with_instances_json(self, mock_orchestrator_class):
+        """Test status command with instances in JSON format."""
+        # Create mock instance
+        mock_instance = Mock(spec=ClaudeInstance)
+        mock_instance.get_info.return_value = {
+            "issue_id": "test-123",
+            "status": "running",
+            "workspace_path": "/test/workspace",
+            "branch_name": "feature/test-123",
+            "tmux_session": "claude-test-123",
+            "process_id": 12345
+        }
+        mock_instance.get_process_status.return_value = ProcessInfo(
+            pid=12345,
+            status=ProcessStatus.RUNNING,
+            cpu_percent=25.5,
+            memory_mb=128.0
+        )
+
+        # Setup orchestrator mock
+        mock_orchestrator = AsyncMock()
+        mock_orchestrator_class.return_value = mock_orchestrator
+        mock_orchestrator.list_instances.return_value = [mock_instance]
+
+        result = self.runner.invoke(main, ["instances", "status", "--json"])
+        assert result.exit_code == 0
+
+        output_data = json.loads(result.output)
+        assert output_data["total"] == 1
+        assert len(output_data["instances"]) == 1
+        instance_data = output_data["instances"][0]
+        assert instance_data["issue_id"] == "test-123"
+        assert instance_data["process_status"] == "running"
+        assert instance_data["cpu_percent"] == 25.5
+        assert instance_data["memory_mb"] == 128.0
+
+    @patch("cc_orchestrator.cli.instances.Orchestrator")
+    def test_status_with_instances_no_process_info(self, mock_orchestrator_class):
+        """Test status command with instances that have no process info."""
+        # Create mock instance without process info
+        mock_instance = Mock(spec=ClaudeInstance)
+        mock_instance.get_info.return_value = {
+            "issue_id": "test-456",
+            "status": "stopped",
+            "workspace_path": "/test/workspace",
+            "branch_name": "feature/test-456",
+            "tmux_session": "claude-test-456"
+        }
+        mock_instance.get_process_status.return_value = None
+
+        # Setup orchestrator mock
+        mock_orchestrator = AsyncMock()
+        mock_orchestrator_class.return_value = mock_orchestrator
+        mock_orchestrator.list_instances.return_value = [mock_instance]
+
+        result = self.runner.invoke(main, ["instances", "status"])
+        assert result.exit_code == 0
+        assert "Issue ID: test-456" in result.output
+        assert "Status: stopped" in result.output
+        # Should not contain process info
+        assert "Process ID:" not in result.output
+        assert "CPU:" not in result.output
+
+    @patch("cc_orchestrator.cli.instances.Orchestrator")
+    def test_status_error_handling_json(self, mock_orchestrator_class):
+        """Test status command error handling with JSON output."""
+        # Setup orchestrator mock to raise exception
+        mock_orchestrator = AsyncMock()
+        mock_orchestrator_class.return_value = mock_orchestrator
+        mock_orchestrator.initialize.side_effect = Exception("Test error")
+
+        result = self.runner.invoke(main, ["instances", "status", "--json"])
+        assert result.exit_code == 0
+
+        output_data = json.loads(result.output)
+        assert output_data == {"error": "Test error"}
+
+    @patch("cc_orchestrator.cli.instances.Orchestrator")
+    def test_start_new_instance_with_options(self, mock_orchestrator_class):
+        """Test start command for new instance with custom options."""
+        # Create mock instance
+        mock_instance = Mock(spec=ClaudeInstance)
+        mock_instance.get_info.return_value = {
+            "issue_id": "test-123",
+            "status": "running",
+            "workspace_path": "/custom/workspace",
+            "branch_name": "custom-branch",
+            "tmux_session": "custom-session",
+            "process_id": 12345
+        }
+        mock_instance.start.return_value = True
+
+        # Setup orchestrator mock
+        mock_orchestrator = AsyncMock()
+        mock_orchestrator_class.return_value = mock_orchestrator
+        mock_orchestrator.get_instance.return_value = None  # No existing instance
+        mock_orchestrator.create_instance.return_value = mock_instance
+
+        result = self.runner.invoke(main, [
+            "instances", "start", "test-123",
+            "--workspace", "/custom/workspace",
+            "--branch", "custom-branch",
+            "--tmux-session", "custom-session"
+        ])
+        assert result.exit_code == 0
+        assert "Successfully started Claude instance for issue test-123" in result.output
+        mock_orchestrator.create_instance.assert_called_once_with(
+            "test-123",
+            workspace_path=Path("/custom/workspace"),
+            branch_name="custom-branch",
+            tmux_session="custom-session"
+        )
+
+    @patch("cc_orchestrator.cli.instances.Orchestrator")
+    def test_start_new_instance_json(self, mock_orchestrator_class):
+        """Test start command for new instance with JSON output."""
+        # Create mock instance
+        mock_instance = Mock(spec=ClaudeInstance)
+        mock_instance.get_info.return_value = {
+            "issue_id": "test-123",
+            "status": "running",
+            "workspace_path": "/test/workspace",
+            "branch_name": "feature/test-123",
+            "tmux_session": "claude-test-123",
+            "process_id": 12345
+        }
+        mock_instance.start.return_value = True
+
+        # Setup orchestrator mock
+        mock_orchestrator = AsyncMock()
+        mock_orchestrator_class.return_value = mock_orchestrator
+        mock_orchestrator.get_instance.return_value = None  # No existing instance
+        mock_orchestrator.create_instance.return_value = mock_instance
+
+        result = self.runner.invoke(main, ["instances", "start", "test-123", "--json"])
+        assert result.exit_code == 0
+
+        output_data = json.loads(result.output)
+        assert output_data["status"] == "started"
+        assert output_data["instance"]["issue_id"] == "test-123"
+
+    @patch("cc_orchestrator.cli.instances.Orchestrator")
+    def test_start_existing_running_instance_json(self, mock_orchestrator_class):
+        """Test start command for already running instance with JSON output."""
+        # Create mock existing instance
+        mock_instance = Mock(spec=ClaudeInstance)
+        mock_instance.is_running.return_value = True
+
+        # Setup orchestrator mock
+        mock_orchestrator = AsyncMock()
+        mock_orchestrator_class.return_value = mock_orchestrator
+        mock_orchestrator.get_instance.return_value = mock_instance
+
+        result = self.runner.invoke(main, ["instances", "start", "test-123", "--json"])
+        assert result.exit_code == 0
+
+        output_data = json.loads(result.output)
+        assert "error" in output_data
+        assert "already running" in output_data["error"]
+        assert output_data["issue_id"] == "test-123"
+
+    @patch("cc_orchestrator.cli.instances.Orchestrator")
+    def test_start_existing_stopped_instance_success(self, mock_orchestrator_class):
+        """Test start command for existing stopped instance that starts successfully."""
+        # Create mock existing instance
+        mock_instance = Mock(spec=ClaudeInstance)
+        mock_instance.is_running.return_value = False
+        mock_instance.start.return_value = True
+        mock_instance.get_info.return_value = {
+            "issue_id": "test-123",
+            "status": "running",
+            "workspace_path": "/test/workspace",
+            "process_id": 12345
+        }
+
+        # Setup orchestrator mock
+        mock_orchestrator = AsyncMock()
+        mock_orchestrator_class.return_value = mock_orchestrator
+        mock_orchestrator.get_instance.return_value = mock_instance
+
+        result = self.runner.invoke(main, ["instances", "start", "test-123"])
+        assert result.exit_code == 0
+        assert "Started existing instance for issue test-123" in result.output
+        assert "Process ID: 12345" in result.output
+        mock_instance.start.assert_called_once()
+
+    @patch("cc_orchestrator.cli.instances.Orchestrator")
+    def test_start_existing_stopped_instance_failure(self, mock_orchestrator_class):
+        """Test start command for existing stopped instance that fails to start."""
+        # Create mock existing instance
+        mock_instance = Mock(spec=ClaudeInstance)
+        mock_instance.is_running.return_value = False
+        mock_instance.start.return_value = False
+
+        # Setup orchestrator mock
+        mock_orchestrator = AsyncMock()
+        mock_orchestrator_class.return_value = mock_orchestrator
+        mock_orchestrator.get_instance.return_value = mock_instance
+
+        result = self.runner.invoke(main, ["instances", "start", "test-123"])
+        assert result.exit_code == 0
+        assert "Failed to start existing instance for issue test-123" in result.output
+        mock_instance.start.assert_called_once()
+
+    @patch("cc_orchestrator.cli.instances.Orchestrator")
+    def test_start_error_handling(self, mock_orchestrator_class):
+        """Test start command error handling."""
+        # Setup orchestrator mock to raise exception
+        mock_orchestrator = AsyncMock()
+        mock_orchestrator_class.return_value = mock_orchestrator
+        mock_orchestrator.initialize.side_effect = Exception("Test error")
+
+        result = self.runner.invoke(main, ["instances", "start", "test-123"])
+        assert result.exit_code == 0
+        assert "Error: Test error" in result.output
+
+    @patch("cc_orchestrator.cli.instances.Orchestrator")
+    def test_start_error_handling_json(self, mock_orchestrator_class):
+        """Test start command error handling with JSON output."""
+        # Setup orchestrator mock to raise exception
+        mock_orchestrator = AsyncMock()
+        mock_orchestrator_class.return_value = mock_orchestrator
+        mock_orchestrator.initialize.side_effect = Exception("Test error")
+
+        result = self.runner.invoke(main, ["instances", "start", "test-123", "--json"])
+        assert result.exit_code == 0
+
+        output_data = json.loads(result.output)
+        assert output_data["error"] == "Test error"
+        assert output_data["issue_id"] == "test-123"
+
+    @patch("cc_orchestrator.cli.instances.Orchestrator")
+    def test_stop_no_instance_json(self, mock_orchestrator_class):
+        """Test stop command with no instance found in JSON format."""
+        # Setup orchestrator mock
+        mock_orchestrator = AsyncMock()
+        mock_orchestrator_class.return_value = mock_orchestrator
+        mock_orchestrator.get_instance.return_value = None
+
+        result = self.runner.invoke(main, ["instances", "stop", "test-123", "--json"])
+        assert result.exit_code == 0
+
+        output_data = json.loads(result.output)
+        assert "error" in output_data
+        assert "No instance found" in output_data["error"]
+        assert output_data["issue_id"] == "test-123"
+
+    @patch("cc_orchestrator.cli.instances.Orchestrator")
+    def test_stop_already_stopped_instance(self, mock_orchestrator_class):
+        """Test stop command with already stopped instance."""
+        # Create mock instance that is not running
+        mock_instance = Mock(spec=ClaudeInstance)
+        mock_instance.is_running.return_value = False
+
+        # Setup orchestrator mock
+        mock_orchestrator = AsyncMock()
+        mock_orchestrator_class.return_value = mock_orchestrator
+        mock_orchestrator.get_instance.return_value = mock_instance
+
+        result = self.runner.invoke(main, ["instances", "stop", "test-123"])
+        assert result.exit_code == 0
+        assert "Instance for issue test-123 is already stopped" in result.output
+        mock_orchestrator.cleanup.assert_called_once()
+
+    @patch("cc_orchestrator.cli.instances.Orchestrator")
+    def test_stop_already_stopped_instance_json(self, mock_orchestrator_class):
+        """Test stop command with already stopped instance in JSON format."""
+        # Create mock instance that is not running
+        mock_instance = Mock(spec=ClaudeInstance)
+        mock_instance.is_running.return_value = False
+
+        # Setup orchestrator mock
+        mock_orchestrator = AsyncMock()
+        mock_orchestrator_class.return_value = mock_orchestrator
+        mock_orchestrator.get_instance.return_value = mock_instance
+
+        result = self.runner.invoke(main, ["instances", "stop", "test-123", "--json"])
+        assert result.exit_code == 0
+
+        output_data = json.loads(result.output)
+        assert output_data["status"] == "already_stopped"
+        assert output_data["issue_id"] == "test-123"
+
+    @patch("cc_orchestrator.cli.instances.Orchestrator")
+    def test_stop_running_instance_success_json(self, mock_orchestrator_class):
+        """Test stop command with running instance that stops successfully in JSON format."""
+        # Create mock instance that is running and can be stopped
+        mock_instance = Mock(spec=ClaudeInstance)
+        mock_instance.is_running.return_value = True
+        mock_instance.stop.return_value = True
+
+        # Setup orchestrator mock
+        mock_orchestrator = AsyncMock()
+        mock_orchestrator_class.return_value = mock_orchestrator
+        mock_orchestrator.get_instance.return_value = mock_instance
+
+        result = self.runner.invoke(main, ["instances", "stop", "test-123", "--json"])
+        assert result.exit_code == 0
+
+        output_data = json.loads(result.output)
+        assert output_data["status"] == "stopped"
+        assert output_data["issue_id"] == "test-123"
+
+    @patch("cc_orchestrator.cli.instances.Orchestrator")
+    def test_stop_running_instance_failure(self, mock_orchestrator_class):
+        """Test stop command with running instance that fails to stop."""
+        # Create mock instance that is running but fails to stop
+        mock_instance = Mock(spec=ClaudeInstance)
+        mock_instance.is_running.return_value = True
+        mock_instance.stop.return_value = False
+
+        # Setup orchestrator mock
+        mock_orchestrator = AsyncMock()
+        mock_orchestrator_class.return_value = mock_orchestrator
+        mock_orchestrator.get_instance.return_value = mock_instance
+
+        result = self.runner.invoke(main, ["instances", "stop", "test-123"])
+        assert result.exit_code == 0
+        assert "Failed to stop instance for issue test-123" in result.output
+        mock_instance.stop.assert_called_once()
+
+    @patch("cc_orchestrator.cli.instances.Orchestrator")
+    def test_stop_running_instance_failure_json(self, mock_orchestrator_class):
+        """Test stop command with running instance that fails to stop in JSON format."""
+        # Create mock instance that is running but fails to stop
+        mock_instance = Mock(spec=ClaudeInstance)
+        mock_instance.is_running.return_value = True
+        mock_instance.stop.return_value = False
+
+        # Setup orchestrator mock
+        mock_orchestrator = AsyncMock()
+        mock_orchestrator_class.return_value = mock_orchestrator
+        mock_orchestrator.get_instance.return_value = mock_instance
+
+        result = self.runner.invoke(main, ["instances", "stop", "test-123", "--json"])
+        assert result.exit_code == 0
+
+        output_data = json.loads(result.output)
+        assert "error" in output_data
+        assert "Failed to stop" in output_data["error"]
+        assert output_data["issue_id"] == "test-123"
+
+    @patch("cc_orchestrator.cli.instances.Orchestrator")
+    def test_stop_with_force_and_timeout_options(self, mock_orchestrator_class):
+        """Test stop command with force and timeout options."""
+        # Create mock instance that is running and can be stopped
+        mock_instance = Mock(spec=ClaudeInstance)
+        mock_instance.is_running.return_value = True
+        mock_instance.stop.return_value = True
+
+        # Setup orchestrator mock
+        mock_orchestrator = AsyncMock()
+        mock_orchestrator_class.return_value = mock_orchestrator
+        mock_orchestrator.get_instance.return_value = mock_instance
+
+        result = self.runner.invoke(main, [
+            "instances", "stop", "test-123", "--force", "--timeout", "60"
+        ])
+        assert result.exit_code == 0
+        assert "Successfully stopped instance for issue test-123" in result.output
+        mock_instance.stop.assert_called_once()
+
+    @patch("cc_orchestrator.cli.instances.Orchestrator")
+    def test_stop_error_handling(self, mock_orchestrator_class):
+        """Test stop command error handling."""
+        # Setup orchestrator mock to raise exception
+        mock_orchestrator = AsyncMock()
+        mock_orchestrator_class.return_value = mock_orchestrator
+        mock_orchestrator.initialize.side_effect = Exception("Test error")
+
+        result = self.runner.invoke(main, ["instances", "stop", "test-123"])
+        assert result.exit_code == 0
+        assert "Error: Test error" in result.output
+
+    @patch("cc_orchestrator.cli.instances.Orchestrator")
+    def test_stop_error_handling_json(self, mock_orchestrator_class):
+        """Test stop command error handling with JSON output."""
+        # Setup orchestrator mock to raise exception
+        mock_orchestrator = AsyncMock()
+        mock_orchestrator_class.return_value = mock_orchestrator
+        mock_orchestrator.initialize.side_effect = Exception("Test error")
+
+        result = self.runner.invoke(main, ["instances", "stop", "test-123", "--json"])
+        assert result.exit_code == 0
+
+        output_data = json.loads(result.output)
+        assert output_data["error"] == "Test error"
+
+    @patch("cc_orchestrator.cli.instances.Orchestrator")
+    def test_list_no_instances_json(self, mock_orchestrator_class):
+        """Test list command with no instances in JSON format."""
+        # Setup mock
+        mock_orchestrator = AsyncMock()
+        mock_orchestrator_class.return_value = mock_orchestrator
+        mock_orchestrator.list_instances.return_value = []
+
+        result = self.runner.invoke(main, ["instances", "list", "--json"])
+        assert result.exit_code == 0
+
+        output_data = json.loads(result.output)
+        assert output_data == {"instances": [], "total": 0}
+
+    @patch("cc_orchestrator.cli.instances.Orchestrator")
+    def test_list_no_running_instances(self, mock_orchestrator_class):
+        """Test list command with no running instances when using --running-only filter."""
+        # Create mock stopped instance
+        mock_instance = Mock(spec=ClaudeInstance)
+        mock_instance.is_running.return_value = False
+
+        # Setup mock
+        mock_orchestrator = AsyncMock()
+        mock_orchestrator_class.return_value = mock_orchestrator
+        mock_orchestrator.list_instances.return_value = [mock_instance]
+
+        result = self.runner.invoke(main, ["instances", "list", "--running-only"])
+        assert result.exit_code == 0
+        assert "No running instances found" in result.output
+        mock_orchestrator.cleanup.assert_called_once()
+
+    @patch("cc_orchestrator.cli.instances.Orchestrator")
+    def test_list_with_instances_json(self, mock_orchestrator_class):
+        """Test list command with instances in JSON format."""
+        # Create mock instance
+        mock_instance = Mock(spec=ClaudeInstance)
+        mock_instance.get_info.return_value = {
+            "issue_id": "test-123",
+            "status": "running",
+            "workspace_path": "/test/workspace",
+            "process_id": 12345
+        }
+        mock_instance.get_process_status.return_value = ProcessInfo(
+            pid=12345,
+            status=ProcessStatus.RUNNING,
+            cpu_percent=25.5,
+            memory_mb=128.0
+        )
+
+        # Setup orchestrator mock
+        mock_orchestrator = AsyncMock()
+        mock_orchestrator_class.return_value = mock_orchestrator
+        mock_orchestrator.list_instances.return_value = [mock_instance]
+
+        result = self.runner.invoke(main, ["instances", "list", "--json"])
+        assert result.exit_code == 0
+
+        output_data = json.loads(result.output)
+        assert output_data["total"] == 1
+        assert output_data["filter"] == "all"
+        assert len(output_data["instances"]) == 1
+        instance_data = output_data["instances"][0]
+        assert instance_data["issue_id"] == "test-123"
+        assert instance_data["process_status"] == "running"
+
+    @patch("cc_orchestrator.cli.instances.Orchestrator")
+    def test_list_running_only_filter(self, mock_orchestrator_class):
+        """Test list command with --running-only filter."""
+        # Create mock instances - one running, one stopped
+        mock_instance1 = Mock(spec=ClaudeInstance)
+        mock_instance1.is_running.return_value = True
+        mock_instance1.get_info.return_value = {
+            "issue_id": "test-123",
+            "status": "running",
+            "workspace_path": "/test/workspace1",
+            "process_id": 12345
+        }
+        mock_instance1.get_process_status.return_value = ProcessInfo(
+            pid=12345,
+            status=ProcessStatus.RUNNING,
+            cpu_percent=25.5,
+            memory_mb=128.0
+        )
+
+        mock_instance2 = Mock(spec=ClaudeInstance)
+        mock_instance2.is_running.return_value = False
+
+        # Setup orchestrator mock
+        mock_orchestrator = AsyncMock()
+        mock_orchestrator_class.return_value = mock_orchestrator
+        mock_orchestrator.list_instances.return_value = [mock_instance1, mock_instance2]
+
+        result = self.runner.invoke(main, ["instances", "list", "--running-only"])
+        assert result.exit_code == 0
+        assert "Running Claude Instances (1)" in result.output
+        assert "🟢 test-123" in result.output
+
+    @patch("cc_orchestrator.cli.instances.Orchestrator")
+    def test_list_running_only_filter_json(self, mock_orchestrator_class):
+        """Test list command with --running-only filter in JSON format."""
+        # Create mock instances - one running, one stopped
+        mock_instance1 = Mock(spec=ClaudeInstance)
+        mock_instance1.is_running.return_value = True
+        mock_instance1.get_info.return_value = {
+            "issue_id": "test-123",
+            "status": "running",
+            "workspace_path": "/test/workspace1",
+            "process_id": 12345
+        }
+        mock_instance1.get_process_status.return_value = ProcessInfo(
+            pid=12345,
+            status=ProcessStatus.RUNNING,
+            cpu_percent=25.5,
+            memory_mb=128.0
+        )
+
+        mock_instance2 = Mock(spec=ClaudeInstance)
+        mock_instance2.is_running.return_value = False
+
+        # Setup orchestrator mock
+        mock_orchestrator = AsyncMock()
+        mock_orchestrator_class.return_value = mock_orchestrator
+        mock_orchestrator.list_instances.return_value = [mock_instance1, mock_instance2]
+
+        result = self.runner.invoke(main, ["instances", "list", "--running-only", "--json"])
+        assert result.exit_code == 0
+
+        output_data = json.loads(result.output)
+        assert output_data["total"] == 1
+        assert output_data["filter"] == "running"
+        assert len(output_data["instances"]) == 1
+        assert output_data["instances"][0]["issue_id"] == "test-123"
+
+    @patch("cc_orchestrator.cli.instances.Orchestrator")
+    def test_list_error_handling(self, mock_orchestrator_class):
+        """Test list command error handling."""
+        # Setup orchestrator mock to raise exception
+        mock_orchestrator = AsyncMock()
+        mock_orchestrator_class.return_value = mock_orchestrator
+        mock_orchestrator.initialize.side_effect = Exception("Test error")
+
+        result = self.runner.invoke(main, ["instances", "list"])
+        assert result.exit_code == 0
+        assert "Error: Test error" in result.output
+
+    @patch("cc_orchestrator.cli.instances.Orchestrator")
+    def test_list_error_handling_json(self, mock_orchestrator_class):
+        """Test list command error handling with JSON output."""
+        # Setup orchestrator mock to raise exception
+        mock_orchestrator = AsyncMock()
+        mock_orchestrator_class.return_value = mock_orchestrator
+        mock_orchestrator.initialize.side_effect = Exception("Test error")
+
+        result = self.runner.invoke(main, ["instances", "list", "--json"])
+        assert result.exit_code == 0
+
+        output_data = json.loads(result.output)
+        assert output_data == {"error": "Test error"}
+
+
+class TestTaskCommands:
+    """Test suite for task command group."""
+
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.runner = CliRunner()
+
+    def test_tasks_help(self):
+        """Test tasks command group help."""
+        result = self.runner.invoke(main, ["tasks", "--help"])
+        assert result.exit_code == 0
+        assert "Manage tasks and work items" in result.output
+
+    def test_tasks_list(self):
+        """Test tasks list command."""
+        result = self.runner.invoke(main, ["tasks", "list"])
+        assert result.exit_code == 0
+        assert "Task list command - to be implemented" in result.output
+
+    def test_tasks_show(self):
+        """Test tasks show command."""
+        result = self.runner.invoke(main, ["tasks", "show", "task-456"])
+        assert result.exit_code == 0
+        assert "Task details for: task-456" in result.output
+
+    def test_tasks_assign(self):
+        """Test tasks assign command."""
+        result = self.runner.invoke(main, ["tasks", "assign", "task-789"])
+        assert result.exit_code == 0
+        assert "Assigning task task-789" in result.output
+
+
+class TestWorktreeCommands:
+    """Test suite for worktree command group."""
+
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.runner = CliRunner()
+
+    def test_worktrees_help(self):
+        """Test worktrees command group help."""
+        result = self.runner.invoke(main, ["worktrees", "--help"])
+        assert result.exit_code == 0
+        assert "Manage git worktrees" in result.output
+
+    def test_worktrees_list(self):
+        """Test worktrees list command."""
+        with patch("cc_orchestrator.cli.worktrees.WorktreeService") as mock_service:
+            mock_service.return_value.list_worktrees.return_value = []
+
+            result = self.runner.invoke(main, ["worktrees", "list"])
+            assert result.exit_code == 0
+            assert "No worktrees found." in result.output
+
+    def test_worktrees_create(self):
+        """Test worktrees create command."""
+        with patch("cc_orchestrator.cli.worktrees.WorktreeService") as mock_service:
+            mock_service.return_value.create_worktree.return_value = {
+                "id": 1,
+                "name": "test-name",
+                "path": "/test/path",
+                "branch": "feature-branch",
+                "commit": "abcd1234",
+                "instance_id": None,
+            }
+
+            result = self.runner.invoke(
+                main, ["worktrees", "create", "test-name", "feature-branch"]
+            )
+            assert result.exit_code == 0
+            assert "Created worktree 'test-name'" in result.output
+
+    def test_worktrees_create_with_path(self):
+        """Test worktrees create command with custom path."""
+        with patch("cc_orchestrator.cli.worktrees.WorktreeService") as mock_service:
+            mock_service.return_value.create_worktree.return_value = {
+                "id": 1,
+                "name": "test-name",
+                "path": "/custom/path",
+                "branch": "feature-branch",
+                "commit": "abcd1234",
+                "instance_id": None,
+            }
+
+            result = self.runner.invoke(
+                main,
+                [
+                    "worktrees",
+                    "create",
+                    "test-name",
+                    "feature-branch",
+                    "--path",
+                    "/custom/path",
+                ],
+            )
+            assert result.exit_code == 0
+            assert "Created worktree 'test-name'" in result.output
+
+    def test_worktrees_remove(self):
+        """Test worktrees remove command."""
+        with patch("cc_orchestrator.cli.worktrees.WorktreeService") as mock_service:
+            mock_service.return_value.remove_worktree.return_value = True
+
+            result = self.runner.invoke(
+                main, ["worktrees", "remove", "/path/to/worktree"]
+            )
+            assert result.exit_code == 0
+            assert "Successfully removed worktree: /path/to/worktree" in result.output
+
+    def test_worktrees_cleanup(self):
+        """Test worktrees cleanup command."""
+        with patch("cc_orchestrator.cli.worktrees.WorktreeService") as mock_service:
+            mock_service.return_value.cleanup_worktrees.return_value = {
+                "git_cleaned": [],
+                "db_cleaned": [],
+            }
+
+            result = self.runner.invoke(main, ["worktrees", "cleanup"])
+            assert result.exit_code == 0
+            assert "No cleanup needed - all worktrees are up to date" in result.output
+
+
+class TestWebCommands:
+    """Test suite for web command group."""
+
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.runner = CliRunner()
+
+    def test_web_help(self):
+        """Test web command group help."""
+        result = self.runner.invoke(main, ["web", "--help"])
+        assert result.exit_code == 0
+        assert "Manage the web interface" in result.output
+
+    def test_web_start_default(self):
+        """Test web start command with defaults."""
+        result = self.runner.invoke(main, ["web", "start"])
+        assert result.exit_code == 0
+        assert "Starting web interface on localhost:8000" in result.output
+
+    def test_web_start_custom(self):
+        """Test web start command with custom host and port."""
+        result = self.runner.invoke(
+            main, ["web", "start", "--host", "0.0.0.0", "--port", "9000"]
+        )
+        assert result.exit_code == 0
+        assert "Starting web interface on 0.0.0.0:9000" in result.output
+
+    def test_web_stop(self):
+        """Test web stop command."""
+        result = self.runner.invoke(main, ["web", "stop"])
+        assert result.exit_code == 0
+        assert "Stopping web interface" in result.output
+
+    def test_web_status(self):
+        """Test web status command."""
+        result = self.runner.invoke(main, ["web", "status"])
+        assert result.exit_code == 0
+        assert "Web interface status" in result.output
+
+
+class TestConfigCommands:
+    """Test suite for config command group."""
+
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.runner = CliRunner()
+
+    def test_config_help(self):
+        """Test config command group help."""
+        result = self.runner.invoke(main, ["config", "--help"])
+        assert result.exit_code == 0
+        assert "Manage configuration settings" in result.output
+
+    def test_config_locations(self):
+        """Test config locations command."""
+        result = self.runner.invoke(main, ["config", "locations"])
+        assert result.exit_code == 0
+        assert "Configuration file search locations" in result.output
+        assert "cc-orchestrator.yaml" in result.output
+        assert "CC_ORCHESTRATOR_" in result.output
+
+    @patch("cc_orchestrator.cli.config.load_config")
+    def test_config_show(self, mock_load_config):
+        """Test config show command."""
+        # Mock configuration
+        mock_config = Mock()
+        mock_config.model_dump.return_value = {"max_instances": 5, "web_port": 8000}
+        mock_load_config.return_value = mock_config
+
+        result = self.runner.invoke(main, ["config", "show"])
+        assert result.exit_code == 0
+        mock_load_config.assert_called_once()
+
+    @patch("cc_orchestrator.cli.config.load_config")
+    def test_config_validate_success(self, mock_load_config):
+        """Test config validate command success."""
+        mock_load_config.return_value = Mock()  # Valid config
+
+        result = self.runner.invoke(main, ["config", "validate"])
+        assert result.exit_code == 0
+        assert "Configuration is valid" in result.output
+
+    @patch("cc_orchestrator.cli.config.save_config")
+    def test_config_init(self, mock_save_config):
+        """Test config init command."""
+        mock_save_config.return_value = Path("/fake/path/config.yaml")
+
+        result = self.runner.invoke(main, ["config", "init"])
+        assert result.exit_code == 0
+        assert "Configuration initialized" in result.output
+        mock_save_config.assert_called_once()

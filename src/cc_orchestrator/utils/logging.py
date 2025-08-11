@@ -162,7 +162,11 @@ class StructuredFormatter(logging.Formatter):
         # Add exception info if present
         if record.exc_info and record.exc_info[0] is not None:
             log_data["exception"] = {
-                "type": record.exc_info[0].__name__,
+                "type": (
+                    record.exc_info[0].__name__
+                    if record.exc_info[0] is not None
+                    else "UnknownError"
+                ),
                 "message": str(record.exc_info[1]),
                 "traceback": traceback.format_exception(*record.exc_info),
             }
@@ -282,7 +286,7 @@ def setup_logging(
     if log_file:
         log_file.parent.mkdir(parents=True, exist_ok=True)
 
-    handlers = []
+    handlers: list[logging.Handler] = []
 
     # Console handler
     if enable_console:
@@ -332,7 +336,7 @@ def handle_errors(
     recovery_strategy: Callable[..., Any] | None = None,
     log_context: LogContext = LogContext.ORCHESTRATOR,
     reraise: bool = True,
-) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+) -> Callable[..., Any]:
     """
     Decorator for comprehensive error handling with logging and recovery.
 
@@ -410,7 +414,7 @@ def handle_errors(
 
 def log_performance(
     log_context: LogContext = LogContext.ORCHESTRATOR,
-) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+) -> Callable[..., Any]:
     """Decorator to log function performance metrics."""
 
     def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
@@ -457,7 +461,7 @@ def log_performance(
 
 def audit_log(
     action: str, log_context: LogContext = LogContext.ORCHESTRATOR
-) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+) -> Callable[..., Any]:
     """Decorator for audit logging of important operations."""
 
     def decorator(func: Callable[..., Any]) -> Callable[..., Any]:

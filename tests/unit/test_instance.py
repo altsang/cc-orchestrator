@@ -66,6 +66,21 @@ class TestClaudeInstance:
                 await instance.initialize()
 
     @pytest.mark.asyncio
+    async def test_initialize_exception_handling(self):
+        """Test instance initialization exception handling and status update."""
+        instance = ClaudeInstance(issue_id="test-123")
+
+        # Mock datetime.now to raise an exception during initialization
+        with patch("cc_orchestrator.core.instance.datetime") as mock_datetime:
+            mock_datetime.now.side_effect = Exception("Clock failure")
+
+            with pytest.raises(Exception, match="Clock failure"):
+                await instance.initialize()
+
+            # Status should be set to ERROR after exception
+            assert instance.status == InstanceStatus.ERROR
+
+    @pytest.mark.asyncio
     async def test_start_when_not_running(self):
         """Test starting instance when not running."""
         instance = ClaudeInstance(issue_id="test-123")
@@ -201,3 +216,40 @@ class TestClaudeInstance:
         assert InstanceStatus.RUNNING.value == "running"
         assert InstanceStatus.STOPPED.value == "stopped"
         assert InstanceStatus.ERROR.value == "error"
+
+    @pytest.mark.asyncio
+    async def test_start_unexpected_exception(self):
+        """Test start method with unexpected exception (lines 130-137)."""
+        instance = ClaudeInstance(issue_id="test-123")
+
+        # Mock spawn_claude_process to raise an unexpected exception (not ProcessError)
+        with patch.object(
+            instance._process_manager,
+            "spawn_claude_process",
+            side_effect=RuntimeError("Unexpected error"),
+        ):
+            with patch("cc_orchestrator.core.instance.logger") as mock_logger:
+                result = await instance.start()
+
+                # Should handle exception and return False
+                assert result is False
+                assert instance.status == InstanceStatus.ERROR
+
+                # Should log the error (lines 131-135)
+                mock_logger.error.assert_called_once_with(
+                    "Unexpected error starting Claude instance",
+                    instance_id="test-123",
+                    error="Unexpected error",
+                )
+
+    @pytest.mark.asyncio
+    async def test_get_process_status_none(self):
+        """Test get_process_status when _process_info is None (line 193)."""
+        instance = ClaudeInstance(issue_id="test-123")
+
+        # Ensure _process_info is None (default state)
+        assert instance._process_info is None
+
+        # Should return None when _process_info is None (line 193)
+        result = await instance.get_process_status()
+        assert result is None

@@ -13,6 +13,7 @@ from datetime import UTC, datetime
 from unittest.mock import AsyncMock, Mock
 
 import pytest
+from fastapi import HTTPException
 
 from cc_orchestrator.database.models import HealthStatus, InstanceStatus
 from cc_orchestrator.web.dependencies import PaginationParams
@@ -175,6 +176,19 @@ class TestInstancesRouterFunctions:
             await instances.get_instance(instance_id=999, crud=mock_crud)
 
         assert "Instance with ID 999 not found" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_get_instance_database_error(self, mock_crud):
+        """Test instance retrieval with database error."""
+        # Mock a database error (not HTTPException)
+        mock_crud.get_instance.side_effect = Exception("Database connection failed")
+
+        with pytest.raises(HTTPException) as exc_info:
+            await instances.get_instance(instance_id=1, crud=mock_crud)
+
+        # Should convert database error to 404
+        assert exc_info.value.status_code == 404
+        assert "Instance with ID 1 not found" in str(exc_info.value.detail)
 
     @pytest.mark.asyncio
     async def test_update_instance_success(self, mock_crud):
