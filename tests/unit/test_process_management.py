@@ -52,9 +52,7 @@ class TestProcessManager:
         with patch.object(
             process_manager, "_start_process", return_value=mock_process
         ) as mock_start:
-            with patch.object(
-                process_manager, "_monitor_process", return_value=None
-            ):
+            with patch.object(process_manager, "_monitor_process", return_value=None):
                 with patch("asyncio.create_task") as mock_create_task:
                     mock_task = AsyncMock()
                     mock_create_task.return_value = mock_task
@@ -127,7 +125,7 @@ class TestProcessManager:
         mock_process = MagicMock()
         mock_process.pid = 12345
         mock_process.poll.return_value = None  # Process is running
-        
+
         with patch.object(
             process_manager, "_start_process", return_value=mock_process
         ) as mock_start:
@@ -158,8 +156,6 @@ class TestProcessManager:
                 # Verify mocks were called
                 mock_start.assert_called_once()
                 mock_create_task.assert_called_once()
-
-
 
     @pytest.mark.asyncio
     async def test_terminate_process_success(self, process_manager, temp_dir):

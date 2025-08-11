@@ -122,7 +122,7 @@ class TestOutputFunctions:
     def test_output_table_empty_rows(self):
         """Test output_table function with empty rows."""
         headers = ["Column 1", "Column 2"]
-        rows = []
+        rows: list[list[str]] = []
 
         with patch("click.echo") as mock_echo:
             output_table(headers, rows)
