@@ -200,7 +200,7 @@ class TmuxService:
                 return False
 
             # Check for attached clients
-            if not force and session.session_attached:
+            if not force and getattr(session, "attached", False):
                 raise TmuxError(
                     f"Session {session_name} has attached clients. Use force=True to destroy anyway."
                 )
@@ -280,8 +280,8 @@ class TmuxService:
             if not session:
                 return False
 
-            # Detach all clients
-            session.kill()
+            # Detach all clients from this session
+            session.cmd('detach-client', '-a')
 
             # Update session info
             if session_name in self._sessions:
@@ -544,13 +544,13 @@ class TmuxService:
                     # First window - use session's default window
                     window = session.new_window(
                         window_name=window_name,
-                        start_directory=session.session_path,
+                        start_directory=getattr(session, "start_directory", None),
                         attach=False,
                     )
                 else:
                     window = session.new_window(
                         window_name=window_name,
-                        start_directory=session.session_path,
+                        start_directory=getattr(session, "start_directory", None),
                         attach=False,
                     )
 
@@ -623,10 +623,10 @@ class TmuxService:
                 instance_id=instance_id,
                 status=(
                     SessionStatus.ACTIVE
-                    if session.session_attached
+                    if getattr(session, "attached", False)
                     else SessionStatus.DETACHED
                 ),
-                working_directory=Path(session.session_path or "/"),
+                working_directory=Path(getattr(session, "start_directory", "/") or "/"),
                 layout_template="unknown",
                 created_at=0.0,  # Not available from tmux
                 windows=[w.name for w in session.windows if w.name is not None],
