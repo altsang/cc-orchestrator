@@ -137,7 +137,7 @@ class TestInstanceCRUDAdvanced:
         instance = InstanceCRUD.create(session=db_session, issue_id="test-datetime")
         db_session.commit()
 
-        original_updated_at = instance.updated_at
+        _original_updated_at = instance.updated_at
 
         with patch("cc_orchestrator.database.crud.datetime") as mock_datetime:
             mock_now = datetime(2023, 1, 1, 12, 0, 0)
@@ -425,10 +425,10 @@ class TestWorktreeCRUDAdvanced:
     def test_list_all_ordering(self, db_session):
         """Test that list_all returns worktrees ordered by created_at."""
         # Create worktrees with slight time differences
-        worktree1 = WorktreeCRUD.create(
+        _worktree1 = WorktreeCRUD.create(
             session=db_session, name="first", path="/first", branch_name="main"
         )
-        worktree2 = WorktreeCRUD.create(
+        _worktree2 = WorktreeCRUD.create(
             session=db_session, name="second", path="/second", branch_name="main"
         )
         db_session.commit()
@@ -668,7 +668,7 @@ class TestHealthCheckCRUD:
         db_session.commit()
 
         # Create checks for instance1
-        for i in range(3):
+        for _i in range(3):
             HealthCheckCRUD.create(
                 session=db_session,
                 instance_id=instance1.id,
@@ -679,7 +679,7 @@ class TestHealthCheckCRUD:
             )
 
         # Create checks for instance2
-        for i in range(2):
+        for _i in range(2):
             HealthCheckCRUD.create(
                 session=db_session,
                 instance_id=instance2.id,
@@ -1113,7 +1113,7 @@ class TestExceptionHandlingAndErrorPaths:
 
     def test_worktree_status_all_values(self, db_session):
         """Test worktree creation and updates with all status values."""
-        for i, status in enumerate(WorktreeStatus):
+        for _i, status in enumerate(WorktreeStatus):
             worktree = WorktreeCRUD.create(
                 session=db_session,
                 name=f"test-{status.value}",

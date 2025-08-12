@@ -236,7 +236,7 @@ class TestMainCommandWarningsFilter:
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
             warnings.filterwarnings("ignore", message=".*test.*")
-            warnings.warn("test warning should be ignored", UserWarning)
+            warnings.warn("test warning should be ignored", UserWarning, stacklevel=2)
             # Should be filtered out
             assert len(w) == 0
 
