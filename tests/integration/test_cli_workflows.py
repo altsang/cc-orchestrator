@@ -234,17 +234,30 @@ class TestCommandGroupWorkflows:
         result = self.runner.invoke(main, ["web", "status"])
         assert result.exit_code == 0
 
-        # Start web interface (simulated)
-        result = self.runner.invoke(main, ["web", "start"])
-        assert result.exit_code == 0
+        # Mock uvicorn.run to prevent hanging during tests
+        with patch('uvicorn.run') as mock_uvicorn:
+            # Start web interface (simulated)
+            result = self.runner.invoke(main, ["web", "start"])
+            assert result.exit_code == 0
+            mock_uvicorn.assert_called_once()
 
-        # Start with custom settings
-        result = self.runner.invoke(
-            main, ["web", "start", "--host", "0.0.0.0", "--port", "9000"]
-        )
-        assert result.exit_code == 0
+            # Reset mock for next test
+            mock_uvicorn.reset_mock()
 
-        # Stop web interface
+            # Start with custom settings
+            result = self.runner.invoke(
+                main, ["web", "start", "--host", "0.0.0.0", "--port", "9000"]
+            )
+            assert result.exit_code == 0
+            mock_uvicorn.assert_called_once_with(
+                "cc_orchestrator.web.app:app",
+                host="0.0.0.0",
+                port=9000,
+                reload=False,
+                log_level="info",
+            )
+
+        # Stop web interface (doesn't need mocking)
         result = self.runner.invoke(main, ["web", "stop"])
         assert result.exit_code == 0
 
