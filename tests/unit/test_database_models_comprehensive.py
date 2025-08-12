@@ -15,7 +15,7 @@ Target: 100% coverage (142/142 statements)
 
 from datetime import datetime, timedelta
 
-from sqlalchemy import Index
+from sqlalchemy import Column, Index, Integer
 
 from cc_orchestrator.database.models import (
     Base,
@@ -47,6 +47,7 @@ class TestBase:
 
         class TestModel(Base):
             __tablename__ = "test_model"
+            id = Column(Integer, primary_key=True)
 
         assert issubclass(TestModel, Base)
 

@@ -43,15 +43,8 @@ class TestWorktreesRouterFunctions:
         # Create WorktreeResponse object instead of Mock
         mock_worktree = WorktreeResponse(**worktree_data)
 
-        # Add additional attributes that the router expects but aren't in the schema
-        mock_worktree.branch_name = "feature-branch"
-        mock_worktree.repository_url = "https://github.com/test/repo.git"
-        mock_worktree.status = WorktreeStatus.ACTIVE
-        mock_worktree.current_commit = "abc123def456"
-        mock_worktree.has_uncommitted_changes = False
-        mock_worktree.git_config = {}
-        mock_worktree.extra_metadata = {}
-        mock_worktree.last_sync = datetime.now(UTC)
+        # WorktreeResponse schema only has: id, name, branch, base_branch, path, active, created_at, updated_at
+        # No additional attributes needed as they're not part of the response schema
 
         # Mock instance data
         mock_instance = Mock()
