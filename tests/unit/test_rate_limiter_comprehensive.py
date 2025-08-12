@@ -107,7 +107,7 @@ class TestInMemoryRateLimiter:
             limiter.check_rate_limit(client_ip, endpoint, limit, window)
 
         # Fast-forward time by mocking the current time
-        with patch('time.time', return_value=time.time() + 1.1):
+        with patch("time.time", return_value=time.time() + 1.1):
             # Should be able to make requests again
             limiter.check_rate_limit(client_ip, endpoint, limit, window)
 
