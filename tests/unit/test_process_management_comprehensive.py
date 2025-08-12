@@ -282,7 +282,7 @@ class TestProcessManagerComprehensive:
         process_manager._monitoring_tasks[instance_id] = mock_task
 
         await process_manager._cleanup_process(instance_id)
-        
+
         # Ensure task is fully cancelled before continuing
         if not mock_task.cancelled():
             mock_task.cancel()
