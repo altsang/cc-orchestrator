@@ -28,22 +28,30 @@ class TestWorktreesRouterFunctions:
         """Mock CRUD adapter."""
         crud = AsyncMock()
 
-        # Mock worktree data
-        mock_worktree = Mock()
-        mock_worktree.id = 1
-        mock_worktree.name = "test-worktree"
-        mock_worktree.path = "/workspace/test-worktree"
+        # Create proper worktree data that matches WorktreeResponse schema
+        worktree_data = {
+            "id": 1,
+            "name": "test-worktree",
+            "branch": "feature-branch",
+            "base_branch": "main",
+            "path": "/workspace/test-worktree",
+            "active": True,
+            "created_at": datetime.now(UTC),
+            "updated_at": datetime.now(UTC),
+        }
+        
+        # Create WorktreeResponse object instead of Mock  
+        mock_worktree = WorktreeResponse(**worktree_data)
+        
+        # Add additional attributes that the router expects but aren't in the schema
         mock_worktree.branch_name = "feature-branch"
         mock_worktree.repository_url = "https://github.com/test/repo.git"
         mock_worktree.status = WorktreeStatus.ACTIVE
-        mock_worktree.instance_id = 1
         mock_worktree.current_commit = "abc123def456"
         mock_worktree.has_uncommitted_changes = False
         mock_worktree.git_config = {}
         mock_worktree.extra_metadata = {}
         mock_worktree.last_sync = datetime.now(UTC)
-        mock_worktree.created_at = datetime.now(UTC)
-        mock_worktree.updated_at = datetime.now(UTC)
 
         # Mock instance data
         mock_instance = Mock()
@@ -126,9 +134,9 @@ class TestWorktreesRouterFunctions:
         """Test successful worktree creation."""
         worktree_data = WorktreeCreate(
             name="new-worktree",
+            branch="new-branch",
+            base_branch="main",
             path="/workspace/new-worktree",
-            branch_name="new-branch",
-            repository_url="https://github.com/test/new-repo.git",
             instance_id=1,
         )
 
@@ -156,8 +164,9 @@ class TestWorktreesRouterFunctions:
 
         worktree_data = WorktreeCreate(
             name="duplicate-worktree",
+            branch="duplicate-branch",
+            base_branch="main",
             path="/workspace/duplicate",
-            branch_name="duplicate-branch",
         )
 
         with pytest.raises(Exception) as exc_info:
@@ -174,8 +183,9 @@ class TestWorktreesRouterFunctions:
 
         worktree_data = WorktreeCreate(
             name="invalid-worktree",
+            branch="invalid-branch",
+            base_branch="main",
             path="/workspace/invalid",
-            branch_name="invalid-branch",
             instance_id=999,
         )
 
@@ -358,17 +368,12 @@ class TestWorktreeValidation:
         worktree_data = {
             "id": 1,
             "name": "test-worktree",
+            "branch": "main",
+            "base_branch": "main",
             "path": "/workspace/test",
-            "branch_name": "main",
-            "repository_url": "https://github.com/test/repo.git",
-            "status": WorktreeStatus.ACTIVE,
-            "instance_id": 1,
-            "current_commit": "abc123def456",
-            "has_uncommitted_changes": False,
-            "git_config": {},
-            "extra_metadata": {},
-            "last_sync": datetime.now(UTC),
+            "active": True,
             "created_at": datetime.now(UTC),
+            "updated_at": datetime.now(UTC),
             "updated_at": datetime.now(UTC),
         }
 
@@ -380,14 +385,14 @@ class TestWorktreeValidation:
         """Test WorktreeCreate model validation."""
         create_data = {
             "name": "new-worktree",
+            "branch": "new-branch",
+            "base_branch": "main",
             "path": "/workspace/new",
-            "branch_name": "new-branch",
-            "repository_url": "https://github.com/test/new-repo.git",
         }
 
         create_model = WorktreeCreate.model_validate(create_data)
         assert create_model.name == "new-worktree"
-        assert create_model.path == "/workspace/new"
+        assert create_model.branch == "new-branch"
 
     def test_worktree_status_enum_values(self):
         """Test WorktreeStatus enum contains expected values."""

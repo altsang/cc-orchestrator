@@ -28,27 +28,26 @@ class TestTasksRouterFunctions:
         """Mock CRUD adapter."""
         crud = AsyncMock()
 
-        # Mock task data
-        mock_task = Mock()
-        mock_task.id = 1
-        mock_task.title = "Test Task"
-        mock_task.description = "Test task description"
-        mock_task.status = TaskStatus.PENDING
-        mock_task.priority = TaskPriority.MEDIUM
-        mock_task.instance_id = 1
-        mock_task.worktree_id = None
-        mock_task.due_date = None
-        mock_task.estimated_duration = 60
-        mock_task.actual_duration = None
-        mock_task.requirements = {}
-        mock_task.results = {}
-        mock_task.extra_metadata = {}
-        mock_task.started_at = None
-        mock_task.completed_at = None
-        mock_task.created_at = datetime.now(UTC)
-        mock_task.updated_at = datetime.now(UTC)
+        # Create proper task data that matches TaskResponse schema
+        task_data = {
+            "id": 1,
+            "name": "Test Task",
+            "description": "Test task description",
+            "instance_id": 1,
+            "command": "test command",
+            "schedule": None,
+            "enabled": True,
+            "status": "pending",
+            "created_at": datetime.now(UTC),
+            "updated_at": datetime.now(UTC),
+            "last_run": None,
+            "next_run": None,
+        }
+        
+        # Create TaskResponse object instead of Mock
+        mock_task = TaskResponse(**task_data)
 
-        # Mock instance and worktree data
+        # Mock instance and worktree data (these can stay as Mock since they're not serialized)
         mock_instance = Mock()
         mock_instance.id = 1
         mock_instance.issue_id = "test-issue"
@@ -127,11 +126,9 @@ class TestTasksRouterFunctions:
     async def test_create_task_success(self, mock_crud):
         """Test successful task creation."""
         task_data = TaskCreate(
-            title="New Task",
+            name="New Task",
             description="New task description",
-            priority=TaskPriority.HIGH,
             instance_id=1,
-            estimated_duration=120,
         )
 
         result = await tasks.create_task(task_data=task_data, crud=mock_crud)
@@ -148,7 +145,7 @@ class TestTasksRouterFunctions:
     async def test_create_task_with_worktree(self, mock_crud):
         """Test task creation with worktree validation."""
         task_data = TaskCreate(
-            title="Worktree Task", description="Task with worktree", worktree_id=1
+            name="Worktree Task", description="Task with worktree", worktree_id=1
         )
 
         result = await tasks.create_task(task_data=task_data, crud=mock_crud)
@@ -163,7 +160,7 @@ class TestTasksRouterFunctions:
         """Test task creation with non-existent instance."""
         mock_crud.get_instance.return_value = None
 
-        task_data = TaskCreate(title="Invalid Task", instance_id=999)
+        task_data = TaskCreate(name="Invalid Task", instance_id=999)
 
         with pytest.raises(Exception) as exc_info:
             await tasks.create_task(task_data=task_data, crud=mock_crud)
@@ -175,7 +172,7 @@ class TestTasksRouterFunctions:
         """Test task creation with non-existent worktree."""
         mock_crud.get_worktree.return_value = None
 
-        task_data = TaskCreate(title="Invalid Worktree Task", worktree_id=999)
+        task_data = TaskCreate(name="Invalid Worktree Task", worktree_id=999)
 
         with pytest.raises(Exception) as exc_info:
             await tasks.create_task(task_data=task_data, crud=mock_crud)
@@ -206,7 +203,7 @@ class TestTasksRouterFunctions:
     @pytest.mark.asyncio
     async def test_update_task_success(self, mock_crud):
         """Test successful task update."""
-        update_data = TaskUpdate(title="Updated Task", priority=TaskPriority.HIGH)
+        update_data = TaskUpdate(name="Updated Task")
 
         result = await tasks.update_task(
             task_id=1, task_data=update_data, crud=mock_crud
@@ -223,7 +220,7 @@ class TestTasksRouterFunctions:
         """Test task update for non-existent task."""
         mock_crud.get_task.return_value = None
 
-        update_data = TaskUpdate(title="Updated Task")
+        update_data = TaskUpdate(name="Updated Task")
 
         with pytest.raises(Exception) as exc_info:
             await tasks.update_task(task_id=999, task_data=update_data, crud=mock_crud)
@@ -403,15 +400,17 @@ class TestTaskValidation:
         """Test TaskResponse model validation."""
         task_data = {
             "id": 1,
-            "title": "Test Task",
+            "name": "Test Task",
             "description": "Test description",
-            "status": TaskStatus.PENDING,
-            "priority": TaskPriority.MEDIUM,
+            "status": "pending",
             "instance_id": 1,
-            "worktree_id": None,
-            "due_date": None,
-            "estimated_duration": 60,
-            "actual_duration": None,
+            "created_at": datetime.now(UTC),
+            "updated_at": datetime.now(UTC),
+            "command": None,
+            "schedule": None,
+            "enabled": True,
+            "last_run": None,
+            "next_run": None,
             "requirements": {},
             "results": {},
             "extra_metadata": {},
@@ -422,21 +421,18 @@ class TestTaskValidation:
         }
 
         response_model = TaskResponse.model_validate(task_data)
-        assert response_model.title == "Test Task"
-        assert response_model.status == TaskStatus.PENDING.value
+        assert response_model.name == "Test Task"
+        assert response_model.status == "pending"
 
     def test_task_create_model_validation(self):
         """Test TaskCreate model validation."""
         create_data = {
-            "title": "New Task",
+            "name": "New Task",
             "description": "New task description",
-            "priority": TaskPriority.HIGH,
-            "estimated_duration": 90,
         }
 
         create_model = TaskCreate.model_validate(create_data)
-        assert create_model.title == "New Task"
-        assert create_model.priority == TaskPriority.HIGH.value
+        assert create_model.name == "New Task"
 
     def test_task_status_enum_values(self):
         """Test TaskStatus enum contains expected values."""

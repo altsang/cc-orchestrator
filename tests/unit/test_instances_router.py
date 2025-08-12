@@ -18,7 +18,7 @@ from fastapi import HTTPException
 from cc_orchestrator.database.models import HealthStatus, InstanceStatus
 from cc_orchestrator.web.dependencies import PaginationParams
 from cc_orchestrator.web.routers.v1 import instances
-from cc_orchestrator.web.schemas import InstanceCreate, InstanceResponse, InstanceUpdate
+from cc_orchestrator.web.schemas import InstanceCreate, InstanceResponse, InstanceUpdate, TaskResponse
 
 
 class TestInstancesRouterFunctions:
@@ -29,33 +29,30 @@ class TestInstancesRouterFunctions:
         """Mock CRUD adapter."""
         crud = AsyncMock()
 
-        # Mock instance data
-        mock_instance = Mock()
-        mock_instance.id = 1
-        mock_instance.issue_id = "test-issue-001"
-        mock_instance.status = InstanceStatus.RUNNING
-        mock_instance.health_status = HealthStatus.HEALTHY
-        mock_instance.workspace_path = "/workspace/test"
-        mock_instance.branch_name = "main"
-        mock_instance.tmux_session = "test-session"
-        mock_instance.process_id = 12345
-        mock_instance.extra_metadata = {}  # Dict, not Mock
-        mock_instance.health_check_count = 10
-        mock_instance.healthy_check_count = 8
-        mock_instance.last_recovery_attempt = None
-        mock_instance.recovery_attempt_count = 0
-        mock_instance.health_check_details = "All systems operational"
-        mock_instance.last_health_check = datetime.now(UTC)
-        mock_instance.last_activity = datetime.now(UTC)
-        mock_instance.created_at = datetime.now(UTC)
-        mock_instance.updated_at = datetime.now(UTC)
+        # Create proper instance data that matches InstanceResponse schema
+        instance_data = {
+            "id": 1,
+            "issue_id": "test-issue-001",
+            "status": InstanceStatus.RUNNING,
+            "created_at": datetime.now(UTC),
+            "updated_at": datetime.now(UTC),
+        }
+        
+        # Create InstanceResponse object instead of Mock
+        mock_instance = InstanceResponse(**instance_data)
 
-        # Mock task data
-        mock_task = Mock()
-        mock_task.id = 1
-        mock_task.instance_id = 1
-        mock_task.name = "test-task"
-        mock_task.__dict__ = {"id": 1, "instance_id": 1, "name": "test-task"}
+        # Create proper task data that matches TaskResponse schema
+        task_data = {
+            "id": 1,
+            "name": "test-task",
+            "description": "Test task description",
+            "instance_id": 1,
+            "created_at": datetime.now(UTC),
+            "updated_at": datetime.now(UTC),
+        }
+        
+        # Create TaskResponse object instead of Mock
+        mock_task = TaskResponse(**task_data)
 
         crud.list_instances.return_value = ([mock_instance], 1)
         crud.create_instance.return_value = mock_instance

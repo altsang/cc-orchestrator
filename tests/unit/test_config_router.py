@@ -32,19 +32,25 @@ class TestConfigRouterFunctions:
         """Mock CRUD adapter."""
         crud = AsyncMock()
 
-        # Mock configuration data
-        mock_config = Mock()
-        mock_config.id = 1
-        mock_config.key = "test_key"
-        mock_config.value = "test_value"
+        # Create ConfigurationResponse object with proper schema data
+        config_data = {
+            "id": 1,
+            "key": "test_key",
+            "value": "test_value",
+            "description": "Test configuration",
+            "category": "general",
+            "created_at": datetime.now(UTC),
+            "updated_at": datetime.now(UTC),
+        }
+        
+        mock_config = ConfigurationResponse(**config_data)
+        
+        # Add additional attributes that the router expects but aren't in the schema
+        # We need to do this because some router functions access attributes not in the response schema
+        mock_config.is_readonly = False
+        mock_config.is_secret = False
         mock_config.scope = ConfigScope.GLOBAL
         mock_config.instance_id = None
-        mock_config.description = "Test configuration"
-        mock_config.is_secret = False
-        mock_config.is_readonly = False
-        mock_config.extra_metadata = {}  # Dict, not Mock
-        mock_config.created_at = datetime.now(UTC)
-        mock_config.updated_at = datetime.now(UTC)
 
         # Mock instance data
         mock_instance = Mock()
@@ -489,11 +495,8 @@ class TestConfigValidation:
             "id": 1,
             "key": "test_key",
             "value": "test_value",
-            "scope": ConfigScope.GLOBAL,
-            "instance_id": None,
             "description": "Test config",
-            "is_secret": False,
-            "is_readonly": False,
+            "category": "general",
             "created_at": datetime.now(UTC),
             "updated_at": datetime.now(UTC),
         }
