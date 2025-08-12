@@ -235,7 +235,7 @@ class TestCommandGroupWorkflows:
         assert result.exit_code == 0
 
         # Mock uvicorn.run to prevent hanging during tests
-        with patch('uvicorn.run') as mock_uvicorn:
+        with patch("uvicorn.run") as mock_uvicorn:
             # Start web interface (simulated)
             result = self.runner.invoke(main, ["web", "start"])
             assert result.exit_code == 0
