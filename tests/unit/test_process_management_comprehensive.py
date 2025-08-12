@@ -272,12 +272,24 @@ class TestProcessManagerComprehensive:
 
         # Mock monitoring task - create a real async task but cancel it to simulate the scenario
         async def dummy_coroutine():
-            await asyncio.sleep(10)  # Long running task
+            try:
+                await asyncio.sleep(10)  # Long running task
+            except asyncio.CancelledError:
+                # Expected when task is cancelled during cleanup
+                raise
 
         mock_task = asyncio.create_task(dummy_coroutine())
         process_manager._monitoring_tasks[instance_id] = mock_task
 
         await process_manager._cleanup_process(instance_id)
+        
+        # Ensure task is fully cancelled before continuing
+        if not mock_task.cancelled():
+            mock_task.cancel()
+            try:
+                await mock_task
+            except asyncio.CancelledError:
+                pass
 
         # Verify cleanup
         assert instance_id not in process_manager._subprocess_map

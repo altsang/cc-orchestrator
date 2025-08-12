@@ -106,11 +106,10 @@ class TestInMemoryRateLimiter:
         with pytest.raises(RateLimitExceededError):
             limiter.check_rate_limit(client_ip, endpoint, limit, window)
 
-        # Wait for window to expire
-        time.sleep(1.1)
-
-        # Should be able to make requests again
-        limiter.check_rate_limit(client_ip, endpoint, limit, window)
+        # Fast-forward time by mocking the current time
+        with patch('time.time', return_value=time.time() + 1.1):
+            # Should be able to make requests again
+            limiter.check_rate_limit(client_ip, endpoint, limit, window)
 
     def test_cleanup_old_entries(self):
         """Test cleanup of old entries."""
