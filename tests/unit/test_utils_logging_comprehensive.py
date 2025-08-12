@@ -206,7 +206,7 @@ class TestStructuredFormatter:
             msg="Test message",
             args=(),
             exc_info=None,
-            func="test_function"
+            func="test_function",
         )
         record.module = "path"
 
@@ -232,7 +232,7 @@ class TestStructuredFormatter:
             msg="Test message",
             args=(),
             exc_info=None,
-            func="test_function"
+            func="test_function",
         )
         record.module = "path"
         record.context = "test_context"
@@ -253,7 +253,7 @@ class TestStructuredFormatter:
             msg="Test message",
             args=(),
             exc_info=None,
-            func="test_function"
+            func="test_function",
         )
         record.module = "path"
         record.instance_id = "instance-123"
@@ -274,7 +274,7 @@ class TestStructuredFormatter:
             msg="Test message",
             args=(),
             exc_info=None,
-            func="test_function"
+            func="test_function",
         )
         record.module = "path"
         record.task_id = "task-456"
@@ -295,7 +295,7 @@ class TestStructuredFormatter:
             msg="Test message",
             args=(),
             exc_info=None,
-            func="test_function"
+            func="test_function",
         )
         record.module = "path"
         record.custom_field = "custom_value"
@@ -324,7 +324,7 @@ class TestStructuredFormatter:
             msg="Test error message",
             args=(),
             exc_info=exc_info,
-            func="test_function"
+            func="test_function",
         )
         record.module = "path"
 
@@ -348,7 +348,7 @@ class TestStructuredFormatter:
             msg="Test error message",
             args=(),
             exc_info=(None, ValueError("test"), None),
-            func="test_function"
+            func="test_function",
         )
         record.module = "path"
 
@@ -368,7 +368,7 @@ class TestStructuredFormatter:
             msg="Test message",
             args=(),
             exc_info=None,
-            func="test_function"
+            func="test_function",
         )
         record.module = "path"
 
@@ -392,7 +392,7 @@ class TestStructuredFormatter:
             msg="Test message",
             args=(),
             exc_info=None,
-            func="test_function"
+            func="test_function",
         )
         record.module = "path"
         record._private_field = "should_not_appear"
@@ -430,7 +430,7 @@ class TestContextualLogger:
 
     def test_debug_logging(self):
         """Test debug logging with context."""
-        with patch('logging.getLogger') as mock_get_logger:
+        with patch("logging.getLogger") as mock_get_logger:
             mock_logger = Mock()
             mock_get_logger.return_value = mock_logger
 
@@ -446,13 +446,13 @@ class TestContextualLogger:
                     "context": "cli",
                     "instance_id": "instance-123",
                     "task_id": "task-456",
-                    "extra_field": "extra_value"
-                }
+                    "extra_field": "extra_value",
+                },
             )
 
     def test_info_logging(self):
         """Test info logging with context."""
-        with patch('logging.getLogger') as mock_get_logger:
+        with patch("logging.getLogger") as mock_get_logger:
             mock_logger = Mock()
             mock_get_logger.return_value = mock_logger
 
@@ -460,14 +460,12 @@ class TestContextualLogger:
             logger.info("Test info message")
 
             mock_logger.log.assert_called_once_with(
-                logging.INFO,
-                "Test info message",
-                extra={"context": "database"}
+                logging.INFO, "Test info message", extra={"context": "database"}
             )
 
     def test_warning_logging(self):
         """Test warning logging with context."""
-        with patch('logging.getLogger') as mock_get_logger:
+        with patch("logging.getLogger") as mock_get_logger:
             mock_logger = Mock()
             mock_get_logger.return_value = mock_logger
 
@@ -475,14 +473,12 @@ class TestContextualLogger:
             logger.warning("Test warning message")
 
             mock_logger.log.assert_called_once_with(
-                logging.WARNING,
-                "Test warning message",
-                extra={"context": "tmux"}
+                logging.WARNING, "Test warning message", extra={"context": "tmux"}
             )
 
     def test_error_logging_without_exception(self):
         """Test error logging without exception."""
-        with patch('logging.getLogger') as mock_get_logger:
+        with patch("logging.getLogger") as mock_get_logger:
             mock_logger = Mock()
             mock_get_logger.return_value = mock_logger
 
@@ -490,14 +486,12 @@ class TestContextualLogger:
             logger.error("Test error message")
 
             mock_logger.log.assert_called_once_with(
-                logging.ERROR,
-                "Test error message",
-                extra={"context": "process"}
+                logging.ERROR, "Test error message", extra={"context": "process"}
             )
 
     def test_error_logging_with_exception(self):
         """Test error logging with exception."""
-        with patch('logging.getLogger') as mock_get_logger:
+        with patch("logging.getLogger") as mock_get_logger:
             mock_logger = Mock()
             mock_get_logger.return_value = mock_logger
 
@@ -512,13 +506,13 @@ class TestContextualLogger:
                 extra={
                     "context": "integration",
                     "instance_id": "instance-789",
-                    "task_id": None
-                }
+                    "task_id": None,
+                },
             )
 
     def test_critical_logging_without_exception(self):
         """Test critical logging without exception."""
-        with patch('logging.getLogger') as mock_get_logger:
+        with patch("logging.getLogger") as mock_get_logger:
             mock_logger = Mock()
             mock_get_logger.return_value = mock_logger
 
@@ -526,14 +520,12 @@ class TestContextualLogger:
             logger.critical("Test critical message")
 
             mock_logger.log.assert_called_once_with(
-                logging.CRITICAL,
-                "Test critical message",
-                extra={"context": "worktree"}
+                logging.CRITICAL, "Test critical message", extra={"context": "worktree"}
             )
 
     def test_critical_logging_with_exception(self):
         """Test critical logging with exception."""
-        with patch('logging.getLogger') as mock_get_logger:
+        with patch("logging.getLogger") as mock_get_logger:
             mock_logger = Mock()
             mock_get_logger.return_value = mock_logger
 
@@ -544,16 +536,12 @@ class TestContextualLogger:
             mock_logger.critical.assert_called_once_with(
                 "Test critical message",
                 exc_info=exception,
-                extra={
-                    "context": "orchestrator",
-                    "instance_id": None,
-                    "task_id": None
-                }
+                extra={"context": "orchestrator", "instance_id": None, "task_id": None},
             )
 
     def test_logging_with_all_context_ids(self):
         """Test logging with both instance and task IDs set."""
-        with patch('logging.getLogger') as mock_get_logger:
+        with patch("logging.getLogger") as mock_get_logger:
             mock_logger = Mock()
             mock_get_logger.return_value = mock_logger
 
@@ -569,8 +557,8 @@ class TestContextualLogger:
                     "context": "web",
                     "instance_id": "instance-abc",
                     "task_id": "task-def",
-                    "custom": "data"
-                }
+                    "custom": "data",
+                },
             )
 
 
@@ -597,8 +585,10 @@ class TestSetupLogging:
 
     def test_setup_logging_defaults(self):
         """Test setup_logging with default parameters."""
-        with patch('logging.getLogger') as mock_get_logger, \
-             patch('logging.StreamHandler') as mock_stream_handler:
+        with (
+            patch("logging.getLogger") as mock_get_logger,
+            patch("logging.StreamHandler") as mock_stream_handler,
+        ):
 
             mock_root_logger = Mock()
             mock_get_logger.return_value = mock_root_logger
@@ -612,7 +602,7 @@ class TestSetupLogging:
 
     def test_setup_logging_with_log_level_enum(self):
         """Test setup_logging with LogLevel enum."""
-        with patch('logging.getLogger') as mock_get_logger:
+        with patch("logging.getLogger") as mock_get_logger:
             mock_root_logger = Mock()
             mock_get_logger.return_value = mock_root_logger
 
@@ -622,7 +612,7 @@ class TestSetupLogging:
 
     def test_setup_logging_with_log_level_string(self):
         """Test setup_logging with string log level."""
-        with patch('logging.getLogger') as mock_get_logger:
+        with patch("logging.getLogger") as mock_get_logger:
             mock_root_logger = Mock()
             mock_get_logger.return_value = mock_root_logger
 
@@ -635,8 +625,10 @@ class TestSetupLogging:
         with tempfile.TemporaryDirectory() as temp_dir:
             log_file = Path(temp_dir) / "test.log"
 
-            with patch('logging.getLogger') as mock_get_logger, \
-                 patch('logging.FileHandler') as mock_file_handler:
+            with (
+                patch("logging.getLogger") as mock_get_logger,
+                patch("logging.FileHandler") as mock_file_handler,
+            ):
 
                 mock_root_logger = Mock()
                 mock_get_logger.return_value = mock_root_logger
@@ -653,8 +645,7 @@ class TestSetupLogging:
         with tempfile.TemporaryDirectory() as temp_dir:
             log_file = Path(temp_dir) / "subdir" / "test.log"
 
-            with patch('logging.getLogger'), \
-                 patch('logging.FileHandler'):
+            with patch("logging.getLogger"), patch("logging.FileHandler"):
 
                 setup_logging(log_file=log_file)
 
@@ -662,8 +653,10 @@ class TestSetupLogging:
 
     def test_setup_logging_structured_vs_plain(self):
         """Test setup_logging with structured vs plain formatting."""
-        with patch('logging.getLogger') as mock_get_logger, \
-             patch('logging.StreamHandler') as mock_stream_handler:
+        with (
+            patch("logging.getLogger") as mock_get_logger,
+            patch("logging.StreamHandler") as mock_stream_handler,
+        ):
 
             mock_root_logger = Mock()
             mock_get_logger.return_value = mock_root_logger
@@ -686,8 +679,10 @@ class TestSetupLogging:
 
     def test_setup_logging_console_disabled(self):
         """Test setup_logging with console output disabled."""
-        with patch('logging.getLogger') as mock_get_logger, \
-             patch('logging.StreamHandler') as mock_stream_handler:
+        with (
+            patch("logging.getLogger") as mock_get_logger,
+            patch("logging.StreamHandler") as mock_stream_handler,
+        ):
 
             mock_root_logger = Mock()
             mock_get_logger.return_value = mock_root_logger
@@ -698,7 +693,7 @@ class TestSetupLogging:
 
     def test_setup_logging_clears_existing_handlers(self):
         """Test setup_logging clears existing handlers."""
-        with patch('logging.getLogger') as mock_get_logger:
+        with patch("logging.getLogger") as mock_get_logger:
             mock_root_logger = Mock()
             existing_handler = Mock()
             mock_root_logger.handlers = [existing_handler]
@@ -710,7 +705,7 @@ class TestSetupLogging:
 
     def test_setup_logging_suppresses_third_party_loggers(self):
         """Test setup_logging suppresses noisy third-party loggers."""
-        with patch('logging.getLogger') as mock_get_logger:
+        with patch("logging.getLogger") as mock_get_logger:
             mock_root_logger = Mock()
             mock_urllib3_logger = Mock()
             mock_requests_logger = Mock()
@@ -739,11 +734,12 @@ class TestHandleErrorsDecorator:
 
     def test_handle_errors_successful_execution(self):
         """Test handle_errors decorator with successful function execution."""
+
         @handle_errors()
         def test_function(x, y):
             return x + y
 
-        with patch('cc_orchestrator.utils.logging.get_logger') as mock_get_logger:
+        with patch("cc_orchestrator.utils.logging.get_logger") as mock_get_logger:
             mock_logger = Mock()
             mock_get_logger.return_value = mock_logger
 
@@ -754,11 +750,12 @@ class TestHandleErrorsDecorator:
 
     def test_handle_errors_with_cc_orchestrator_exception(self):
         """Test handle_errors decorator with CCOrchestratorException."""
+
         @handle_errors()
         def test_function():
             raise InstanceError("Test instance error", {"id": "123"})
 
-        with patch('cc_orchestrator.utils.logging.get_logger') as mock_get_logger:
+        with patch("cc_orchestrator.utils.logging.get_logger") as mock_get_logger:
             mock_logger = Mock()
             mock_get_logger.return_value = mock_logger
 
@@ -771,11 +768,12 @@ class TestHandleErrorsDecorator:
 
     def test_handle_errors_with_generic_exception(self):
         """Test handle_errors decorator with generic exception."""
+
         @handle_errors()
         def test_function():
             raise ValueError("Generic error")
 
-        with patch('cc_orchestrator.utils.logging.get_logger') as mock_get_logger:
+        with patch("cc_orchestrator.utils.logging.get_logger") as mock_get_logger:
             mock_logger = Mock()
             mock_get_logger.return_value = mock_logger
 
@@ -786,6 +784,7 @@ class TestHandleErrorsDecorator:
 
     def test_handle_errors_with_recovery_strategy_success(self):
         """Test handle_errors decorator with successful recovery."""
+
         def recovery_strategy(exception, *args, **kwargs):
             return "recovered"
 
@@ -793,7 +792,7 @@ class TestHandleErrorsDecorator:
         def test_function():
             raise ValueError("Test error")
 
-        with patch('cc_orchestrator.utils.logging.get_logger') as mock_get_logger:
+        with patch("cc_orchestrator.utils.logging.get_logger") as mock_get_logger:
             mock_logger = Mock()
             mock_get_logger.return_value = mock_logger
 
@@ -804,6 +803,7 @@ class TestHandleErrorsDecorator:
 
     def test_handle_errors_with_recovery_strategy_failure(self):
         """Test handle_errors decorator with failed recovery."""
+
         def recovery_strategy(exception, *args, **kwargs):
             raise RuntimeError("Recovery failed")
 
@@ -811,7 +811,7 @@ class TestHandleErrorsDecorator:
         def test_function():
             raise ValueError("Test error")
 
-        with patch('cc_orchestrator.utils.logging.get_logger') as mock_get_logger:
+        with patch("cc_orchestrator.utils.logging.get_logger") as mock_get_logger:
             mock_logger = Mock()
             mock_get_logger.return_value = mock_logger
 
@@ -823,11 +823,12 @@ class TestHandleErrorsDecorator:
 
     def test_handle_errors_no_reraise(self):
         """Test handle_errors decorator with reraise=False."""
+
         @handle_errors(reraise=False)
         def test_function():
             raise ValueError("Test error")
 
-        with patch('cc_orchestrator.utils.logging.get_logger') as mock_get_logger:
+        with patch("cc_orchestrator.utils.logging.get_logger") as mock_get_logger:
             mock_logger = Mock()
             mock_get_logger.return_value = mock_logger
 
@@ -838,11 +839,12 @@ class TestHandleErrorsDecorator:
 
     def test_handle_errors_custom_log_context(self):
         """Test handle_errors decorator with custom log context."""
+
         @handle_errors(log_context=LogContext.WEB)
         def test_function():
             return "success"
 
-        with patch('cc_orchestrator.utils.logging.get_logger') as mock_get_logger:
+        with patch("cc_orchestrator.utils.logging.get_logger") as mock_get_logger:
             mock_logger = Mock()
             mock_get_logger.return_value = mock_logger
 
@@ -854,6 +856,7 @@ class TestHandleErrorsDecorator:
 
     def test_handle_errors_preserves_function_metadata(self):
         """Test handle_errors decorator preserves function metadata."""
+
         @handle_errors()
         def test_function():
             """Test docstring"""
@@ -868,12 +871,13 @@ class TestLogPerformanceDecorator:
 
     def test_log_performance_successful_execution(self):
         """Test log_performance decorator with successful execution."""
+
         @log_performance()
         def test_function():
             time.sleep(0.01)  # Small delay for timing
             return "success"
 
-        with patch('cc_orchestrator.utils.logging.get_logger') as mock_get_logger:
+        with patch("cc_orchestrator.utils.logging.get_logger") as mock_get_logger:
             mock_logger = Mock()
             mock_get_logger.return_value = mock_logger
 
@@ -881,7 +885,7 @@ class TestLogPerformanceDecorator:
 
             assert result == "success"
             assert mock_logger.debug.call_count == 1  # Performance tracking started
-            assert mock_logger.info.call_count == 1   # Performance completed
+            assert mock_logger.info.call_count == 1  # Performance completed
 
             info_call = mock_logger.info.call_args
             assert "Performance: test_function completed" in info_call[0][0]
@@ -891,12 +895,13 @@ class TestLogPerformanceDecorator:
 
     def test_log_performance_with_exception(self):
         """Test log_performance decorator when function raises exception."""
+
         @log_performance()
         def test_function():
             time.sleep(0.01)  # Small delay for timing
             raise ValueError("Test error")
 
-        with patch('cc_orchestrator.utils.logging.get_logger') as mock_get_logger:
+        with patch("cc_orchestrator.utils.logging.get_logger") as mock_get_logger:
             mock_logger = Mock()
             mock_get_logger.return_value = mock_logger
 
@@ -914,11 +919,12 @@ class TestLogPerformanceDecorator:
 
     def test_log_performance_custom_context(self):
         """Test log_performance decorator with custom log context."""
+
         @log_performance(log_context=LogContext.DATABASE)
         def test_function():
             return "success"
 
-        with patch('cc_orchestrator.utils.logging.get_logger') as mock_get_logger:
+        with patch("cc_orchestrator.utils.logging.get_logger") as mock_get_logger:
             mock_logger = Mock()
             mock_get_logger.return_value = mock_logger
 
@@ -930,12 +936,13 @@ class TestLogPerformanceDecorator:
 
     def test_log_performance_timing_accuracy(self):
         """Test log_performance decorator measures time accurately."""
+
         @log_performance()
         def test_function():
             time.sleep(0.1)  # 100ms delay
             return "success"
 
-        with patch('cc_orchestrator.utils.logging.get_logger') as mock_get_logger:
+        with patch("cc_orchestrator.utils.logging.get_logger") as mock_get_logger:
             mock_logger = Mock()
             mock_get_logger.return_value = mock_logger
 
@@ -947,6 +954,7 @@ class TestLogPerformanceDecorator:
 
     def test_log_performance_preserves_function_metadata(self):
         """Test log_performance decorator preserves function metadata."""
+
         @log_performance()
         def test_function():
             """Test docstring"""
@@ -961,11 +969,12 @@ class TestAuditLogDecorator:
 
     def test_audit_log_successful_execution(self):
         """Test audit_log decorator with successful execution."""
+
         @audit_log("user_login")
         def test_function(username):
             return f"logged in {username}"
 
-        with patch('cc_orchestrator.utils.logging.get_logger') as mock_get_logger:
+        with patch("cc_orchestrator.utils.logging.get_logger") as mock_get_logger:
             mock_logger = Mock()
             mock_get_logger.return_value = mock_logger
 
@@ -984,18 +993,19 @@ class TestAuditLogDecorator:
 
     def test_audit_log_with_exception(self):
         """Test audit_log decorator when function raises exception."""
+
         @audit_log("dangerous_operation")
         def test_function():
             raise PermissionError("Access denied")
 
-        with patch('cc_orchestrator.utils.logging.get_logger') as mock_get_logger:
+        with patch("cc_orchestrator.utils.logging.get_logger") as mock_get_logger:
             mock_logger = Mock()
             mock_get_logger.return_value = mock_logger
 
             with pytest.raises(PermissionError):
                 test_function()
 
-            assert mock_logger.info.call_count == 1   # Started
+            assert mock_logger.info.call_count == 1  # Started
             assert mock_logger.error.call_count == 1  # Failed
 
             error_call = mock_logger.error.call_args
@@ -1005,11 +1015,12 @@ class TestAuditLogDecorator:
 
     def test_audit_log_custom_context(self):
         """Test audit_log decorator with custom log context."""
+
         @audit_log("system_config", log_context=LogContext.CLI)
         def test_function():
             return "configured"
 
-        with patch('cc_orchestrator.utils.logging.get_logger') as mock_get_logger:
+        with patch("cc_orchestrator.utils.logging.get_logger") as mock_get_logger:
             mock_logger = Mock()
             mock_get_logger.return_value = mock_logger
 
@@ -1021,11 +1032,12 @@ class TestAuditLogDecorator:
 
     def test_audit_log_args_hashing(self):
         """Test audit_log decorator hashes function arguments."""
+
         @audit_log("data_access")
         def test_function(data_id, sensitive_info):
             return "accessed"
 
-        with patch('cc_orchestrator.utils.logging.get_logger') as mock_get_logger:
+        with patch("cc_orchestrator.utils.logging.get_logger") as mock_get_logger:
             mock_logger = Mock()
             mock_get_logger.return_value = mock_logger
 
@@ -1037,11 +1049,12 @@ class TestAuditLogDecorator:
 
     def test_audit_log_logger_name(self):
         """Test audit_log decorator uses correct logger name."""
+
         @audit_log("test_action")
         def test_function():
             return "done"
 
-        with patch('cc_orchestrator.utils.logging.get_logger') as mock_get_logger:
+        with patch("cc_orchestrator.utils.logging.get_logger") as mock_get_logger:
             mock_logger = Mock()
             mock_get_logger.return_value = mock_logger
 
@@ -1052,6 +1065,7 @@ class TestAuditLogDecorator:
 
     def test_audit_log_preserves_function_metadata(self):
         """Test audit_log decorator preserves function metadata."""
+
         @audit_log("test_action")
         def test_function():
             """Test docstring"""
@@ -1075,7 +1089,7 @@ class TestModuleLevelLogger:
 
     def test_orchestrator_logger_functionality(self):
         """Test orchestrator_logger can be used for logging."""
-        with patch('logging.getLogger') as mock_get_logger:
+        with patch("logging.getLogger") as mock_get_logger:
             mock_logger = Mock()
             mock_get_logger.return_value = mock_logger
 
@@ -1086,7 +1100,7 @@ class TestModuleLevelLogger:
             mock_logger.log.assert_called_once_with(
                 logging.INFO,
                 "Test module-level logging",
-                extra={"context": "orchestrator"}
+                extra={"context": "orchestrator"},
             )
 
 
@@ -1095,7 +1109,7 @@ class TestIntegrationScenarios:
 
     def test_comprehensive_logging_workflow(self):
         """Test comprehensive logging workflow with all components."""
-        with patch('cc_orchestrator.utils.logging.get_logger') as mock_get_logger:
+        with patch("cc_orchestrator.utils.logging.get_logger") as mock_get_logger:
             mock_logger = Mock()
             mock_get_logger.return_value = mock_logger
 
@@ -1114,17 +1128,20 @@ class TestIntegrationScenarios:
             assert result == "processed 9 items"
             # Verify multiple logging calls were made
             assert mock_logger.debug.call_count >= 2  # handle_errors + performance
-            assert mock_logger.info.call_count >= 3   # audit start/complete + performance + custom
+            assert (
+                mock_logger.info.call_count >= 3
+            )  # audit start/complete + performance + custom
 
     def test_exception_handling_with_structured_logging(self):
         """Test exception handling integrates properly with structured logging."""
+
         @handle_errors(log_context=LogContext.TASK)
         def failing_function():
             logger = get_logger(__name__, LogContext.TASK)
             logger.set_instance_id("failing-instance")
             raise TaskError("Task execution failed", {"task_type": "complex"})
 
-        with patch('cc_orchestrator.utils.logging.get_logger') as mock_get_logger:
+        with patch("cc_orchestrator.utils.logging.get_logger") as mock_get_logger:
             mock_logger = Mock()
             mock_get_logger.return_value = mock_logger
 
@@ -1156,12 +1173,12 @@ class TestIntegrationScenarios:
             ConfigurationError("config error"),
             IntegrationError("integration error"),
             DatabaseError("database error"),
-            TmuxError("tmux error")
+            TmuxError("tmux error"),
         ]
 
         for exc in exceptions:
             assert isinstance(exc, CCOrchestratorException)
             assert isinstance(exc, Exception)
-            assert hasattr(exc, 'message')
-            assert hasattr(exc, 'context')
-            assert hasattr(exc, 'timestamp')
+            assert hasattr(exc, "message")
+            assert hasattr(exc, "context")
+            assert hasattr(exc, "timestamp")

@@ -52,7 +52,7 @@ class TestAlert:
             level="warning",
             message="Test alert message",
             details={"key": "value"},
-            timestamp=datetime.now()
+            timestamp=datetime.now(),
         )
 
         assert alert.instance_id == 123
@@ -91,9 +91,7 @@ class TestAlert:
     def test_alert_arbitrary_attributes(self):
         """Test Alert accepts arbitrary attributes."""
         alert = Alert(
-            custom_field="custom_value",
-            another_field=42,
-            nested_data={"nested": True}
+            custom_field="custom_value", another_field=42, nested_data={"nested": True}
         )
 
         assert alert.custom_field == "custom_value"
@@ -111,7 +109,7 @@ class TestRecoveryAttempt:
             attempt_type="automatic",
             success=True,
             error_message=None,
-            duration_ms=1500
+            duration_ms=1500,
         )
 
         assert recovery.instance_id == 123
@@ -140,9 +138,7 @@ class TestRecoveryAttempt:
     def test_recovery_attempt_arbitrary_attributes(self):
         """Test RecoveryAttempt accepts arbitrary attributes."""
         recovery = RecoveryAttempt(
-            metadata={"key": "value"},
-            recovery_data=[1, 2, 3],
-            timestamp=datetime.now()
+            metadata={"key": "value"}, recovery_data=[1, 2, 3], timestamp=datetime.now()
         )
 
         assert recovery.metadata == {"key": "value"}
@@ -173,7 +169,7 @@ class TestInstanceOperations:
         """Test listing instances without filters."""
         mock_instances = [Mock(spec=Instance), Mock(spec=Instance)]
 
-        with patch('cc_orchestrator.web.crud_adapter.InstanceCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.InstanceCRUD") as mock_crud:
             mock_crud.list_all.return_value = mock_instances
 
             crud = CRUDBase(Mock(spec=Session))
@@ -188,13 +184,11 @@ class TestInstanceOperations:
         """Test listing instances with string status filter."""
         mock_instances = [Mock(spec=Instance)]
 
-        with patch('cc_orchestrator.web.crud_adapter.InstanceCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.InstanceCRUD") as mock_crud:
             mock_crud.list_all.return_value = mock_instances
 
             crud = CRUDBase(Mock(spec=Session))
-            instances, total = await crud.list_instances(
-                filters={"status": "active"}
-            )
+            instances, total = await crud.list_instances(filters={"status": "active"})
 
             assert instances == mock_instances
             assert total == 1
@@ -206,7 +200,7 @@ class TestInstanceOperations:
         """Test listing instances with enum status filter."""
         mock_instances = [Mock(spec=Instance)]
 
-        with patch('cc_orchestrator.web.crud_adapter.InstanceCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.InstanceCRUD") as mock_crud:
             mock_crud.list_all.return_value = mock_instances
 
             crud = CRUDBase(Mock(spec=Session))
@@ -222,7 +216,7 @@ class TestInstanceOperations:
         """Test listing instances with pagination."""
         mock_instances = [Mock(spec=Instance) for _ in range(5)]
 
-        with patch('cc_orchestrator.web.crud_adapter.InstanceCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.InstanceCRUD") as mock_crud:
             mock_crud.list_all.return_value = mock_instances
 
             crud = CRUDBase(Mock(spec=Session))
@@ -238,10 +232,10 @@ class TestInstanceOperations:
         instance_data = {
             "issue_id": "ISSUE-123",
             "workspace_path": "/path/to/workspace",
-            "branch_name": "feature/test"
+            "branch_name": "feature/test",
         }
 
-        with patch('cc_orchestrator.web.crud_adapter.InstanceCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.InstanceCRUD") as mock_crud:
             mock_crud.create.return_value = mock_instance
 
             crud = CRUDBase(Mock(spec=Session))
@@ -255,12 +249,9 @@ class TestInstanceOperations:
         """Test creating instance with string status."""
         mock_instance = Mock(spec=Instance)
         mock_session = Mock(spec=Session)
-        instance_data = {
-            "issue_id": "ISSUE-123",
-            "status": "active"
-        }
+        instance_data = {"issue_id": "ISSUE-123", "status": "active"}
 
-        with patch('cc_orchestrator.web.crud_adapter.InstanceCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.InstanceCRUD") as mock_crud:
             mock_crud.create.return_value = mock_instance
 
             crud = CRUDBase(mock_session)
@@ -275,12 +266,9 @@ class TestInstanceOperations:
         """Test creating instance with enum status."""
         mock_instance = Mock(spec=Instance)
         mock_session = Mock(spec=Session)
-        instance_data = {
-            "issue_id": "ISSUE-123",
-            "status": InstanceStatus.ACTIVE
-        }
+        instance_data = {"issue_id": "ISSUE-123", "status": InstanceStatus.ACTIVE}
 
-        with patch('cc_orchestrator.web.crud_adapter.InstanceCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.InstanceCRUD") as mock_crud:
             mock_crud.create.return_value = mock_instance
 
             crud = CRUDBase(mock_session)
@@ -294,7 +282,7 @@ class TestInstanceOperations:
         """Test getting instance by ID successfully."""
         mock_instance = Mock(spec=Instance)
 
-        with patch('cc_orchestrator.web.crud_adapter.InstanceCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.InstanceCRUD") as mock_crud:
             mock_crud.get_by_id.return_value = mock_instance
 
             crud = CRUDBase(Mock(spec=Session))
@@ -306,7 +294,7 @@ class TestInstanceOperations:
     @pytest.mark.asyncio
     async def test_get_instance_not_found(self):
         """Test getting instance by ID when not found."""
-        with patch('cc_orchestrator.web.crud_adapter.InstanceCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.InstanceCRUD") as mock_crud:
             mock_crud.get_by_id.side_effect = Exception("Not found")
 
             crud = CRUDBase(Mock(spec=Session))
@@ -330,7 +318,7 @@ class TestInstanceOperations:
         """Test getting instance by issue ID successfully."""
         mock_instance = Mock(spec=Instance)
 
-        with patch('cc_orchestrator.web.crud_adapter.InstanceCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.InstanceCRUD") as mock_crud:
             mock_crud.get_by_issue_id.return_value = mock_instance
 
             crud = CRUDBase(Mock(spec=Session))
@@ -342,7 +330,7 @@ class TestInstanceOperations:
     @pytest.mark.asyncio
     async def test_get_instance_by_issue_id_not_found(self):
         """Test getting instance by issue ID when not found."""
-        with patch('cc_orchestrator.web.crud_adapter.InstanceCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.InstanceCRUD") as mock_crud:
             mock_crud.get_by_issue_id.side_effect = Exception("Not found")
 
             crud = CRUDBase(Mock(spec=Session))
@@ -356,7 +344,7 @@ class TestInstanceOperations:
         mock_instance = Mock(spec=Instance)
         update_data = {"workspace_path": "/new/path"}
 
-        with patch('cc_orchestrator.web.crud_adapter.InstanceCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.InstanceCRUD") as mock_crud:
             mock_crud.update.return_value = mock_instance
 
             crud = CRUDBase(Mock(spec=Session))
@@ -371,7 +359,7 @@ class TestInstanceOperations:
         mock_instance = Mock(spec=Instance)
         update_data = {"status": "completed"}
 
-        with patch('cc_orchestrator.web.crud_adapter.InstanceCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.InstanceCRUD") as mock_crud:
             mock_crud.update.return_value = mock_instance
 
             crud = CRUDBase(Mock(spec=Session))
@@ -388,7 +376,7 @@ class TestInstanceOperations:
         mock_instance = Mock(spec=Instance)
         update_data = {"status": InstanceStatus.FAILED}
 
-        with patch('cc_orchestrator.web.crud_adapter.InstanceCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.InstanceCRUD") as mock_crud:
             mock_crud.update.return_value = mock_instance
 
             crud = CRUDBase(Mock(spec=Session))
@@ -399,7 +387,7 @@ class TestInstanceOperations:
     @pytest.mark.asyncio
     async def test_delete_instance(self):
         """Test deleting instance."""
-        with patch('cc_orchestrator.web.crud_adapter.InstanceCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.InstanceCRUD") as mock_crud:
             crud = CRUDBase(Mock(spec=Session))
             await crud.delete_instance(123)
 
@@ -414,7 +402,7 @@ class TestTaskOperations:
         """Test listing tasks without filters."""
         mock_tasks = [Mock(spec=Task), Mock(spec=Task)]
 
-        with patch('cc_orchestrator.web.crud_adapter.TaskCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.TaskCRUD") as mock_crud:
             mock_crud.list_pending.return_value = mock_tasks
 
             crud = CRUDBase(Mock(spec=Session))
@@ -428,13 +416,11 @@ class TestTaskOperations:
         """Test listing tasks with instance_id filter."""
         mock_tasks = [Mock(spec=Task)]
 
-        with patch('cc_orchestrator.web.crud_adapter.TaskCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.TaskCRUD") as mock_crud:
             mock_crud.list_by_instance.return_value = mock_tasks
 
             crud = CRUDBase(Mock(spec=Session))
-            tasks, total = await crud.list_tasks(
-                filters={"instance_id": 123}
-            )
+            tasks, total = await crud.list_tasks(filters={"instance_id": 123})
 
             assert tasks == mock_tasks
             assert total == 1
@@ -445,7 +431,7 @@ class TestTaskOperations:
         """Test listing tasks with instance_id and status filters."""
         mock_tasks = [Mock(spec=Task)]
 
-        with patch('cc_orchestrator.web.crud_adapter.TaskCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.TaskCRUD") as mock_crud:
             mock_crud.list_by_instance.return_value = mock_tasks
 
             crud = CRUDBase(Mock(spec=Session))
@@ -464,7 +450,7 @@ class TestTaskOperations:
         """Test listing tasks with pagination for general listing."""
         mock_tasks = [Mock(spec=Task) for _ in range(10)]
 
-        with patch('cc_orchestrator.web.crud_adapter.TaskCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.TaskCRUD") as mock_crud:
             mock_crud.list_pending.return_value = mock_tasks
 
             crud = CRUDBase(Mock(spec=Session))
@@ -479,7 +465,7 @@ class TestTaskOperations:
         """Test listing tasks with pagination and instance filter."""
         mock_tasks = [Mock(spec=Task) for _ in range(8)]
 
-        with patch('cc_orchestrator.web.crud_adapter.TaskCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.TaskCRUD") as mock_crud:
             mock_crud.list_by_instance.return_value = mock_tasks
 
             crud = CRUDBase(Mock(spec=Session))
@@ -494,12 +480,9 @@ class TestTaskOperations:
     async def test_create_task_basic(self):
         """Test creating task with basic data."""
         mock_task = Mock(spec=Task)
-        task_data = {
-            "title": "Test Task",
-            "description": "Test description"
-        }
+        task_data = {"title": "Test Task", "description": "Test description"}
 
-        with patch('cc_orchestrator.web.crud_adapter.TaskCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.TaskCRUD") as mock_crud:
             mock_crud.create.return_value = mock_task
 
             crud = CRUDBase(Mock(spec=Session))
@@ -512,12 +495,9 @@ class TestTaskOperations:
     async def test_create_task_with_string_priority(self):
         """Test creating task with string priority."""
         mock_task = Mock(spec=Task)
-        task_data = {
-            "title": "Test Task",
-            "priority": "high"
-        }
+        task_data = {"title": "Test Task", "priority": "high"}
 
-        with patch('cc_orchestrator.web.crud_adapter.TaskCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.TaskCRUD") as mock_crud:
             mock_crud.create.return_value = mock_task
 
             crud = CRUDBase(Mock(spec=Session))
@@ -532,12 +512,9 @@ class TestTaskOperations:
     async def test_create_task_with_integer_priority(self):
         """Test creating task with integer priority."""
         mock_task = Mock(spec=Task)
-        task_data = {
-            "title": "Test Task",
-            "priority": 4  # Should map to URGENT
-        }
+        task_data = {"title": "Test Task", "priority": 4}  # Should map to URGENT
 
-        with patch('cc_orchestrator.web.crud_adapter.TaskCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.TaskCRUD") as mock_crud:
             mock_crud.create.return_value = mock_task
 
             crud = CRUDBase(Mock(spec=Session))
@@ -554,10 +531,10 @@ class TestTaskOperations:
         mock_task = Mock(spec=Task)
         task_data = {
             "title": "Test Task",
-            "priority": 99  # Invalid, should default to MEDIUM
+            "priority": 99,  # Invalid, should default to MEDIUM
         }
 
-        with patch('cc_orchestrator.web.crud_adapter.TaskCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.TaskCRUD") as mock_crud:
             mock_crud.create.return_value = mock_task
 
             crud = CRUDBase(Mock(spec=Session))
@@ -582,10 +559,10 @@ class TestTaskOperations:
             "due_date": due_date,
             "estimated_duration": 3600,
             "requirements": {"python": "3.9+"},
-            "extra_metadata": {"source": "api"}
+            "extra_metadata": {"source": "api"},
         }
 
-        with patch('cc_orchestrator.web.crud_adapter.TaskCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.TaskCRUD") as mock_crud:
             mock_crud.create.return_value = mock_task
 
             crud = CRUDBase(Mock(spec=Session))
@@ -602,7 +579,7 @@ class TestTaskOperations:
         """Test getting task by ID successfully."""
         mock_task = Mock(spec=Task)
 
-        with patch('cc_orchestrator.web.crud_adapter.TaskCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.TaskCRUD") as mock_crud:
             mock_crud.get_by_id.return_value = mock_task
 
             crud = CRUDBase(Mock(spec=Session))
@@ -614,7 +591,7 @@ class TestTaskOperations:
     @pytest.mark.asyncio
     async def test_get_task_not_found(self):
         """Test getting task by ID when not found."""
-        with patch('cc_orchestrator.web.crud_adapter.TaskCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.TaskCRUD") as mock_crud:
             mock_crud.get_by_id.side_effect = Exception("Not found")
 
             crud = CRUDBase(Mock(spec=Session))
@@ -628,7 +605,7 @@ class TestTaskOperations:
         mock_task = Mock(spec=Task)
         update_data = {"status": "completed"}
 
-        with patch('cc_orchestrator.web.crud_adapter.TaskCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.TaskCRUD") as mock_crud:
             mock_crud.update_status.return_value = mock_task
 
             crud = CRUDBase(Mock(spec=Session))
@@ -646,7 +623,7 @@ class TestTaskOperations:
         mock_task = Mock(spec=Task)
         update_data = {"instance_id": 456}
 
-        with patch('cc_orchestrator.web.crud_adapter.TaskCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.TaskCRUD") as mock_crud:
             mock_crud.update.return_value = mock_task
 
             crud = CRUDBase(Mock(spec=Session))
@@ -662,7 +639,7 @@ class TestTaskOperations:
         mock_task = Mock(spec=Task)
         update_data = {"status": TaskStatus.IN_PROGRESS}
 
-        with patch('cc_orchestrator.web.crud_adapter.TaskCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.TaskCRUD") as mock_crud:
             mock_crud.update_status.return_value = mock_task
 
             crud = CRUDBase(Mock(spec=Session))
@@ -675,7 +652,7 @@ class TestTaskOperations:
         """Test deleting task (validates existence)."""
         mock_task = Mock(spec=Task)
 
-        with patch('cc_orchestrator.web.crud_adapter.TaskCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.TaskCRUD") as mock_crud:
             mock_crud.get_by_id.return_value = mock_task
 
             crud = CRUDBase(Mock(spec=Session))
@@ -693,7 +670,7 @@ class TestWorktreeOperations:
         """Test listing worktrees without filters."""
         mock_worktrees = [Mock(spec=Worktree), Mock(spec=Worktree)]
 
-        with patch('cc_orchestrator.web.crud_adapter.WorktreeCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.WorktreeCRUD") as mock_crud:
             mock_crud.list_all.return_value = mock_worktrees
 
             crud = CRUDBase(Mock(spec=Session))
@@ -707,13 +684,11 @@ class TestWorktreeOperations:
         """Test listing worktrees with string status filter."""
         mock_worktrees = [Mock(spec=Worktree)]
 
-        with patch('cc_orchestrator.web.crud_adapter.WorktreeCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.WorktreeCRUD") as mock_crud:
             mock_crud.list_by_status.return_value = mock_worktrees
 
             crud = CRUDBase(Mock(spec=Session))
-            worktrees, total = await crud.list_worktrees(
-                filters={"status": "active"}
-            )
+            worktrees, total = await crud.list_worktrees(filters={"status": "active"})
 
             assert worktrees == mock_worktrees
             assert total == 1
@@ -725,7 +700,7 @@ class TestWorktreeOperations:
         """Test listing worktrees with enum status filter."""
         mock_worktrees = [Mock(spec=Worktree)]
 
-        with patch('cc_orchestrator.web.crud_adapter.WorktreeCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.WorktreeCRUD") as mock_crud:
             mock_crud.list_by_status.return_value = mock_worktrees
 
             crud = CRUDBase(Mock(spec=Session))
@@ -741,7 +716,7 @@ class TestWorktreeOperations:
         """Test listing worktrees with pagination."""
         mock_worktrees = [Mock(spec=Worktree) for _ in range(10)]
 
-        with patch('cc_orchestrator.web.crud_adapter.WorktreeCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.WorktreeCRUD") as mock_crud:
             mock_crud.list_all.return_value = mock_worktrees
 
             crud = CRUDBase(Mock(spec=Session))
@@ -757,10 +732,10 @@ class TestWorktreeOperations:
         worktree_data = {
             "name": "test-worktree",
             "path": "/path/to/worktree",
-            "branch_name": "feature/test"
+            "branch_name": "feature/test",
         }
 
-        with patch('cc_orchestrator.web.crud_adapter.WorktreeCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.WorktreeCRUD") as mock_crud:
             mock_crud.create.return_value = mock_worktree
 
             crud = CRUDBase(Mock(spec=Session))
@@ -780,10 +755,10 @@ class TestWorktreeOperations:
             "repository_url": "https://github.com/user/repo.git",
             "instance_id": 123,
             "git_config": {"user.email": "test@example.com"},
-            "extra_metadata": {"project": "test"}
+            "extra_metadata": {"project": "test"},
         }
 
-        with patch('cc_orchestrator.web.crud_adapter.WorktreeCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.WorktreeCRUD") as mock_crud:
             mock_crud.create.return_value = mock_worktree
 
             crud = CRUDBase(Mock(spec=Session))
@@ -799,7 +774,7 @@ class TestWorktreeOperations:
         """Test getting worktree by ID successfully."""
         mock_worktree = Mock(spec=Worktree)
 
-        with patch('cc_orchestrator.web.crud_adapter.WorktreeCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.WorktreeCRUD") as mock_crud:
             mock_crud.get_by_id.return_value = mock_worktree
 
             crud = CRUDBase(Mock(spec=Session))
@@ -811,7 +786,7 @@ class TestWorktreeOperations:
     @pytest.mark.asyncio
     async def test_get_worktree_not_found(self):
         """Test getting worktree by ID when not found."""
-        with patch('cc_orchestrator.web.crud_adapter.WorktreeCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.WorktreeCRUD") as mock_crud:
             mock_crud.get_by_id.side_effect = Exception("Not found")
 
             crud = CRUDBase(Mock(spec=Session))
@@ -824,19 +799,21 @@ class TestWorktreeOperations:
         """Test getting worktree by path successfully."""
         mock_worktree = Mock(spec=Worktree)
 
-        with patch('cc_orchestrator.web.crud_adapter.WorktreeCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.WorktreeCRUD") as mock_crud:
             mock_crud.get_by_path.return_value = mock_worktree
 
             crud = CRUDBase(Mock(spec=Session))
             result = await crud.get_worktree_by_path("/path/to/worktree")
 
             assert result is mock_worktree
-            mock_crud.get_by_path.assert_called_once_with(crud.session, "/path/to/worktree")
+            mock_crud.get_by_path.assert_called_once_with(
+                crud.session, "/path/to/worktree"
+            )
 
     @pytest.mark.asyncio
     async def test_get_worktree_by_path_not_found(self):
         """Test getting worktree by path when not found."""
-        with patch('cc_orchestrator.web.crud_adapter.WorktreeCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.WorktreeCRUD") as mock_crud:
             mock_crud.get_by_path.side_effect = Exception("Not found")
 
             crud = CRUDBase(Mock(spec=Session))
@@ -851,7 +828,7 @@ class TestWorktreeOperations:
         mock_worktree.status = WorktreeStatus.ACTIVE
         update_data = {"status": "inactive"}
 
-        with patch('cc_orchestrator.web.crud_adapter.WorktreeCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.WorktreeCRUD") as mock_crud:
             mock_crud.get_by_id.return_value = mock_worktree
             mock_crud.update_status.return_value = mock_worktree
 
@@ -868,12 +845,9 @@ class TestWorktreeOperations:
         """Test updating worktree with git information."""
         mock_worktree = Mock(spec=Worktree)
         mock_worktree.status = WorktreeStatus.ACTIVE
-        update_data = {
-            "current_commit": "abc123",
-            "has_uncommitted_changes": True
-        }
+        update_data = {"current_commit": "abc123", "has_uncommitted_changes": True}
 
-        with patch('cc_orchestrator.web.crud_adapter.WorktreeCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.WorktreeCRUD") as mock_crud:
             mock_crud.get_by_id.return_value = mock_worktree
             mock_crud.update_status.return_value = mock_worktree
 
@@ -894,10 +868,10 @@ class TestWorktreeOperations:
         update_data = {
             "status": WorktreeStatus.SYNCHRONIZING,
             "current_commit": "def456",
-            "has_uncommitted_changes": False
+            "has_uncommitted_changes": False,
         }
 
-        with patch('cc_orchestrator.web.crud_adapter.WorktreeCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.WorktreeCRUD") as mock_crud:
             mock_crud.get_by_id.return_value = mock_worktree
             mock_crud.update_status.return_value = mock_worktree
 
@@ -912,7 +886,7 @@ class TestWorktreeOperations:
         mock_worktree = Mock(spec=Worktree)
         update_data = {"description": "Updated description"}
 
-        with patch('cc_orchestrator.web.crud_adapter.WorktreeCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.WorktreeCRUD") as mock_crud:
             mock_crud.get_by_id.return_value = mock_worktree
 
             crud = CRUDBase(Mock(spec=Session))
@@ -925,7 +899,7 @@ class TestWorktreeOperations:
     @pytest.mark.asyncio
     async def test_delete_worktree(self):
         """Test deleting worktree."""
-        with patch('cc_orchestrator.web.crud_adapter.WorktreeCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.WorktreeCRUD") as mock_crud:
             crud = CRUDBase(Mock(spec=Session))
             await crud.delete_worktree(123)
 
@@ -948,12 +922,9 @@ class TestConfigurationOperations:
     async def test_create_configuration_basic(self):
         """Test creating configuration with basic data."""
         mock_config = Mock(spec=Configuration)
-        config_data = {
-            "key": "test.setting",
-            "value": "test_value"
-        }
+        config_data = {"key": "test.setting", "value": "test_value"}
 
-        with patch('cc_orchestrator.web.crud_adapter.ConfigurationCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.ConfigurationCRUD") as mock_crud:
             mock_crud.create.return_value = mock_config
 
             crud = CRUDBase(Mock(spec=Session))
@@ -972,17 +943,17 @@ class TestConfigurationOperations:
             ("user", ConfigScope.USER),
             ("project", ConfigScope.PROJECT),
             ("instance", ConfigScope.INSTANCE),
-            ("unknown", ConfigScope.GLOBAL)  # Should default to GLOBAL
+            ("unknown", ConfigScope.GLOBAL),  # Should default to GLOBAL
         ]
 
-        with patch('cc_orchestrator.web.crud_adapter.ConfigurationCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.ConfigurationCRUD") as mock_crud:
             mock_crud.create.return_value = mock_config
 
             for scope_str, expected_enum in scopes_to_test:
                 config_data = {
                     "key": f"test.{scope_str}",
                     "value": "test_value",
-                    "scope": scope_str
+                    "scope": scope_str,
                 }
 
                 crud = CRUDBase(Mock(spec=Session))
@@ -1003,10 +974,10 @@ class TestConfigurationOperations:
             "instance_id": 123,
             "description": "Test configuration",
             "is_secret": True,
-            "extra_metadata": {"source": "api"}
+            "extra_metadata": {"source": "api"},
         }
 
-        with patch('cc_orchestrator.web.crud_adapter.ConfigurationCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.ConfigurationCRUD") as mock_crud:
             mock_crud.create.return_value = mock_config
 
             crud = CRUDBase(Mock(spec=Session))
@@ -1030,7 +1001,7 @@ class TestConfigurationOperations:
         """Test getting configuration by key and scope successfully."""
         mock_config = Mock(spec=Configuration)
 
-        with patch('cc_orchestrator.web.crud_adapter.ConfigurationCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.ConfigurationCRUD") as mock_crud:
             mock_crud.get_by_key_scope.return_value = mock_config
 
             crud = CRUDBase(Mock(spec=Session))
@@ -1046,7 +1017,7 @@ class TestConfigurationOperations:
         """Test getting configuration by key with string scope conversion."""
         mock_config = Mock(spec=Configuration)
 
-        with patch('cc_orchestrator.web.crud_adapter.ConfigurationCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.ConfigurationCRUD") as mock_crud:
             mock_crud.get_by_key_scope.return_value = mock_config
 
             crud = CRUDBase(Mock(spec=Session))
@@ -1062,7 +1033,7 @@ class TestConfigurationOperations:
     @pytest.mark.asyncio
     async def test_get_configuration_by_key_scope_not_found(self):
         """Test getting configuration by key and scope when not found."""
-        with patch('cc_orchestrator.web.crud_adapter.ConfigurationCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.ConfigurationCRUD") as mock_crud:
             mock_crud.get_by_key_scope.side_effect = Exception("Not found")
 
             crud = CRUDBase(Mock(spec=Session))
@@ -1077,7 +1048,7 @@ class TestConfigurationOperations:
         """Test getting exact configuration by key and scope successfully."""
         mock_config = Mock(spec=Configuration)
 
-        with patch('cc_orchestrator.web.crud_adapter.ConfigurationCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.ConfigurationCRUD") as mock_crud:
             mock_crud.get_exact_by_key_scope.return_value = mock_config
 
             crud = CRUDBase(Mock(spec=Session))
@@ -1095,7 +1066,7 @@ class TestConfigurationOperations:
         """Test getting exact configuration with enum scope."""
         mock_config = Mock(spec=Configuration)
 
-        with patch('cc_orchestrator.web.crud_adapter.ConfigurationCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.ConfigurationCRUD") as mock_crud:
             mock_crud.get_exact_by_key_scope.return_value = mock_config
 
             crud = CRUDBase(Mock(spec=Session))
@@ -1108,7 +1079,7 @@ class TestConfigurationOperations:
     @pytest.mark.asyncio
     async def test_get_exact_configuration_by_key_scope_not_found(self):
         """Test getting exact configuration when not found."""
-        with patch('cc_orchestrator.web.crud_adapter.ConfigurationCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.ConfigurationCRUD") as mock_crud:
             mock_crud.get_exact_by_key_scope.side_effect = Exception("Not found")
 
             crud = CRUDBase(Mock(spec=Session))
@@ -1147,14 +1118,12 @@ class TestHealthCheckOperations:
         """Test listing health checks with instance_id filter."""
         mock_checks = [Mock(spec=HealthCheck)]
 
-        with patch('cc_orchestrator.web.crud_adapter.HealthCheckCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.HealthCheckCRUD") as mock_crud:
             mock_crud.list_by_instance.return_value = mock_checks
             mock_crud.count_by_instance.return_value = 1
 
             crud = CRUDBase(Mock(spec=Session))
-            checks, total = await crud.list_health_checks(
-                filters={"instance_id": 123}
-            )
+            checks, total = await crud.list_health_checks(filters={"instance_id": 123})
 
             assert checks == mock_checks
             assert total == 1
@@ -1176,7 +1145,7 @@ class TestHealthCheckOperations:
         """Test listing health checks with pagination."""
         mock_checks = [Mock(spec=HealthCheck)]
 
-        with patch('cc_orchestrator.web.crud_adapter.HealthCheckCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.HealthCheckCRUD") as mock_crud:
             mock_crud.list_by_instance.return_value = mock_checks
             mock_crud.count_by_instance.return_value = 1
 
@@ -1200,10 +1169,10 @@ class TestHealthCheckOperations:
             "overall_status": "healthy",
             "check_results": {"cpu": "ok", "memory": "ok"},
             "duration_ms": 250,
-            "check_timestamp": datetime.now()
+            "check_timestamp": datetime.now(),
         }
 
-        with patch('cc_orchestrator.web.crud_adapter.HealthCheckCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.HealthCheckCRUD") as mock_crud:
             mock_crud.create.return_value = mock_check
 
             crud = CRUDBase(Mock(spec=Session))
@@ -1222,10 +1191,10 @@ class TestHealthCheckOperations:
             "overall_status": HealthStatus.DEGRADED,
             "check_results": {"cpu": "warning"},
             "duration_ms": 500,
-            "check_timestamp": datetime.now()
+            "check_timestamp": datetime.now(),
         }
 
-        with patch('cc_orchestrator.web.crud_adapter.HealthCheckCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.HealthCheckCRUD") as mock_crud:
             mock_crud.create.return_value = mock_check
 
             crud = CRUDBase(Mock(spec=Session))
@@ -1266,7 +1235,7 @@ class TestAlertOperations:
             "level": "error",
             "message": "System error occurred",
             "details": {"error_code": "E001"},
-            "timestamp": datetime.now()
+            "timestamp": datetime.now(),
         }
 
         crud = CRUDBase(Mock(spec=Session))
@@ -1288,7 +1257,7 @@ class TestAlertOperations:
             "alert_id": "MIN-001",
             "level": "info",
             "message": "Info message",
-            "timestamp": datetime.now()
+            "timestamp": datetime.now(),
         }
 
         crud = CRUDBase(Mock(spec=Session))
@@ -1317,7 +1286,7 @@ class TestAsyncExecution:
         mock_session = Mock(spec=Session)
 
         # Mock the asyncio.to_thread to capture the function being called
-        with patch('asyncio.to_thread') as mock_to_thread:
+        with patch("asyncio.to_thread") as mock_to_thread:
             mock_to_thread.return_value = Mock(spec=Instance)
 
             crud = CRUDBase(mock_session)
@@ -1334,17 +1303,19 @@ class TestAsyncExecution:
         mock_session = Mock(spec=Session)
         crud = CRUDBase(mock_session)
 
-        with patch('cc_orchestrator.web.crud_adapter.InstanceCRUD') as mock_instance_crud, \
-             patch('cc_orchestrator.web.crud_adapter.TaskCRUD') as mock_task_crud:
+        with (
+            patch(
+                "cc_orchestrator.web.crud_adapter.InstanceCRUD"
+            ) as mock_instance_crud,
+            patch("cc_orchestrator.web.crud_adapter.TaskCRUD") as mock_task_crud,
+        ):
 
             mock_instance_crud.get_by_id.return_value = Mock(spec=Instance)
             mock_task_crud.get_by_id.return_value = Mock(spec=Task)
 
             # Run multiple operations concurrently
             results = await asyncio.gather(
-                crud.get_instance(123),
-                crud.get_task(456),
-                crud.get_instance(789)
+                crud.get_instance(123), crud.get_task(456), crud.get_instance(789)
             )
 
             assert len(results) == 3
@@ -1353,7 +1324,7 @@ class TestAsyncExecution:
     @pytest.mark.asyncio
     async def test_exception_handling_in_async_context(self):
         """Test exception handling in async context."""
-        with patch('cc_orchestrator.web.crud_adapter.InstanceCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.InstanceCRUD") as mock_crud:
             mock_crud.get_by_id.side_effect = RuntimeError("Database error")
 
             crud = CRUDBase(Mock(spec=Session))
@@ -1369,7 +1340,7 @@ class TestEdgeCasesAndErrorHandling:
     @pytest.mark.asyncio
     async def test_create_instance_with_empty_data(self):
         """Test creating instance with minimal required data."""
-        with patch('cc_orchestrator.web.crud_adapter.InstanceCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.InstanceCRUD") as mock_crud:
             mock_crud.create.return_value = Mock(spec=Instance)
 
             crud = CRUDBase(Mock(spec=Session))
@@ -1381,7 +1352,7 @@ class TestEdgeCasesAndErrorHandling:
     @pytest.mark.asyncio
     async def test_list_tasks_empty_result(self):
         """Test listing tasks when no tasks exist."""
-        with patch('cc_orchestrator.web.crud_adapter.TaskCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.TaskCRUD") as mock_crud:
             mock_crud.list_pending.return_value = []
 
             crud = CRUDBase(Mock(spec=Session))
@@ -1396,7 +1367,7 @@ class TestEdgeCasesAndErrorHandling:
         mock_task = Mock(spec=Task)
         task_data = {"title": "Task without priority"}
 
-        with patch('cc_orchestrator.web.crud_adapter.TaskCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.TaskCRUD") as mock_crud:
             mock_crud.create.return_value = mock_task
 
             crud = CRUDBase(Mock(spec=Session))
@@ -1417,10 +1388,10 @@ class TestEdgeCasesAndErrorHandling:
             ("active", WorktreeStatus.ACTIVE),
             ("inactive", WorktreeStatus.INACTIVE),
             ("synchronizing", WorktreeStatus.SYNCHRONIZING),
-            ("error", WorktreeStatus.ERROR)
+            ("error", WorktreeStatus.ERROR),
         ]
 
-        with patch('cc_orchestrator.web.crud_adapter.WorktreeCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.WorktreeCRUD") as mock_crud:
             mock_crud.get_by_id.return_value = mock_worktree
             mock_crud.update_status.return_value = mock_worktree
 
@@ -1442,17 +1413,17 @@ class TestEdgeCasesAndErrorHandling:
             ("USER", ConfigScope.USER),
             ("Project", ConfigScope.PROJECT),
             ("INSTANCE", ConfigScope.INSTANCE),
-            ("invalid_scope", ConfigScope.GLOBAL)  # Should default
+            ("invalid_scope", ConfigScope.GLOBAL),  # Should default
         ]
 
-        with patch('cc_orchestrator.web.crud_adapter.ConfigurationCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.ConfigurationCRUD") as mock_crud:
             mock_crud.create.return_value = mock_config
 
             for scope_str, expected_enum in test_cases:
                 config_data = {
                     "key": f"test.{scope_str.lower()}",
                     "value": "test_value",
-                    "scope": scope_str
+                    "scope": scope_str,
                 }
 
                 crud = CRUDBase(Mock(spec=Session))
@@ -1470,16 +1441,16 @@ class TestEdgeCasesAndErrorHandling:
             (1, TaskPriority.LOW),
             (2, TaskPriority.MEDIUM),
             (3, TaskPriority.HIGH),
-            (4, TaskPriority.URGENT)
+            (4, TaskPriority.URGENT),
         ]
 
-        with patch('cc_orchestrator.web.crud_adapter.TaskCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.TaskCRUD") as mock_crud:
             mock_crud.create.return_value = mock_task
 
             for priority_int, expected_enum in priority_mappings:
                 task_data = {
                     "title": f"Task with priority {priority_int}",
-                    "priority": priority_int
+                    "priority": priority_int,
                 }
 
                 crud = CRUDBase(Mock(spec=Session))
@@ -1499,8 +1470,12 @@ class TestIntegrationScenarios:
         mock_instance.id = 123
         mock_task = Mock(spec=Task)
 
-        with patch('cc_orchestrator.web.crud_adapter.InstanceCRUD') as mock_instance_crud, \
-             patch('cc_orchestrator.web.crud_adapter.TaskCRUD') as mock_task_crud:
+        with (
+            patch(
+                "cc_orchestrator.web.crud_adapter.InstanceCRUD"
+            ) as mock_instance_crud,
+            patch("cc_orchestrator.web.crud_adapter.TaskCRUD") as mock_task_crud,
+        ):
 
             mock_instance_crud.create.return_value = mock_instance
             mock_task_crud.create.return_value = mock_task
@@ -1508,17 +1483,18 @@ class TestIntegrationScenarios:
             crud = CRUDBase(Mock(spec=Session))
 
             # Create instance
-            instance = await crud.create_instance({
-                "issue_id": "ISSUE-123",
-                "status": "active"
-            })
+            instance = await crud.create_instance(
+                {"issue_id": "ISSUE-123", "status": "active"}
+            )
 
             # Create task for the instance
-            task = await crud.create_task({
-                "title": "Setup worktree",
-                "instance_id": instance.id,
-                "priority": "high"
-            })
+            task = await crud.create_task(
+                {
+                    "title": "Setup worktree",
+                    "instance_id": instance.id,
+                    "priority": "high",
+                }
+            )
 
             assert instance is mock_instance
             assert task is mock_task
@@ -1530,7 +1506,7 @@ class TestIntegrationScenarios:
         mock_worktree.id = 456
         mock_worktree.status = WorktreeStatus.ACTIVE
 
-        with patch('cc_orchestrator.web.crud_adapter.WorktreeCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.WorktreeCRUD") as mock_crud:
             mock_crud.create.return_value = mock_worktree
             mock_crud.get_by_id.return_value = mock_worktree
             mock_crud.update_status.return_value = mock_worktree
@@ -1538,18 +1514,23 @@ class TestIntegrationScenarios:
             crud = CRUDBase(Mock(spec=Session))
 
             # Create worktree
-            worktree = await crud.create_worktree({
-                "name": "test-worktree",
-                "path": "/path/to/worktree",
-                "branch_name": "feature/test"
-            })
+            worktree = await crud.create_worktree(
+                {
+                    "name": "test-worktree",
+                    "path": "/path/to/worktree",
+                    "branch_name": "feature/test",
+                }
+            )
 
             # Update with git status
-            updated_worktree = await crud.update_worktree(worktree.id, {
-                "status": "synchronizing",
-                "current_commit": "abc123",
-                "has_uncommitted_changes": False
-            })
+            updated_worktree = await crud.update_worktree(
+                worktree.id,
+                {
+                    "status": "synchronizing",
+                    "current_commit": "abc123",
+                    "has_uncommitted_changes": False,
+                },
+            )
 
             # Delete worktree
             await crud.delete_worktree(worktree.id)
@@ -1563,7 +1544,7 @@ class TestIntegrationScenarios:
         mock_global_config = Mock(spec=Configuration)
         mock_instance_config = Mock(spec=Configuration)
 
-        with patch('cc_orchestrator.web.crud_adapter.ConfigurationCRUD') as mock_crud:
+        with patch("cc_orchestrator.web.crud_adapter.ConfigurationCRUD") as mock_crud:
             mock_crud.create.return_value = mock_global_config
             mock_crud.get_by_key_scope.return_value = mock_instance_config
             mock_crud.get_exact_by_key_scope.return_value = mock_global_config
@@ -1571,11 +1552,9 @@ class TestIntegrationScenarios:
             crud = CRUDBase(Mock(spec=Session))
 
             # Create global configuration
-            global_config = await crud.create_configuration({
-                "key": "api.timeout",
-                "value": "30",
-                "scope": "global"
-            })
+            global_config = await crud.create_configuration(
+                {"key": "api.timeout", "value": "30", "scope": "global"}
+            )
 
             # Get hierarchical configuration (may resolve to instance-specific)
             resolved_config = await crud.get_configuration_by_key_scope(

@@ -39,11 +39,12 @@ class TestBase:
     def test_base_class_exists(self):
         """Test Base declarative class is properly defined."""
         assert Base is not None
-        assert hasattr(Base, '__table_args__')
-        assert hasattr(Base, 'registry')
+        assert hasattr(Base, "__table_args__")
+        assert hasattr(Base, "registry")
 
     def test_base_inheritance(self):
         """Test Base can be used as parent class."""
+
         class TestModel(Base):
             __tablename__ = "test_model"
 
@@ -239,7 +240,7 @@ class TestInstanceModel:
             created_at=now,
             updated_at=now,
             last_activity=now,
-            extra_metadata={"custom": "data"}
+            extra_metadata={"custom": "data"},
         )
 
         assert instance.issue_id == "ISSUE-456"
@@ -274,11 +275,7 @@ class TestInstanceModel:
 
     def test_instance_repr(self):
         """Test instance __repr__ method."""
-        instance = Instance(
-            id=123,
-            issue_id="REPR-TEST",
-            status=InstanceStatus.RUNNING
-        )
+        instance = Instance(id=123, issue_id="REPR-TEST", status=InstanceStatus.RUNNING)
 
         repr_str = repr(instance)
         assert "Instance" in repr_str
@@ -344,7 +341,7 @@ class TestTaskModel:
             actual_duration=90,
             requirements={"python": "3.9+"},
             results={"output": "success"},
-            extra_metadata={"source": "api"}
+            extra_metadata={"source": "api"},
         )
 
         assert task.title == "Complete Task"
@@ -375,11 +372,7 @@ class TestTaskModel:
 
     def test_task_repr(self):
         """Test task __repr__ method."""
-        task = Task(
-            id=456,
-            title="Repr Task",
-            status=TaskStatus.COMPLETED
-        )
+        task = Task(id=456, title="Repr Task", status=TaskStatus.COMPLETED)
 
         repr_str = repr(task)
         assert "Task" in repr_str
@@ -416,9 +409,7 @@ class TestWorktreeModel:
     def test_worktree_creation_minimal(self):
         """Test creating worktree with minimal required fields."""
         worktree = Worktree(
-            name="test-worktree",
-            path="/path/to/worktree",
-            branch_name="main"
+            name="test-worktree", path="/path/to/worktree", branch_name="main"
         )
 
         assert worktree.name == "test-worktree"
@@ -446,7 +437,7 @@ class TestWorktreeModel:
             updated_at=now,
             last_sync=now,
             git_config={"user.email": "test@example.com"},
-            extra_metadata={"project": "test"}
+            extra_metadata={"project": "test"},
         )
 
         assert worktree.name == "full-worktree"
@@ -463,9 +454,7 @@ class TestWorktreeModel:
     def test_worktree_default_values(self):
         """Test worktree model default values."""
         worktree = Worktree(
-            name="default-test",
-            path="/default/path",
-            branch_name="default"
+            name="default-test", path="/default/path", branch_name="default"
         )
 
         assert worktree.status == WorktreeStatus.ACTIVE
@@ -479,10 +468,7 @@ class TestWorktreeModel:
     def test_worktree_repr(self):
         """Test worktree __repr__ method."""
         worktree = Worktree(
-            id=789,
-            name="repr-worktree",
-            path="/repr/path",
-            branch_name="repr-branch"
+            id=789, name="repr-worktree", path="/repr/path", branch_name="repr-branch"
         )
 
         repr_str = repr(worktree)
@@ -498,9 +484,7 @@ class TestWorktreeModel:
     def test_worktree_nullable_fields(self):
         """Test worktree nullable field behavior."""
         worktree = Worktree(
-            name="nullable-test",
-            path="/nullable/path",
-            branch_name="nullable"
+            name="nullable-test", path="/nullable/path", branch_name="nullable"
         )
 
         # These fields should accept None values
@@ -526,7 +510,7 @@ class TestHealthCheckModel:
             overall_status=HealthStatus.HEALTHY,
             check_results='{"cpu": "ok", "memory": "ok"}',
             duration_ms=250.5,
-            check_timestamp=now
+            check_timestamp=now,
         )
 
         assert health_check.instance_id == 123
@@ -544,7 +528,7 @@ class TestHealthCheckModel:
             HealthStatus.DEGRADED,
             HealthStatus.UNHEALTHY,
             HealthStatus.CRITICAL,
-            HealthStatus.UNKNOWN
+            HealthStatus.UNKNOWN,
         ]
 
         for status in statuses_to_test:
@@ -553,7 +537,7 @@ class TestHealthCheckModel:
                 overall_status=status,
                 check_results=f'{{"status": "{status.value}"}}',
                 duration_ms=100,
-                check_timestamp=now
+                check_timestamp=now,
             )
 
             assert health_check.overall_status == status
@@ -566,7 +550,7 @@ class TestHealthCheckModel:
             overall_status=HealthStatus.DEGRADED,
             check_results='{"test": "data"}',
             duration_ms=300,
-            check_timestamp=datetime.now()
+            check_timestamp=datetime.now(),
         )
 
         repr_str = repr(health_check)
@@ -589,7 +573,7 @@ class TestHealthCheckModel:
             overall_status=HealthStatus.CRITICAL,
             check_results='{"error": "system failure"}',
             duration_ms=500,
-            check_timestamp=now
+            check_timestamp=now,
         )
 
         assert health_check.instance_id is not None
@@ -604,10 +588,7 @@ class TestConfigurationModel:
 
     def test_configuration_creation_minimal(self):
         """Test creating configuration with minimal required fields."""
-        config = Configuration(
-            key="test.setting",
-            value="test_value"
-        )
+        config = Configuration(key="test.setting", value="test_value")
 
         assert config.key == "test.setting"
         assert config.value == "test_value"
@@ -630,7 +611,7 @@ class TestConfigurationModel:
             is_readonly=True,
             created_at=now,
             updated_at=now,
-            extra_metadata={"source": "api", "category": "database"}
+            extra_metadata={"source": "api", "category": "database"},
         )
 
         assert config.key == "complex.setting"
@@ -644,10 +625,7 @@ class TestConfigurationModel:
 
     def test_configuration_default_values(self):
         """Test configuration model default values."""
-        config = Configuration(
-            key="default.test",
-            value="default_value"
-        )
+        config = Configuration(key="default.test", value="default_value")
 
         assert config.scope == ConfigScope.GLOBAL
         assert config.is_secret is False
@@ -662,14 +640,12 @@ class TestConfigurationModel:
             ConfigScope.GLOBAL,
             ConfigScope.USER,
             ConfigScope.PROJECT,
-            ConfigScope.INSTANCE
+            ConfigScope.INSTANCE,
         ]
 
         for scope in scopes_to_test:
             config = Configuration(
-                key=f"test.{scope.value}",
-                value="test_value",
-                scope=scope
+                key=f"test.{scope.value}", value="test_value", scope=scope
             )
 
             assert config.scope == scope
@@ -677,10 +653,7 @@ class TestConfigurationModel:
     def test_configuration_repr(self):
         """Test configuration __repr__ method."""
         config = Configuration(
-            id=555,
-            key="repr.test",
-            value="repr_value",
-            scope=ConfigScope.PROJECT
+            id=555, key="repr.test", value="repr_value", scope=ConfigScope.PROJECT
         )
 
         repr_str = repr(config)
@@ -695,10 +668,7 @@ class TestConfigurationModel:
 
     def test_configuration_nullable_fields(self):
         """Test configuration nullable field behavior."""
-        config = Configuration(
-            key="nullable.test",
-            value="nullable_value"
-        )
+        config = Configuration(key="nullable.test", value="nullable_value")
 
         # These fields should accept None values
         config.instance_id = None
@@ -710,10 +680,7 @@ class TestConfigurationModel:
 
     def test_configuration_boolean_fields(self):
         """Test configuration boolean field behavior."""
-        config = Configuration(
-            key="boolean.test",
-            value="boolean_value"
-        )
+        config = Configuration(key="boolean.test", value="boolean_value")
 
         # Test setting boolean values
         config.is_secret = True
@@ -737,33 +704,33 @@ class TestModelRelationships:
         instance = Instance(issue_id="REL-123")
 
         # Test relationship attributes exist
-        assert hasattr(instance, 'tasks')
+        assert hasattr(instance, "tasks")
 
         # Test Task has instance relationship
         task = Task(title="Related Task")
-        assert hasattr(task, 'instance')
+        assert hasattr(task, "instance")
 
     def test_instance_worktree_relationship(self):
         """Test Instance-Worktree relationship."""
         instance = Instance(issue_id="REL-456")
 
         # Test relationship attributes exist
-        assert hasattr(instance, 'worktree')
+        assert hasattr(instance, "worktree")
 
         # Test Worktree has instance relationship
         worktree = Worktree(name="test", path="/test", branch_name="main")
-        assert hasattr(worktree, 'instance')
+        assert hasattr(worktree, "instance")
 
     def test_instance_configuration_relationship(self):
         """Test Instance-Configuration relationship."""
         instance = Instance(issue_id="REL-789")
 
         # Test relationship attributes exist
-        assert hasattr(instance, 'configurations')
+        assert hasattr(instance, "configurations")
 
         # Test Configuration has instance relationship
         config = Configuration(key="test.key", value="test_value")
-        assert hasattr(config, 'instance')
+        assert hasattr(config, "instance")
 
     def test_worktree_task_relationship(self):
         """Test Worktree-Task relationship."""
@@ -771,8 +738,8 @@ class TestModelRelationships:
         task = Task(title="Test Task")
 
         # Test relationship attributes exist
-        assert hasattr(worktree, 'tasks')
-        assert hasattr(task, 'worktree')
+        assert hasattr(worktree, "tasks")
+        assert hasattr(task, "worktree")
 
     def test_health_check_instance_relationship(self):
         """Test HealthCheck-Instance relationship."""
@@ -781,11 +748,11 @@ class TestModelRelationships:
             overall_status=HealthStatus.HEALTHY,
             check_results='{"status": "ok"}',
             duration_ms=100,
-            check_timestamp=datetime.now()
+            check_timestamp=datetime.now(),
         )
 
         # Test relationship attributes exist
-        assert hasattr(health_check, 'instance')
+        assert hasattr(health_check, "instance")
 
 
 class TestModelIndexes:
@@ -809,7 +776,7 @@ class TestModelIndexes:
         expected_instance_indexes = [
             "idx_instances_issue_id",
             "idx_instances_status",
-            "idx_instances_created_at"
+            "idx_instances_created_at",
         ]
 
         for expected_index in expected_instance_indexes:
@@ -830,7 +797,7 @@ class TestModelIndexes:
             "idx_tasks_priority",
             "idx_tasks_instance_id",
             "idx_tasks_created_at",
-            "idx_tasks_due_date"
+            "idx_tasks_due_date",
         ]
 
         for expected_index in expected_task_indexes:
@@ -849,7 +816,7 @@ class TestModelIndexes:
         expected_worktree_indexes = [
             "idx_worktrees_path",
             "idx_worktrees_branch",
-            "idx_worktrees_status"
+            "idx_worktrees_status",
         ]
 
         for expected_index in expected_worktree_indexes:
@@ -867,7 +834,7 @@ class TestModelIndexes:
 
         expected_config_indexes = [
             "idx_configurations_key_scope",
-            "idx_configurations_instance_id"
+            "idx_configurations_instance_id",
         ]
 
         for expected_index in expected_config_indexes:
@@ -885,7 +852,7 @@ class TestModelIndexes:
 
         expected_health_indexes = [
             "idx_health_checks_instance_id",
-            "idx_health_checks_timestamp"
+            "idx_health_checks_timestamp",
         ]
 
         for expected_index in expected_health_indexes:
@@ -936,9 +903,7 @@ class TestModelFieldTypes:
     def test_worktree_field_types(self):
         """Test Worktree model field types."""
         worktree = Worktree(
-            name="type-test",
-            path="/type/test",
-            branch_name="type-branch"
+            name="type-test", path="/type/test", branch_name="type-branch"
         )
 
         # Test that required fields have correct types
@@ -957,7 +922,7 @@ class TestModelFieldTypes:
             overall_status=HealthStatus.HEALTHY,
             check_results='{"type": "test"}',
             duration_ms=100,
-            check_timestamp=datetime.now()
+            check_timestamp=datetime.now(),
         )
 
         # Test that required fields have correct types
@@ -988,35 +953,31 @@ class TestModelTimestamps:
         instance = Instance(issue_id="TIME-TEST")
 
         # Test that timestamp fields exist
-        assert hasattr(instance, 'created_at')
-        assert hasattr(instance, 'updated_at')
-        assert hasattr(instance, 'last_activity')
-        assert hasattr(instance, 'last_health_check')
-        assert hasattr(instance, 'last_recovery_attempt')
+        assert hasattr(instance, "created_at")
+        assert hasattr(instance, "updated_at")
+        assert hasattr(instance, "last_activity")
+        assert hasattr(instance, "last_health_check")
+        assert hasattr(instance, "last_recovery_attempt")
 
     def test_task_timestamps(self):
         """Test Task model timestamp fields."""
         task = Task(title="Time Test")
 
         # Test that timestamp fields exist
-        assert hasattr(task, 'created_at')
-        assert hasattr(task, 'updated_at')
-        assert hasattr(task, 'started_at')
-        assert hasattr(task, 'completed_at')
-        assert hasattr(task, 'due_date')
+        assert hasattr(task, "created_at")
+        assert hasattr(task, "updated_at")
+        assert hasattr(task, "started_at")
+        assert hasattr(task, "completed_at")
+        assert hasattr(task, "due_date")
 
     def test_worktree_timestamps(self):
         """Test Worktree model timestamp fields."""
-        worktree = Worktree(
-            name="time-test",
-            path="/time/test",
-            branch_name="time"
-        )
+        worktree = Worktree(name="time-test", path="/time/test", branch_name="time")
 
         # Test that timestamp fields exist
-        assert hasattr(worktree, 'created_at')
-        assert hasattr(worktree, 'updated_at')
-        assert hasattr(worktree, 'last_sync')
+        assert hasattr(worktree, "created_at")
+        assert hasattr(worktree, "updated_at")
+        assert hasattr(worktree, "last_sync")
 
     def test_health_check_timestamps(self):
         """Test HealthCheck model timestamp fields."""
@@ -1025,21 +986,21 @@ class TestModelTimestamps:
             overall_status=HealthStatus.HEALTHY,
             check_results='{"time": "test"}',
             duration_ms=100,
-            check_timestamp=datetime.now()
+            check_timestamp=datetime.now(),
         )
 
         # Test that timestamp fields exist
-        assert hasattr(health_check, 'created_at')
-        assert hasattr(health_check, 'updated_at')
-        assert hasattr(health_check, 'check_timestamp')
+        assert hasattr(health_check, "created_at")
+        assert hasattr(health_check, "updated_at")
+        assert hasattr(health_check, "check_timestamp")
 
     def test_configuration_timestamps(self):
         """Test Configuration model timestamp fields."""
         config = Configuration(key="time.test", value="test_value")
 
         # Test that timestamp fields exist
-        assert hasattr(config, 'created_at')
-        assert hasattr(config, 'updated_at')
+        assert hasattr(config, "created_at")
+        assert hasattr(config, "updated_at")
 
 
 class TestModelJSONFields:
@@ -1048,10 +1009,7 @@ class TestModelJSONFields:
     def test_instance_json_fields(self):
         """Test Instance model JSON fields."""
         metadata = {"custom": "data", "numbers": [1, 2, 3]}
-        instance = Instance(
-            issue_id="JSON-TEST",
-            extra_metadata=metadata
-        )
+        instance = Instance(issue_id="JSON-TEST", extra_metadata=metadata)
 
         assert instance.extra_metadata == metadata
         assert isinstance(instance.extra_metadata, dict)
@@ -1066,7 +1024,7 @@ class TestModelJSONFields:
             title="JSON Test",
             requirements=requirements,
             results=results,
-            extra_metadata=metadata
+            extra_metadata=metadata,
         )
 
         assert task.requirements == requirements
@@ -1083,7 +1041,7 @@ class TestModelJSONFields:
             path="/json/test",
             branch_name="json",
             git_config=git_config,
-            extra_metadata=metadata
+            extra_metadata=metadata,
         )
 
         assert worktree.git_config == git_config
@@ -1091,12 +1049,14 @@ class TestModelJSONFields:
 
     def test_configuration_json_fields(self):
         """Test Configuration model JSON fields."""
-        metadata = {"category": "database", "sensitive": False, "tags": ["api", "config"]}
+        metadata = {
+            "category": "database",
+            "sensitive": False,
+            "tags": ["api", "config"],
+        }
 
         config = Configuration(
-            key="json.test",
-            value="json_value",
-            extra_metadata=metadata
+            key="json.test", value="json_value", extra_metadata=metadata
         )
 
         assert config.extra_metadata == metadata
@@ -1139,7 +1099,7 @@ class TestEnumIntegration:
             worktree = Worktree(
                 name=f"worktree-{status.value}",
                 path=f"/path/{status.value}",
-                branch_name="test"
+                branch_name="test",
             )
             worktree.status = status
             assert worktree.status == status
@@ -1147,10 +1107,7 @@ class TestEnumIntegration:
     def test_all_config_scopes_work(self):
         """Test all config scopes work with model."""
         for scope in ConfigScope:
-            config = Configuration(
-                key=f"test.{scope.value}",
-                value="test_value"
-            )
+            config = Configuration(key=f"test.{scope.value}", value="test_value")
             config.scope = scope
             assert config.scope == scope
 
@@ -1172,7 +1129,7 @@ class TestModelIntegration:
             name="workflow-worktree",
             path="/workflow/path",
             branch_name="feature/workflow",
-            instance_id=1
+            instance_id=1,
         )
 
         # Add configuration
@@ -1180,7 +1137,7 @@ class TestModelIntegration:
             key="workflow.setting",
             value="enabled",
             scope=ConfigScope.INSTANCE,
-            instance_id=1
+            instance_id=1,
         )
 
         # Add health check
@@ -1189,7 +1146,7 @@ class TestModelIntegration:
             overall_status=HealthStatus.HEALTHY,
             check_results='{"all": "good"}',
             duration_ms=150,
-            check_timestamp=datetime.now()
+            check_timestamp=datetime.now(),
         )
 
         # Verify all models are properly configured
@@ -1243,13 +1200,19 @@ class TestModelIntegration:
 
         # HealthCheck
         health_check = HealthCheck(
-            id=4, instance_id=1, overall_status=HealthStatus.HEALTHY,
-            check_results='{}', duration_ms=100, check_timestamp=datetime.now()
+            id=4,
+            instance_id=1,
+            overall_status=HealthStatus.HEALTHY,
+            check_results="{}",
+            duration_ms=100,
+            check_timestamp=datetime.now(),
         )
         health_check_repr = repr(health_check)
         assert "HealthCheck" in health_check_repr and "healthy" in health_check_repr
 
         # Configuration
-        config = Configuration(id=5, key="test.key", value="test", scope=ConfigScope.GLOBAL)
+        config = Configuration(
+            id=5, key="test.key", value="test", scope=ConfigScope.GLOBAL
+        )
         config_repr = repr(config)
         assert "Configuration" in config_repr and "test.key" in config_repr
