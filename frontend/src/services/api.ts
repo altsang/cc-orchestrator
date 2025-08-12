@@ -17,6 +17,12 @@ import type {
   InstanceFilter,
   TaskFilter,
   WorktreeFilter,
+  LogEntry,
+  LogSearchRequest,
+  LogSearchResponse,
+  LogExportRequest,
+  LogStreamFilter,
+  LogStreamStats,
 } from '../types';
 
 class APIService {
@@ -305,6 +311,86 @@ class APIService {
     return this.get<APIResponse<Configuration>>(`/config/key/${key}`, params);
   }
 
+  // Log streaming API methods
+  async searchLogs(searchRequest: LogSearchRequest): Promise<LogSearchResponse> {
+    const params = sanitizeObject({
+      query: searchRequest.query,
+      level: searchRequest.level,
+      context: searchRequest.context,
+      instance_id: searchRequest.instance_id,
+      task_id: searchRequest.task_id,
+      start_time: searchRequest.start_time,
+      end_time: searchRequest.end_time,
+      regex_enabled: searchRequest.regex_enabled,
+      case_sensitive: searchRequest.case_sensitive,
+      limit: searchRequest.limit,
+      offset: searchRequest.offset,
+    });
+
+    return this.get<LogSearchResponse>('/logs/search', params);
+  }
+
+  async exportLogs(exportRequest: LogExportRequest): Promise<void> {
+    try {
+      const response = await this.client.post('/logs/export', exportRequest, {
+        responseType: 'blob',
+      });
+
+      // Create download link
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+
+      // Extract filename from response headers or use default
+      const contentDisposition = response.headers['content-disposition'];
+      let filename = `logs_export.${exportRequest.format}`;
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+        if (filenameMatch) {
+          filename = filenameMatch[1];
+        }
+      }
+
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      logger.info('Log export completed', { filename, format: exportRequest.format });
+      toast.success('Logs exported successfully');
+    } catch (error) {
+      logger.error('Log export failed', error as Error);
+      toast.error('Failed to export logs');
+      throw error;
+    }
+  }
+
+  async getLogLevels(): Promise<string[]> {
+    return this.get<string[]>('/logs/levels');
+  }
+
+  async getLogContexts(): Promise<string[]> {
+    return this.get<string[]>('/logs/contexts');
+  }
+
+  async getLogStats(): Promise<LogStreamStats> {
+    return this.get<LogStreamStats>('/logs/stats');
+  }
+
+  async startLogStream(streamFilter: LogStreamFilter): Promise<{ stream_id: string; status: string }> {
+    return this.post<{ stream_id: string; status: string }>('/logs/stream/start', streamFilter);
+  }
+
+  async stopLogStream(streamId: string): Promise<{ stream_id: string; status: string }> {
+    return this.post<{ stream_id: string; status: string }>(`/logs/stream/${streamId}/stop`);
+  }
+
+  async cleanupLogs(olderThanHours: number = 24): Promise<{ deleted_count: number; remaining_count: number }> {
+    const params = { older_than_hours: olderThanHours };
+    return this.delete<{ deleted_count: number; remaining_count: number }>('/logs/cleanup', params);
+  }
+
   // Utility methods
   async ping(): Promise<{ status: string }> {
     const response = await this.client.get('/ping', {
@@ -323,4 +409,15 @@ class APIService {
 
 // Export singleton instance
 export const apiService = new APIService();
+
+// Convenient function exports for log operations
+export const searchLogs = (searchRequest: LogSearchRequest) => apiService.searchLogs(searchRequest);
+export const exportLogs = (exportRequest: LogExportRequest) => apiService.exportLogs(exportRequest);
+export const getLogLevels = () => apiService.getLogLevels();
+export const getLogContexts = () => apiService.getLogContexts();
+export const getLogStats = () => apiService.getLogStats();
+export const startLogStream = (streamFilter: LogStreamFilter) => apiService.startLogStream(streamFilter);
+export const stopLogStream = (streamId: string) => apiService.stopLogStream(streamId);
+export const cleanupLogs = (olderThanHours?: number) => apiService.cleanupLogs(olderThanHours);
+
 export default apiService;

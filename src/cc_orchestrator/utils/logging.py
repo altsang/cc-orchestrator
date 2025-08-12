@@ -312,7 +312,7 @@ def setup_logging(
                     "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
                 )
             )
-        handlers.append(file_handler)  # type: ignore[arg-type]
+        handlers.append(file_handler)
 
     # Configure root logger
     root_logger = logging.getLogger()
