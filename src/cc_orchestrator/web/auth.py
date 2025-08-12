@@ -11,7 +11,7 @@ from passlib.context import CryptContext
 
 # Security configuration
 SECRET_KEY: str = os.getenv("JWT_SECRET_KEY") or ""
-if not SECRET_KEY or SECRET_KEY == "dev-secret-key-change-in-production":
+if not SECRET_KEY or SECRET_KEY == "dev-secret-key-change-in-production":  # nosec B105
     raise ValueError("JWT_SECRET_KEY must be set to a strong, unique secret key")
 
 ALGORITHM = "HS256"

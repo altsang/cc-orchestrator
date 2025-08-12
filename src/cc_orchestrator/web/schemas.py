@@ -8,49 +8,14 @@ from pydantic import BaseModel, Field
 
 from ..database.models import Instance, InstanceStatus
 
-# Explicit exports for mypy
+# Explicit exports for mypy - only include what's actually defined
 __all__ = [
-    "HealthStatus",
     "InstanceStatus",
-    "TaskStatus",
-    "TaskPriority",
-    "WorktreeStatus",
-    "ConfigScope",
-    "AlertLevel",
-    "BaseSchema",
-    "TimestampMixin",
     "InstanceBase",
     "InstanceCreate",
     "InstanceUpdate",
     "InstanceResponse",
-    "TaskBase",
-    "TaskCreate",
-    "TaskUpdate",
-    "TaskResponse",
-    "WorktreeBase",
-    "WorktreeCreate",
-    "WorktreeUpdate",
-    "WorktreeResponse",
-    "ConfigurationBase",
-    "ConfigurationCreate",
-    "ConfigurationUpdate",
-    "ConfigurationResponse",
-    "HealthCheckBase",
-    "HealthCheckCreate",
-    "HealthCheckResponse",
-    "AlertBase",
-    "AlertCreate",
-    "AlertResponse",
-    "RecoveryAttemptBase",
-    "RecoveryAttemptCreate",
-    "RecoveryAttemptResponse",
-    "PaginationParams",
-    "PaginatedResponse",
-    "InstanceFilter",
-    "TaskFilter",
-    "WorktreeFilter",
     "APIResponse",
-    "ErrorResponse",
 ]
 
 # Generic type for paginated responses

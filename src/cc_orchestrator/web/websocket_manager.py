@@ -229,9 +229,12 @@ class WebSocketManager:
                 await self.cleanup_stale_connections()
             except asyncio.CancelledError:
                 break
-            except Exception:
+            except Exception as e:
                 # Log error but continue cleanup loop
-                pass
+                import logging
+
+                logger = logging.getLogger(__name__)
+                logger.error(f"Error during cleanup task: {e}")
 
     async def cleanup_stale_connections(self, max_age_seconds: int = 3600) -> int:
         """Clean up connections that have been idle too long."""
