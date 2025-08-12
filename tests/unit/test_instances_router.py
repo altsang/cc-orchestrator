@@ -18,7 +18,12 @@ from fastapi import HTTPException
 from cc_orchestrator.database.models import HealthStatus, InstanceStatus
 from cc_orchestrator.web.dependencies import PaginationParams
 from cc_orchestrator.web.routers.v1 import instances
-from cc_orchestrator.web.schemas import InstanceCreate, InstanceResponse, InstanceUpdate, TaskResponse
+from cc_orchestrator.web.schemas import (
+    InstanceCreate,
+    InstanceResponse,
+    InstanceUpdate,
+    TaskResponse,
+)
 
 
 class TestInstancesRouterFunctions:
@@ -37,7 +42,7 @@ class TestInstancesRouterFunctions:
             "created_at": datetime.now(UTC),
             "updated_at": datetime.now(UTC),
         }
-        
+
         # Create InstanceResponse object instead of Mock
         mock_instance = InstanceResponse(**instance_data)
 
@@ -50,7 +55,7 @@ class TestInstancesRouterFunctions:
             "created_at": datetime.now(UTC),
             "updated_at": datetime.now(UTC),
         }
-        
+
         # Create TaskResponse object instead of Mock
         mock_task = TaskResponse(**task_data)
 

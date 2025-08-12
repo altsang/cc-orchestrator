@@ -42,9 +42,9 @@ class TestConfigRouterFunctions:
             "created_at": datetime.now(UTC),
             "updated_at": datetime.now(UTC),
         }
-        
+
         mock_config = ConfigurationResponse(**config_data)
-        
+
         # Add additional attributes that the router expects but aren't in the schema
         # We need to do this because some router functions access attributes not in the response schema
         mock_config.is_readonly = False

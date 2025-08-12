@@ -39,10 +39,10 @@ class TestWorktreesRouterFunctions:
             "created_at": datetime.now(UTC),
             "updated_at": datetime.now(UTC),
         }
-        
-        # Create WorktreeResponse object instead of Mock  
+
+        # Create WorktreeResponse object instead of Mock
         mock_worktree = WorktreeResponse(**worktree_data)
-        
+
         # Add additional attributes that the router expects but aren't in the schema
         mock_worktree.branch_name = "feature-branch"
         mock_worktree.repository_url = "https://github.com/test/repo.git"
@@ -373,7 +373,6 @@ class TestWorktreeValidation:
             "path": "/workspace/test",
             "active": True,
             "created_at": datetime.now(UTC),
-            "updated_at": datetime.now(UTC),
             "updated_at": datetime.now(UTC),
         }
 

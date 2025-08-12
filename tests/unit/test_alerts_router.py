@@ -40,7 +40,7 @@ class TestAlertsRouterFunctions:
             "acknowledged": False,
             "acknowledged_at": None,
         }
-        
+
         # Create AlertResponse object instead of Mock
         mock_alert = AlertResponse(**alert_data)
 

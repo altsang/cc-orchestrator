@@ -1118,8 +1118,6 @@ class TestIntegrationScenarios:
 
     def test_exception_handling_with_structured_logging(self):
         """Test exception handling integrates properly with structured logging."""
-        formatter = StructuredFormatter()
-
         @handle_errors(log_context=LogContext.TASK)
         def failing_function():
             logger = get_logger(__name__, LogContext.TASK)

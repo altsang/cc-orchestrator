@@ -43,7 +43,7 @@ class TestTasksRouterFunctions:
             "last_run": None,
             "next_run": None,
         }
-        
+
         # Create TaskResponse object instead of Mock
         mock_task = TaskResponse(**task_data)
 
@@ -416,8 +416,6 @@ class TestTaskValidation:
             "extra_metadata": {},
             "started_at": None,
             "completed_at": None,
-            "created_at": datetime.now(UTC),
-            "updated_at": datetime.now(UTC),
         }
 
         response_model = TaskResponse.model_validate(task_data)
