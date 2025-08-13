@@ -39,18 +39,15 @@ class TestConfigRouterFunctions:
             "value": "test_value",
             "description": "Test configuration",
             "category": "general",
+            "scope": ConfigScope.GLOBAL,
+            "instance_id": None,
+            "is_secret": False,
+            "is_readonly": False,
             "created_at": datetime.now(UTC),
             "updated_at": datetime.now(UTC),
         }
 
         mock_config = ConfigurationResponse(**config_data)
-
-        # Add additional attributes that the router expects but aren't in the schema
-        # We need to do this because some router functions access attributes not in the response schema
-        mock_config.is_readonly = False
-        mock_config.is_secret = False
-        mock_config.scope = ConfigScope.GLOBAL
-        mock_config.instance_id = None
 
         # Mock instance data
         mock_instance = Mock()
