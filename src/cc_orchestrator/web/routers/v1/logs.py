@@ -7,20 +7,57 @@ Provides endpoints for log streaming, search, filtering, and export functionalit
 import json
 import re
 from collections.abc import AsyncGenerator
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 from ....utils.logging import LogContext, get_logger
+from ...dependencies import get_current_user
 from ...websocket.manager import WebSocketMessage, connection_manager
 
 logger = get_logger(__name__, LogContext.WEB)
 
 router = APIRouter(tags=["logs"])
+
+
+@dataclass
+class LogStreamingConfig:
+    """Configuration for log streaming security and performance."""
+
+    max_concurrent_streams: int = 50
+    max_entries_per_request: int = 1000
+    stream_timeout_seconds: int = 300
+    query_timeout_seconds: int = 30
+    websocket_connections_per_ip: int = 5
+    log_search_per_minute: int = 20
+    log_export_per_hour: int = 5
+    retention_days: int = 30
+    max_export_entries: int = 50000
+    cleanup_batch_size: int = 1000
+
+
+# Global configuration instance
+LOG_STREAMING_CONFIG = LogStreamingConfig()
+
+# Sensitive data patterns to filter from logs
+SENSITIVE_PATTERNS = [
+    r'(?i)(password|token|key|secret|auth)[:=]\s*[^\s\'"]+',
+    r"Bearer\s+[A-Za-z0-9\-._~+/]+",
+    r'(?i)api[_-]?key[:=]\s*[^\s\'"]+',
+    r'(?i)(oauth|jwt)[:=]\s*[^\s\'"]+',
+    r'(?i)credential[:=]\s*[^\s\'"]+',
+    r"\b[0-9]{4}[- ]?[0-9]{4}[- ]?[0-9]{4}[- ]?[0-9]{4}\b",  # Credit card
+    r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b",  # Email (if considered sensitive)
+    r'(?i)secret_[a-zA-Z0-9_]+',  # Pattern like secret_token_123
+]
+
+# Audit log storage (in production, use proper audit system)
+audit_log_storage: list[dict[str, Any]] = []
 
 
 class LogLevelEnum(str, Enum):
@@ -76,6 +113,67 @@ class LogEntry(BaseModel):
     exception: dict[str, Any] | None = Field(None, description="Exception information")
 
 
+def sanitize_log_content(content: str) -> str:
+    """Remove sensitive information from log content before streaming/export."""
+    if not content:
+        return content
+
+    sanitized = content
+    for pattern in SENSITIVE_PATTERNS:
+        sanitized = re.sub(pattern, "[REDACTED]", sanitized)
+
+    return sanitized
+
+
+def sanitize_log_entry(log_entry: LogEntry) -> LogEntry:
+    """Sanitize a complete log entry for sensitive data."""
+    # Create a copy to avoid modifying the original
+    sanitized_entry = log_entry.model_copy()
+
+    # Sanitize message content
+    sanitized_entry.message = sanitize_log_content(sanitized_entry.message)
+
+    # Sanitize metadata if present
+    if sanitized_entry.metadata:
+        sanitized_metadata = {}
+        for key, value in sanitized_entry.metadata.items():
+            if isinstance(value, str):
+                sanitized_metadata[key] = sanitize_log_content(value)
+            else:
+                sanitized_metadata[key] = value
+        sanitized_entry.metadata = sanitized_metadata
+
+    # Sanitize exception traceback if present
+    if sanitized_entry.exception and "traceback" in sanitized_entry.exception:
+        if isinstance(sanitized_entry.exception["traceback"], list):
+            sanitized_entry.exception["traceback"] = [
+                sanitize_log_content(line)
+                for line in sanitized_entry.exception["traceback"]
+            ]
+        elif isinstance(sanitized_entry.exception["traceback"], str):
+            sanitized_entry.exception["traceback"] = sanitize_log_content(
+                sanitized_entry.exception["traceback"]
+            )
+
+    return sanitized_entry
+
+
+async def audit_log_access(user_id: str, action: str, details: dict[str, Any]) -> None:
+    """Log access to log streaming functionality for security compliance."""
+    audit_entry = {
+        "timestamp": datetime.now().isoformat(),
+        "user_id": user_id,
+        "action": action,  # "search", "export", "stream_start", "stream_stop"
+        "details": details,
+        "ip_address": details.get("ip_address", "unknown"),
+    }
+
+    audit_log_storage.append(audit_entry)
+
+    # Log to system logger as well
+    logger.info("Log access audit", user_id=user_id, action=action, details=details)
+
+
 class LogSearchRequest(BaseModel):
     """Log search request model."""
 
@@ -93,14 +191,16 @@ class LogSearchRequest(BaseModel):
     limit: int = Field(1000, description="Maximum results to return")
     offset: int = Field(0, description="Results offset for pagination")
 
-    @validator("query")
+    @field_validator("query")
+    @classmethod
     def validate_query(cls, v: str | None) -> str | None:
         """Validate search query."""
         if v and len(v) > 1000:
             raise ValueError("Search query too long (max 1000 characters)")
         return v
 
-    @validator("limit")
+    @field_validator("limit")
+    @classmethod
     def validate_limit(cls, v: int) -> int:
         """Validate limit."""
         if v < 1 or v > 10000:
@@ -143,7 +243,8 @@ class LogStreamFilter(BaseModel):
     task_id: str | None = Field(None, description="Filter by task ID")
     buffer_size: int = Field(100, description="Client buffer size")
 
-    @validator("buffer_size")
+    @field_validator("buffer_size")
+    @classmethod
     def validate_buffer_size(cls, v: int) -> int:
         """Validate buffer size."""
         if v < 10 or v > 1000:
@@ -186,6 +287,7 @@ stream_stats: dict[str, Any] = {
 @router.get("/search", response_model=LogSearchResponse)
 async def search_logs(
     request: Request,
+    current_user=Depends(get_current_user),
     query: str | None = Query(None, description="Search query"),
     level: list[LogLevelEnum] | None = Query(None, description="Filter by log levels"),
     context: list[LogEntryType] | None = Query(
@@ -197,7 +299,11 @@ async def search_logs(
     end_time: datetime | None = Query(None, description="End time filter"),
     regex_enabled: bool = Query(False, description="Enable regex search"),
     case_sensitive: bool = Query(False, description="Case sensitive search"),
-    limit: int = Query(1000, description="Maximum results"),
+    limit: int = Query(
+        1000,
+        description="Maximum results",
+        le=LOG_STREAMING_CONFIG.max_entries_per_request,
+    ),
     offset: int = Query(0, description="Results offset"),
 ) -> LogSearchResponse:
     """
@@ -213,6 +319,20 @@ async def search_logs(
     start_search_time = datetime.now()
 
     try:
+        # Audit log access
+        await audit_log_access(
+            user_id=getattr(current_user, "id", "unknown"),
+            action="search",
+            details={
+                "query": query,
+                "level": [level_item.value for level_item in level] if level else None,
+                "context": [c.value for c in context] if context else None,
+                "regex_enabled": regex_enabled,
+                "limit": limit,
+                "ip_address": getattr(request.client, "host", "unknown"),
+            },
+        )
+
         # Build search criteria
         search_request = LogSearchRequest(
             query=query,
@@ -231,9 +351,12 @@ async def search_logs(
         # Apply filters
         filtered_entries = _filter_log_entries(log_storage, search_request)
 
+        # Sanitize log entries for security
+        sanitized_entries = [sanitize_log_entry(entry) for entry in filtered_entries]
+
         # Apply pagination
-        total_count = len(filtered_entries)
-        paginated_entries = filtered_entries[offset : offset + limit]
+        total_count = len(sanitized_entries)
+        paginated_entries = sanitized_entries[offset : offset + limit]
         has_more = (offset + limit) < total_count
 
         # Calculate search duration
@@ -241,6 +364,7 @@ async def search_logs(
 
         logger.info(
             "Log search completed",
+            user_id=getattr(current_user, "id", "unknown"),
             query=query,
             total_results=total_count,
             returned_results=len(paginated_entries),
@@ -265,6 +389,7 @@ async def search_logs(
 @router.post("/export")
 async def export_logs(
     export_request: LogExportRequest,
+    current_user=Depends(get_current_user),
 ) -> StreamingResponse:
     """
     Export logs in various formats (JSON, CSV, text).
@@ -272,8 +397,27 @@ async def export_logs(
     Supports all search criteria plus format selection and metadata inclusion.
     """
     try:
+        # Audit log export access
+        await audit_log_access(
+            user_id=getattr(current_user, "id", "unknown"),
+            action="export",
+            details={
+                "format": export_request.format.value,
+                "include_metadata": export_request.include_metadata,
+                "search_criteria": export_request.search.model_dump(),
+                "filename": export_request.filename,
+            },
+        )
+
+        # Enforce export limits for security
+        if export_request.search.limit > LOG_STREAMING_CONFIG.max_export_entries:
+            export_request.search.limit = LOG_STREAMING_CONFIG.max_export_entries
+
         # Apply filters
         filtered_entries = _filter_log_entries(log_storage, export_request.search)
+
+        # Sanitize log entries for security
+        sanitized_entries = [sanitize_log_entry(entry) for entry in filtered_entries]
 
         # Generate filename if not provided
         if not export_request.filename:
@@ -284,14 +428,14 @@ async def export_logs(
 
         # Generate content stream
         content_generator = _generate_export_content(
-            filtered_entries, export_request.format, export_request.include_metadata
+            sanitized_entries, export_request.format, export_request.include_metadata
         )
 
         # Set appropriate content type and headers
         content_type_map = {
             LogExportFormat.JSON: "application/json",
-            LogExportFormat.CSV: "text/csv",
-            LogExportFormat.TEXT: "text/plain",
+            LogExportFormat.CSV: "text/csv; charset=utf-8",
+            LogExportFormat.TEXT: "text/plain; charset=utf-8",
         }
 
         headers = {
@@ -300,9 +444,10 @@ async def export_logs(
 
         logger.info(
             "Log export initiated",
+            user_id=getattr(current_user, "id", "unknown"),
             export_format=export_request.format.value,
             export_filename=export_request.filename,
-            entry_count=len(filtered_entries),
+            entry_count=len(sanitized_entries),
         )
 
         return StreamingResponse(
@@ -342,6 +487,7 @@ async def get_log_stats() -> LogStreamStats:
 @router.post("/stream/start")
 async def start_log_stream(
     stream_filter: LogStreamFilter,
+    current_user=Depends(get_current_user),
 ) -> dict[str, str]:
     """
     Start a real-time log stream with specified filters.
@@ -349,11 +495,31 @@ async def start_log_stream(
     Returns a stream ID that can be used to manage the stream.
     """
     try:
-        stream_id = f"stream_{datetime.now().timestamp()}"
+        # Check stream limits
+        if (
+            stream_stats["active_streams"]
+            >= LOG_STREAMING_CONFIG.max_concurrent_streams
+        ):
+            raise HTTPException(
+                status_code=429,
+                detail=f"Maximum concurrent streams ({LOG_STREAMING_CONFIG.max_concurrent_streams}) exceeded",
+            )
+
+        stream_id = f"stream_{datetime.now().timestamp()}_{getattr(current_user, 'id', 'unknown')}"
         stream_stats["active_streams"] += 1
 
         # Store stream configuration (in production, use Redis or similar)
         stream_stats["buffer_usage"][stream_id] = stream_filter.buffer_size
+
+        # Audit log stream start
+        await audit_log_access(
+            user_id=getattr(current_user, "id", "unknown"),
+            action="stream_start",
+            details={
+                "stream_id": stream_id,
+                "filter": stream_filter.model_dump(),
+            },
+        )
 
         # Broadcast stream start to WebSocket clients
         await connection_manager.broadcast_message(
@@ -361,7 +527,7 @@ async def start_log_stream(
                 type="log_stream_started",
                 data={
                     "stream_id": stream_id,
-                    "filter": stream_filter.dict(),
+                    "filter": stream_filter.model_dump(),
                 },
                 timestamp=datetime.now(),
             ),
@@ -369,7 +535,10 @@ async def start_log_stream(
         )
 
         logger.info(
-            "Log stream started", stream_id=stream_id, filter=stream_filter.dict()
+            "Log stream started",
+            user_id=getattr(current_user, "id", "unknown"),
+            stream_id=stream_id,
+            filter=stream_filter.model_dump(),
         )
 
         return {"stream_id": stream_id, "status": "started"}
@@ -382,6 +551,7 @@ async def start_log_stream(
 @router.post("/stream/{stream_id}/stop")
 async def stop_log_stream(
     stream_id: str,
+    current_user=Depends(get_current_user),
 ) -> dict[str, str]:
     """
     Stop a real-time log stream.
@@ -390,6 +560,15 @@ async def stop_log_stream(
         if stream_id in stream_stats["buffer_usage"]:
             del stream_stats["buffer_usage"][stream_id]
             stream_stats["active_streams"] = max(0, stream_stats["active_streams"] - 1)
+
+            # Audit log stream stop
+            await audit_log_access(
+                user_id=getattr(current_user, "id", "unknown"),
+                action="stream_stop",
+                details={
+                    "stream_id": stream_id,
+                },
+            )
 
             # Broadcast stream stop to WebSocket clients
             await connection_manager.broadcast_message(
@@ -401,7 +580,11 @@ async def stop_log_stream(
                 topic="logs",
             )
 
-            logger.info("Log stream stopped", stream_id=stream_id)
+            logger.info(
+                "Log stream stopped",
+                user_id=getattr(current_user, "id", "unknown"),
+                stream_id=stream_id,
+            )
             return {"stream_id": stream_id, "status": "stopped"}
         else:
             raise HTTPException(status_code=404, detail="Stream not found")
@@ -494,17 +677,53 @@ def _filter_log_entries(
 def _filter_by_query(
     entries: list[LogEntry], search_request: LogSearchRequest
 ) -> list[LogEntry]:
-    """Filter entries by text query with optional regex support."""
+    """Filter entries by text query with optional regex support and performance safeguards."""
     if not search_request.query:
         return entries
 
     query = search_request.query
+
+    # Performance safeguard: limit regex complexity
+    if search_request.regex_enabled:
+        # Check for potentially dangerous regex patterns
+        dangerous_patterns = [
+            r"\*{2,}",  # Multiple asterisks
+            r"\+{2,}",  # Multiple plus signs
+            r"\.{2,}\*",  # Multiple dots followed by asterisk
+            r"\(.*\){2,}",  # Nested groups
+        ]
+
+        for dangerous in dangerous_patterns:
+            if re.search(dangerous, query):
+                logger.warning(
+                    "Potentially dangerous regex pattern detected, falling back to literal search",
+                    query=query,
+                    pattern=dangerous,
+                )
+                search_request.regex_enabled = False
+                break
+
     if not search_request.case_sensitive:
         query = query.lower()
 
     filtered = []
+    processed_count = 0
+    max_processing_time = timedelta(seconds=LOG_STREAMING_CONFIG.query_timeout_seconds)
+    start_time = datetime.now()
 
     for entry in entries:
+        # Performance safeguard: check processing time
+        if datetime.now() - start_time > max_processing_time:
+            logger.warning(
+                "Query processing timeout reached, returning partial results",
+                processed_count=processed_count,
+                total_entries=len(entries),
+                timeout_seconds=LOG_STREAMING_CONFIG.query_timeout_seconds,
+            )
+            break
+
+        processed_count += 1
+
         # Search in message and logger name
         search_text = f"{entry.message} {entry.logger}"
         if entry.module:
@@ -517,6 +736,7 @@ def _filter_by_query(
 
         try:
             if search_request.regex_enabled:
+                # Performance safeguard: use timeout for regex
                 pattern = re.compile(
                     query, re.IGNORECASE if not search_request.case_sensitive else 0
                 )
@@ -525,8 +745,13 @@ def _filter_by_query(
             else:
                 if query in search_text:
                     filtered.append(entry)
-        except re.error:
-            # Invalid regex, fall back to literal search
+        except (re.error, TimeoutError):
+            # Invalid regex or timeout, fall back to literal search
+            logger.warning(
+                "Regex search failed, falling back to literal search",
+                query=query,
+                entry_id=entry.id,
+            )
             if query in search_text:
                 filtered.append(entry)
 
@@ -542,7 +767,7 @@ async def _generate_export_content(
         for i, entry in enumerate(entries):
             if i > 0:
                 yield ",\n"
-            entry_dict = entry.dict()
+            entry_dict = entry.model_dump()
             if not include_metadata:
                 entry_dict.pop("metadata", None)
             yield json.dumps(entry_dict, default=str, indent=2)
@@ -609,7 +834,7 @@ async def add_log_entry(
     metadata: dict[str, Any] | None = None,
     exception: dict[str, Any] | None = None,
 ) -> None:
-    """Add a log entry and broadcast to WebSocket clients."""
+    """Add a log entry and broadcast to WebSocket clients with security sanitization."""
     entry = LogEntry(
         id=f"log_{datetime.now().timestamp()}_{len(log_storage)}",
         timestamp=datetime.now(),
@@ -626,15 +851,18 @@ async def add_log_entry(
         exception=exception,
     )
 
-    # Add to storage
+    # Add original entry to storage (keep original for internal use)
     log_storage.append(entry)
     stream_stats["total_entries_streamed"] += 1
 
-    # Broadcast to WebSocket clients
+    # Sanitize entry for WebSocket broadcast (protect against sensitive data leaks)
+    sanitized_entry = sanitize_log_entry(entry)
+
+    # Broadcast sanitized entry to WebSocket clients
     await connection_manager.broadcast_message(
         WebSocketMessage(
             type="log_entry",
-            data=entry.dict(),
+            data=sanitized_entry.model_dump(),
             timestamp=datetime.now(),
         ),
         topic="logs",

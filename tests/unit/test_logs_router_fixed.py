@@ -46,6 +46,10 @@ class TestLogsRouter:
         # Create test client
         self.client = TestClient(app)
 
+        # Mock authentication for all tests
+        self.mock_user = MagicMock()
+        self.mock_user.id = "test_user_123"
+
         # Add sample log entries
         self.sample_logs = [
             LogEntry(
@@ -78,8 +82,11 @@ class TestLogsRouter:
 
         log_storage.extend(self.sample_logs)
 
-    def test_search_logs_basic(self):
+    @patch("src.cc_orchestrator.web.routers.v1.logs.get_current_user")
+    def test_search_logs_basic(self, mock_get_user):
         """Test basic log search functionality."""
+        mock_get_user.return_value = self.mock_user
+
         response = self.client.get("/api/v1/logs/search")
         assert response.status_code == 200
 
