@@ -28,7 +28,6 @@ class TestWorktreesRouterFunctions:
         """Mock CRUD adapter."""
         crud = AsyncMock()
 
-
         # Create a simple object that Pydantic can validate
         # Use a namespace object that supports both attribute and dict access
         from types import SimpleNamespace
