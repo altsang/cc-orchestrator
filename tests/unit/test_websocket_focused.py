@@ -102,8 +102,14 @@ class TestWebSocketMessaging:
         success = await websocket_manager.send_to_connection(connection_id, message)
 
         assert success is True
-        assert len(mock_websocket.messages_sent) == 1
-        sent_message = json.loads(mock_websocket.messages_sent[0])
+        assert len(mock_websocket.messages_sent) == 2  # Connect message + test message
+        
+        # First message should be the connection welcome message
+        connect_message = json.loads(mock_websocket.messages_sent[0])
+        assert connect_message["type"] == "connected"
+        
+        # Second message should be our test message
+        sent_message = json.loads(mock_websocket.messages_sent[1])
         assert sent_message["type"] == "test"
         assert sent_message["data"]["key"] == "value"
 
@@ -138,8 +144,8 @@ class TestWebSocketMessaging:
         sent_count = await websocket_manager.broadcast_to_all(message)
 
         assert sent_count == 2
-        assert len(ws1.messages_sent) == 1
-        assert len(ws2.messages_sent) == 1
+        assert len(ws1.messages_sent) == 2  # Connect + message
+        assert len(ws2.messages_sent) == 2  # Connect + message
 
     async def test_broadcast_with_failed_connections(self, websocket_manager):
         """Test broadcasting with some failed connections."""
@@ -154,8 +160,8 @@ class TestWebSocketMessaging:
         sent_count = await websocket_manager.broadcast_to_all(message)
 
         assert sent_count == 1  # Only one successful
-        assert len(ws1.messages_sent) == 1
-        assert len(ws2.messages_sent) == 0
+        assert len(ws1.messages_sent) == 2  # Connect + message
+        assert len(ws2.messages_sent) == 1  # Only connect message (failed to send)
 
 
 class TestWebSocketSubscriptions:
@@ -199,9 +205,9 @@ class TestWebSocketSubscriptions:
         )
 
         assert sent_count == 2
-        assert len(ws1.messages_sent) == 1
-        assert len(ws2.messages_sent) == 1
-        assert len(ws3.messages_sent) == 0
+        assert len(ws1.messages_sent) == 2  # Connect + message
+        assert len(ws2.messages_sent) == 2  # Connect + message
+        assert len(ws3.messages_sent) == 1  # Only connect message (not subscribed)
 
     async def test_cleanup_subscriptions_on_disconnect(
         self, websocket_manager, mock_websocket
@@ -229,11 +235,11 @@ class TestWebSocketHeartbeat:
 
         await websocket_manager.send_heartbeat()
 
-        assert len(ws1.messages_sent) == 1
-        assert len(ws2.messages_sent) == 1
+        assert len(ws1.messages_sent) == 2  # Connect + message
+        assert len(ws2.messages_sent) == 2  # Connect + message
 
         # Check heartbeat message format
-        heartbeat_msg = json.loads(ws1.messages_sent[0])
+        heartbeat_msg = json.loads(ws1.messages_sent[1])  # Second message is heartbeat
         assert heartbeat_msg["type"] == "heartbeat"
         assert "timestamp" in heartbeat_msg
 
@@ -249,8 +255,8 @@ class TestWebSocketHeartbeat:
         await websocket_manager.send_heartbeat()
 
         # Only healthy connection should receive heartbeat
-        assert len(ws1.messages_sent) == 1
-        assert len(ws2.messages_sent) == 0
+        assert len(ws1.messages_sent) == 2  # Connect + message
+        assert len(ws2.messages_sent) == 1  # Only connect message (failed to send)
 
         # Failed connection should be removed
         assert websocket_manager.get_connection_count() == 1

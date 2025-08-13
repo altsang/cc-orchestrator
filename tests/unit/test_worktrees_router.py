@@ -36,12 +36,19 @@ class TestWorktreesRouterFunctions:
             "base_branch": "main",
             "path": "/workspace/test-worktree",
             "active": True,
+            "status": "active",
+            "current_commit": "abc123",
+            "has_uncommitted_changes": False,
             "created_at": datetime.now(UTC),
             "updated_at": datetime.now(UTC),
         }
 
-        # Create WorktreeResponse object instead of Mock
+        # Create WorktreeResponse object but also add database model attributes
         mock_worktree = WorktreeResponse(**worktree_data)
+        
+        # Add database model attributes that the router expects
+        mock_worktree.branch_name = "feature-branch"  # Database model uses branch_name
+        mock_worktree.last_sync = datetime.now(UTC)
 
         # WorktreeResponse schema only has: id, name, branch, base_branch, path, active, created_at, updated_at
         # No additional attributes needed as they're not part of the response schema

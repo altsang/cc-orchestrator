@@ -5,6 +5,7 @@ import time
 from unittest.mock import Mock
 
 import pytest
+from fastapi.websockets import WebSocketState
 
 from cc_orchestrator.web.websocket_manager import WebSocketManager
 
@@ -15,7 +16,7 @@ class MockWebSocket:
     def __init__(self, client_host="127.0.0.1"):
         self.client = Mock()
         self.client.host = client_host
-        self.client_state = "CONNECTED"
+        self.client_state = WebSocketState.CONNECTED
         self.messages_sent = []
         self.closed = False
 
@@ -32,7 +33,7 @@ class MockWebSocket:
     async def close(self, code=None, reason=None):
         """Mock close method."""
         self.closed = True
-        self.client_state = "CLOSED"
+        self.client_state = WebSocketState.DISCONNECTED
 
 
 @pytest.mark.asyncio

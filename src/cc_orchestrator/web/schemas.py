@@ -258,6 +258,12 @@ class WorktreeResponse(BaseModel):
     active: bool = True
     created_at: datetime
     updated_at: datetime | None = None
+    
+    # Additional fields from database model
+    status: str | None = None
+    current_commit: str | None = None
+    has_uncommitted_changes: bool = False
+    last_sync: datetime | None = None
 
 
 # Configuration Schemas

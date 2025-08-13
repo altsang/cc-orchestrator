@@ -276,11 +276,15 @@ async def get_worktree_status(
         "id": worktree.id,
         "name": worktree.name,
         "path": worktree.path,
-        "branch_name": worktree.branch_name,
+        "branch": worktree.branch_name,  # Map branch_name to branch for API consistency
+        "base_branch": getattr(worktree, 'base_branch', 'main'),  # Add base_branch if not present
+        "active": getattr(worktree, 'active', True),
         "status": worktree.status,
         "current_commit": worktree.current_commit,
         "has_uncommitted_changes": worktree.has_uncommitted_changes,
         "last_sync": worktree.last_sync,
+        "created_at": worktree.created_at,
+        "updated_at": worktree.updated_at,
     }
 
     return {
