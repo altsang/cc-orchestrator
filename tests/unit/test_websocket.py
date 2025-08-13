@@ -228,9 +228,9 @@ class TestWebSocketManager:
     def test_connection_management(self, ws_manager):
         """Test WebSocket connection management."""
         # Test that the WebSocket manager exists and has expected attributes
-        assert hasattr(ws_manager, 'connections')
-        assert hasattr(ws_manager, 'subscriptions')
-        assert hasattr(ws_manager, 'max_connections')
+        assert hasattr(ws_manager, "connections")
+        assert hasattr(ws_manager, "subscriptions")
+        assert hasattr(ws_manager, "max_connections")
 
         # Test that initial state is empty
         assert len(ws_manager.connections) == 0
