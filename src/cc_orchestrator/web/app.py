@@ -19,6 +19,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Startup
     db_manager = DatabaseManager()
     db_manager.create_tables()
+    app.state.db_manager = db_manager  # Store in app state for dependencies
     yield
     # Shutdown - cleanup if needed
 

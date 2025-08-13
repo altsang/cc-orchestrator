@@ -62,7 +62,7 @@ async def get_instance_by_id(
         raise InstanceNotFoundError(instance_id) from e
 
 
-@router.post("/instances", response_model=InstanceResponse)
+@router.post("/instances", response_model=InstanceResponse, status_code=201)
 @handle_api_errors()
 @track_api_performance()
 async def create_instance(

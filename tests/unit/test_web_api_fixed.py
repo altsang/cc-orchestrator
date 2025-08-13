@@ -121,7 +121,7 @@ class TestAPIEndpointsFixed:
             "/api/v1/instances", json={"issue_id": "123"}, headers=auth_headers
         )
 
-        assert response.status_code == 200
+        assert response.status_code == 201
         data = response.json()
         assert data["issue_id"] == "123"
 

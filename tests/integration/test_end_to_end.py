@@ -84,7 +84,7 @@ class TestCompleteUserWorkflows:
         create_response = client.post(
             "/api/v1/instances", json={"issue_id": "e2e-test-123"}, headers=headers
         )
-        assert create_response.status_code == 200
+        assert create_response.status_code == 201
         instance = create_response.json()
         instance_id = instance["id"]
         assert instance["issue_id"] == "e2e-test-123"
@@ -179,7 +179,7 @@ class TestCompleteUserWorkflows:
                 json={"issue_id": f"multi-test-{i}"},
                 headers=headers,
             )
-            assert response.status_code == 200
+            assert response.status_code == 201
             instances.append(response.json())
 
         # Verify all instances exist
@@ -249,7 +249,7 @@ class TestCompleteUserWorkflows:
         create_response = client.post(
             "/api/v1/instances", json={"issue_id": "error-test"}, headers=headers
         )
-        assert create_response.status_code == 200
+        assert create_response.status_code == 201
         instance_id = create_response.json()["id"]
 
         # Valid operations should work after errors
@@ -373,7 +373,7 @@ class TestConcurrencyAndScale:
                 json={"issue_id": f"concurrent-{i}"},
                 headers=headers,
             )
-            assert response.status_code == 200
+            assert response.status_code == 201
             instances.append(response.json())
 
         # Simulate concurrent operations

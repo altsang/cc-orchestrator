@@ -6,7 +6,7 @@ from typing import Any, Generic, TypeVar
 
 from pydantic import BaseModel, Field
 
-from ..database.models import Instance, InstanceStatus
+from ..database.models import Instance, InstanceStatus, ConfigScope
 
 # Explicit exports for mypy - only include what's actually defined
 __all__ = [
@@ -15,6 +15,7 @@ __all__ = [
     "InstanceCreate",
     "InstanceUpdate",
     "InstanceResponse",
+    "ConfigurationResponse",
     "APIResponse",
 ]
 
@@ -26,7 +27,7 @@ class InstanceBase(BaseModel):
     """Base instance schema."""
 
     issue_id: str
-    status: InstanceStatus
+    status: InstanceStatus = InstanceStatus.INITIALIZING
 
 
 class InstanceCreate(InstanceBase):
@@ -285,8 +286,12 @@ class ConfigurationResponse(BaseModel):
     id: int
     key: str
     value: str
-    description: str
+    description: str | None = None
     category: str
+    scope: ConfigScope
+    instance_id: int | None = None
+    is_secret: bool = False
+    is_readonly: bool = False
     created_at: datetime
     updated_at: datetime | None = None
 
