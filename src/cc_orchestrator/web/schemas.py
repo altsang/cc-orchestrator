@@ -265,6 +265,9 @@ class WorktreeResponse(BaseModel):
     has_uncommitted_changes: bool = False
     last_sync: datetime | None = None
 
+    class Config:
+        from_attributes = True
+
 
 # Configuration Schemas
 class ConfigurationCreate(BaseModel):

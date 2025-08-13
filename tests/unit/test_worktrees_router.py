@@ -28,31 +28,34 @@ class TestWorktreesRouterFunctions:
         """Mock CRUD adapter."""
         crud = AsyncMock()
 
-        # Create a simple object that Pydantic can validate
-        # Use a namespace object that supports both attribute and dict access
-        from types import SimpleNamespace
+        # Create a dictionary that Pydantic can validate
+        # Include all fields required by WorktreeResponse schema
+        mock_worktree_data = {
+            "id": 1,
+            "name": "test-worktree",
+            "branch": "feature-branch",  # API schema uses 'branch'
+            "base_branch": "main",
+            "path": "/workspace/test-worktree",
+            "active": True,
+            "status": "active",
+            "current_commit": "abc123",
+            "has_uncommitted_changes": False,
+            "last_sync": datetime.now(UTC),
+            "created_at": datetime.now(UTC),
+            "updated_at": datetime.now(UTC),
+            # Database model specific attribute for mapping
+            "branch_name": "feature-branch",  # Database model uses branch_name
+        }
 
-        mock_worktree = SimpleNamespace()
+        # Create a mock object with dictionary-like access for the router code
+        class MockWorktree:
+            def __init__(self, data):
+                self.__dict__.update(data)
 
-        # Set all required fields for WorktreeResponse validation
-        mock_worktree.id = 1
-        mock_worktree.name = "test-worktree"
-        mock_worktree.branch = "feature-branch"  # API uses 'branch'
-        mock_worktree.base_branch = "main"
-        mock_worktree.path = "/workspace/test-worktree"
-        mock_worktree.active = True
-        mock_worktree.status = "active"
-        mock_worktree.current_commit = "abc123"
-        mock_worktree.has_uncommitted_changes = False
-        mock_worktree.last_sync = datetime.now(UTC)
-        mock_worktree.created_at = datetime.now(UTC)
-        mock_worktree.updated_at = datetime.now(UTC)
+        mock_worktree = MockWorktree(mock_worktree_data)
 
-        # Add database model specific attributes that router needs
-        mock_worktree.branch_name = "feature-branch"  # Database model uses branch_name
-
-        # WorktreeResponse schema only has: id, name, branch, base_branch, path, active, created_at, updated_at
-        # No additional attributes needed as they're not part of the response schema
+        # WorktreeResponse schema fields: id, name, branch, base_branch, path, active,
+        # created_at, updated_at, status, current_commit, has_uncommitted_changes, last_sync
 
         # Mock instance data
         mock_instance = Mock()
