@@ -45,11 +45,11 @@ class TestWorktreesRouterFunctions:
 
         # Create a Mock object that behaves like both WorktreeResponse and database model
         mock_worktree = Mock()
-        
+
         # Set all WorktreeResponse fields
         for key, value in worktree_data.items():
             setattr(mock_worktree, key, value)
-            
+
         # Add database model attributes that the router expects
         mock_worktree.branch_name = "feature-branch"  # Database model uses branch_name
         mock_worktree.last_sync = datetime.now(UTC)
