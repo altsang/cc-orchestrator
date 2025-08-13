@@ -151,10 +151,12 @@ class TestWebSocketMessaging:
         """Test broadcasting with some failed connections."""
         ws1 = MockWebSocket()
         ws2 = MockWebSocket()
-        ws2.closed = True  # This one will fail
-
+        # Connect both websockets first
         await websocket_manager.connect(ws1)
         await websocket_manager.connect(ws2)
+        
+        # Now close ws2 to make it fail during broadcast
+        ws2.closed = True
 
         message = {"type": "broadcast", "data": {}}
         sent_count = await websocket_manager.broadcast_to_all(message)
