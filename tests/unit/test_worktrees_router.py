@@ -10,6 +10,7 @@ Tests cover all worktree management functionality including:
 """
 
 from datetime import UTC, datetime
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
 import pytest
@@ -43,16 +44,28 @@ class TestWorktreesRouterFunctions:
             "updated_at": datetime.now(UTC),
         }
 
-        # Create a Mock object that behaves like both WorktreeResponse and database model
-        mock_worktree = Mock()
-
-        # Set all WorktreeResponse fields
-        for key, value in worktree_data.items():
-            setattr(mock_worktree, key, value)
-
-        # Add database model attributes that the router expects
-        mock_worktree.branch_name = "feature-branch"  # Database model uses branch_name
+        # Create a simple object that Pydantic can validate
+        # Use a namespace object that supports both attribute and dict access
+        from types import SimpleNamespace
+        
+        mock_worktree = SimpleNamespace()
+        
+        # Set all required fields for WorktreeResponse validation
+        mock_worktree.id = 1
+        mock_worktree.name = "test-worktree"
+        mock_worktree.branch = "feature-branch"  # API uses 'branch'
+        mock_worktree.base_branch = "main"
+        mock_worktree.path = "/workspace/test-worktree"
+        mock_worktree.active = True
+        mock_worktree.status = "active"
+        mock_worktree.current_commit = "abc123"
+        mock_worktree.has_uncommitted_changes = False
         mock_worktree.last_sync = datetime.now(UTC)
+        mock_worktree.created_at = datetime.now(UTC)
+        mock_worktree.updated_at = datetime.now(UTC)
+        
+        # Add database model specific attributes that router needs
+        mock_worktree.branch_name = "feature-branch"  # Database model uses branch_name
 
         # WorktreeResponse schema only has: id, name, branch, base_branch, path, active, created_at, updated_at
         # No additional attributes needed as they're not part of the response schema
@@ -319,7 +332,7 @@ class TestWorktreesRouterFunctions:
         assert status_data["id"] == 1
         assert status_data["name"] == "test-worktree"
         assert status_data["path"] == "/workspace/test-worktree"
-        assert status_data["status"] == WorktreeStatus.ACTIVE
+        assert status_data["status"] == WorktreeStatus.ACTIVE.value
 
         mock_crud.get_worktree.assert_called_once_with(1)
 
@@ -376,6 +389,7 @@ class TestWorktreeValidation:
             "base_branch": "main",
             "path": "/workspace/test",
             "active": True,
+            "status": WorktreeStatus.ACTIVE.value,  # Add status field
             "created_at": datetime.now(UTC),
             "updated_at": datetime.now(UTC),
         }
