@@ -103,11 +103,11 @@ class TestWebSocketMessaging:
 
         assert success is True
         assert len(mock_websocket.messages_sent) == 2  # Connect message + test message
-        
+
         # First message should be the connection welcome message
         connect_message = json.loads(mock_websocket.messages_sent[0])
         assert connect_message["type"] == "connected"
-        
+
         # Second message should be our test message
         sent_message = json.loads(mock_websocket.messages_sent[1])
         assert sent_message["type"] == "test"
