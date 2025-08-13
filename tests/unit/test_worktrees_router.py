@@ -10,7 +10,6 @@ Tests cover all worktree management functionality including:
 """
 
 from datetime import UTC, datetime
-from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
 import pytest
@@ -29,27 +28,13 @@ class TestWorktreesRouterFunctions:
         """Mock CRUD adapter."""
         crud = AsyncMock()
 
-        # Create proper worktree data that matches WorktreeResponse schema
-        worktree_data = {
-            "id": 1,
-            "name": "test-worktree",
-            "branch": "feature-branch",
-            "base_branch": "main",
-            "path": "/workspace/test-worktree",
-            "active": True,
-            "status": "active",
-            "current_commit": "abc123",
-            "has_uncommitted_changes": False,
-            "created_at": datetime.now(UTC),
-            "updated_at": datetime.now(UTC),
-        }
 
         # Create a simple object that Pydantic can validate
         # Use a namespace object that supports both attribute and dict access
         from types import SimpleNamespace
-        
+
         mock_worktree = SimpleNamespace()
-        
+
         # Set all required fields for WorktreeResponse validation
         mock_worktree.id = 1
         mock_worktree.name = "test-worktree"
@@ -63,7 +48,7 @@ class TestWorktreesRouterFunctions:
         mock_worktree.last_sync = datetime.now(UTC)
         mock_worktree.created_at = datetime.now(UTC)
         mock_worktree.updated_at = datetime.now(UTC)
-        
+
         # Add database model specific attributes that router needs
         mock_worktree.branch_name = "feature-branch"  # Database model uses branch_name
 
