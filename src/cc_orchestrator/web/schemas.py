@@ -258,7 +258,7 @@ class WorktreeResponse(BaseModel):
     active: bool = True
     created_at: datetime
     updated_at: datetime | None = None
-    
+
     # Additional fields from database model
     status: str | None = None
     current_commit: str | None = None
