@@ -154,7 +154,7 @@ class TestWebSocketMessaging:
         # Connect both websockets first
         await websocket_manager.connect(ws1)
         await websocket_manager.connect(ws2)
-        
+
         # Now close ws2 to make it fail during broadcast
         ws2.closed = True
 
