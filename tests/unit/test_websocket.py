@@ -1,7 +1,7 @@
 """Tests for WebSocket functionality."""
 
 import json
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -231,7 +231,7 @@ class TestWebSocketManager:
         assert hasattr(ws_manager, 'connections')
         assert hasattr(ws_manager, 'subscriptions')
         assert hasattr(ws_manager, 'max_connections')
-        
+
         # Test that initial state is empty
         assert len(ws_manager.connections) == 0
         assert len(ws_manager.subscriptions) == 0
