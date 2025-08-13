@@ -12,7 +12,7 @@ os.environ.setdefault(
 os.environ.setdefault("FRONTEND_URL", "http://localhost:3000")
 os.environ.setdefault("ENABLE_DEMO_USERS", "true")
 os.environ.setdefault("DEBUG", "true")
-os.environ.setdefault("DEMO_ADMIN_PASSWORD", "test-admin-password")
+os.environ.setdefault("DEMO_ADMIN_PASSWORD", "admin123")
 
 # Add src to path for imports
 import sys
@@ -38,7 +38,7 @@ def setup_test_environment():
     )
     os.environ["ENABLE_DEMO_USERS"] = "true"
     os.environ["DEBUG"] = "true"
-    os.environ["DEMO_ADMIN_PASSWORD"] = "test-admin-password"
+    os.environ["DEMO_ADMIN_PASSWORD"] = "admin123"
 
     yield
 
