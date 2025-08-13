@@ -6,7 +6,7 @@ from typing import Any, Generic, TypeVar
 
 from pydantic import BaseModel, Field
 
-from ..database.models import Instance, InstanceStatus, ConfigScope
+from ..database.models import ConfigScope, Instance, InstanceStatus
 
 # Explicit exports for mypy - only include what's actually defined
 __all__ = [
