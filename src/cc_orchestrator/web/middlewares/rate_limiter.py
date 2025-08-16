@@ -73,7 +73,9 @@ class TokenBucket:
         else:
             # Block for the configured duration
             self.blocked_until = now + 60  # 1 minute block
-            logger.warning("Rate limit exceeded, blocking access", blocked_until=self.blocked_until)
+            logger.warning(
+                "Rate limit exceeded, blocking access", blocked_until=self.blocked_until
+            )
             return False
 
 
@@ -91,19 +93,29 @@ class RateLimiter:
     def __init__(self):
         # IP-based rate limiting
         self.ip_buckets: dict[str, TokenBucket] = defaultdict(
-            lambda: TokenBucket(capacity=100, refill_rate=100/60)  # 100 requests per minute
+            lambda: TokenBucket(
+                capacity=100, refill_rate=100 / 60
+            )  # 100 requests per minute
         )
 
         # WebSocket connection rate limiting
         self.websocket_ip_buckets: dict[str, TokenBucket] = defaultdict(
-            lambda: TokenBucket(capacity=5, refill_rate=5/60)  # 5 connections per minute
+            lambda: TokenBucket(
+                capacity=5, refill_rate=5 / 60
+            )  # 5 connections per minute
         )
 
         # API endpoint specific limits
         self.endpoint_rules = {
-            "/api/v1/logs/search": RateLimitRule(requests_per_minute=20, burst_allowance=5),
-            "/api/v1/logs/export": RateLimitRule(requests_per_minute=5, burst_allowance=2),
-            "/api/v1/logs/stream/start": RateLimitRule(requests_per_minute=10, burst_allowance=3),
+            "/api/v1/logs/search": RateLimitRule(
+                requests_per_minute=20, burst_allowance=5
+            ),
+            "/api/v1/logs/export": RateLimitRule(
+                requests_per_minute=5, burst_allowance=2
+            ),
+            "/api/v1/logs/stream/start": RateLimitRule(
+                requests_per_minute=10, burst_allowance=3
+            ),
         }
 
         # Cleanup task
@@ -165,7 +177,9 @@ class RateLimiter:
         bucket = self.websocket_ip_buckets[client_ip]
         return bucket.consume()
 
-    def get_rate_limit_info(self, client_ip: str, endpoint: str | None = None) -> dict[str, Any]:
+    def get_rate_limit_info(
+        self, client_ip: str, endpoint: str | None = None
+    ) -> dict[str, Any]:
         """
         Get current rate limit information.
 
@@ -176,14 +190,20 @@ class RateLimiter:
         Returns:
             Dict with rate limit information
         """
-        key = f"{client_ip}:{endpoint}" if endpoint and endpoint in self.endpoint_rules else client_ip
+        key = (
+            f"{client_ip}:{endpoint}"
+            if endpoint and endpoint in self.endpoint_rules
+            else client_ip
+        )
         bucket = self.ip_buckets.get(key, self.ip_buckets[client_ip])
 
         return {
             "remaining_tokens": int(bucket.tokens),
             "capacity": bucket.capacity,
             "reset_time": bucket.last_refill + 60,  # Next minute boundary
-            "blocked_until": bucket.blocked_until if bucket.blocked_until > time.time() else None,
+            "blocked_until": (
+                bucket.blocked_until if bucket.blocked_until > time.time() else None
+            ),
         }
 
     async def _cleanup_old_buckets(self) -> None:
@@ -197,7 +217,8 @@ class RateLimiter:
 
                 # Cleanup IP buckets
                 old_keys = [
-                    key for key, bucket in self.ip_buckets.items()
+                    key
+                    for key, bucket in self.ip_buckets.items()
                     if bucket.last_refill < cutoff_time
                 ]
                 for key in old_keys:
@@ -205,7 +226,8 @@ class RateLimiter:
 
                 # Cleanup WebSocket buckets
                 old_ws_keys = [
-                    key for key, bucket in self.websocket_ip_buckets.items()
+                    key
+                    for key, bucket in self.websocket_ip_buckets.items()
                     if bucket.last_refill < cutoff_time
                 ]
                 for key in old_ws_keys:
@@ -250,7 +272,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             )
 
             # Get rate limit info for headers
-            rate_info = self.rate_limiter.get_rate_limit_info(client_ip, request.url.path)
+            rate_info = self.rate_limiter.get_rate_limit_info(
+                client_ip, request.url.path
+            )
 
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
@@ -260,7 +284,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                     "X-RateLimit-Limit": str(rate_info["capacity"]),
                     "X-RateLimit-Remaining": str(max(0, rate_info["remaining_tokens"])),
                     "X-RateLimit-Reset": str(int(rate_info["reset_time"])),
-                }
+                },
             )
 
         # Continue with request
@@ -269,7 +293,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         # Add rate limit headers to response
         rate_info = self.rate_limiter.get_rate_limit_info(client_ip, request.url.path)
         response.headers["X-RateLimit-Limit"] = str(rate_info["capacity"])
-        response.headers["X-RateLimit-Remaining"] = str(max(0, rate_info["remaining_tokens"]))
+        response.headers["X-RateLimit-Remaining"] = str(
+            max(0, rate_info["remaining_tokens"])
+        )
         response.headers["X-RateLimit-Reset"] = str(int(rate_info["reset_time"]))
 
         return response

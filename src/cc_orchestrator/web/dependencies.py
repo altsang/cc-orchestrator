@@ -180,14 +180,18 @@ async def get_current_user(request: Request) -> CurrentUser:
     # Development/testing token for non-production environments
     dev_token = request.headers.get("X-Dev-Token")
     if dev_token == "development-token":
-        api_logger.warning("Development token used - only for testing",
-                          client_ip=get_client_ip(request))
+        api_logger.warning(
+            "Development token used - only for testing",
+            client_ip=get_client_ip(request),
+        )
         return CurrentUser(user_id="dev_user", permissions=["read", "write"])
 
     # No valid authentication found
-    api_logger.warning("Authentication required - no valid credentials provided",
-                      client_ip=get_client_ip(request),
-                      user_agent=request.headers.get("user-agent"))
+    api_logger.warning(
+        "Authentication required - no valid credentials provided",
+        client_ip=get_client_ip(request),
+        user_agent=request.headers.get("user-agent"),
+    )
 
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -201,11 +205,15 @@ async def _validate_bearer_token(token: str) -> CurrentUser:
     # TODO: Implement actual JWT validation in production
     # For now, accept specific test tokens
     if token in ["valid-jwt-token", "test-user-token", "admin-token"]:
-        permissions = ["read", "write", "admin"] if token == "admin-token" else ["read", "write"]
+        permissions = (
+            ["read", "write", "admin"] if token == "admin-token" else ["read", "write"]
+        )
         user_id = "admin" if token == "admin-token" else "authenticated_user"
         return CurrentUser(user_id=user_id, permissions=permissions)
 
-    api_logger.warning("Invalid Bearer token provided", token_prefix=token[:10] if token else "")
+    api_logger.warning(
+        "Invalid Bearer token provided", token_prefix=token[:10] if token else ""
+    )
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Invalid token",
@@ -219,13 +227,17 @@ async def _validate_api_key(api_key: str) -> CurrentUser:
     # For now, accept specific test API keys
     valid_api_keys = {
         "test-api-key-123": CurrentUser(user_id="api_user", permissions=["read"]),
-        "admin-api-key-456": CurrentUser(user_id="api_admin", permissions=["read", "write", "admin"]),
+        "admin-api-key-456": CurrentUser(
+            user_id="api_admin", permissions=["read", "write", "admin"]
+        ),
     }
 
     if api_key in valid_api_keys:
         return valid_api_keys[api_key]
 
-    api_logger.warning("Invalid API key provided", key_prefix=api_key[:10] if api_key else "")
+    api_logger.warning(
+        "Invalid API key provided", key_prefix=api_key[:10] if api_key else ""
+    )
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Invalid API key",

@@ -201,7 +201,7 @@ class TestRateLimiting:
         # Try to request more than allowed limit with authentication
         response = self.client.get(
             f"/api/v1/logs/search?limit={LOG_STREAMING_CONFIG.max_entries_per_request + 1}",
-            headers={"X-Dev-Token": "development-token"}
+            headers={"X-Dev-Token": "development-token"},
         )
         assert response.status_code == 422  # Validation error
 
@@ -225,7 +225,7 @@ class TestRateLimiting:
                 "search": {"limit": LOG_STREAMING_CONFIG.max_export_entries + 1},
                 "format": "json",
             },
-            headers={"X-Dev-Token": "development-token"}
+            headers={"X-Dev-Token": "development-token"},
         )
 
         # Should succeed but limit should be capped
@@ -242,7 +242,7 @@ class TestRateLimiting:
         response = self.client.post(
             "/api/v1/logs/stream/start",
             json={"level": ["INFO"], "buffer_size": 100},
-            headers={"X-Dev-Token": "development-token"}
+            headers={"X-Dev-Token": "development-token"},
         )
         assert response.status_code == 429  # Too Many Requests
 
@@ -404,7 +404,7 @@ class TestDataExfiltrationProtection:
         response = self.client.post(
             "/api/v1/logs/export",
             json={"search": {"limit": 100}, "format": "json"},
-            headers={"X-Dev-Token": "development-token"}
+            headers={"X-Dev-Token": "development-token"},
         )
 
         assert response.status_code == 200
@@ -429,8 +429,7 @@ class TestDataExfiltrationProtection:
         log_storage.append(sensitive_entry)
 
         response = self.client.get(
-            "/api/v1/logs/search",
-            headers={"X-Dev-Token": "development-token"}
+            "/api/v1/logs/search", headers={"X-Dev-Token": "development-token"}
         )
         assert response.status_code == 200
 
@@ -488,7 +487,7 @@ class TestIntegrationSecurity:
         # 1. Test search with audit logging
         search_response = self.client.get(
             "/api/v1/logs/search?query=login",
-            headers={"X-Dev-Token": "development-token"}
+            headers={"X-Dev-Token": "development-token"},
         )
         assert search_response.status_code == 200
 
@@ -501,7 +500,7 @@ class TestIntegrationSecurity:
         export_response = self.client.post(
             "/api/v1/logs/export",
             json={"search": {"query": "login", "limit": 100}, "format": "json"},
-            headers={"X-Dev-Token": "development-token"}
+            headers={"X-Dev-Token": "development-token"},
         )
         assert export_response.status_code == 200
 
@@ -514,6 +513,4 @@ class TestIntegrationSecurity:
         assert len(audit_log_storage) == 2  # Search + Export
         assert audit_log_storage[0]["action"] == "search"
         assert audit_log_storage[1]["action"] == "export"
-        assert all(
-            entry["user_id"] == "dev_user" for entry in audit_log_storage
-        )
+        assert all(entry["user_id"] == "dev_user" for entry in audit_log_storage)

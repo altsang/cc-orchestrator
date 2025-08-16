@@ -37,7 +37,9 @@ async def authenticate_websocket_token(token: str | None) -> CurrentUser | None:
 
 
 @router.websocket("/connect")
-async def websocket_endpoint(websocket: WebSocket, token: str = Query(..., description="Authentication token")) -> None:
+async def websocket_endpoint(
+    websocket: WebSocket, token: str = Query(..., description="Authentication token")
+) -> None:
     """
     Main WebSocket endpoint for client connections.
 
@@ -76,7 +78,11 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(..., descr
 
 
 @router.websocket("/instances/{instance_id}")
-async def instance_websocket(websocket: WebSocket, instance_id: str, token: str = Query(..., description="Authentication token")) -> None:
+async def instance_websocket(
+    websocket: WebSocket,
+    instance_id: str,
+    token: str = Query(..., description="Authentication token"),
+) -> None:
     """
     WebSocket endpoint for instance-specific updates.
 
@@ -112,7 +118,11 @@ async def instance_websocket(websocket: WebSocket, instance_id: str, token: str 
 
 
 @router.websocket("/tasks/{task_id}")
-async def task_websocket(websocket: WebSocket, task_id: str, token: str = Query(..., description="Authentication token")) -> None:
+async def task_websocket(
+    websocket: WebSocket,
+    task_id: str,
+    token: str = Query(..., description="Authentication token"),
+) -> None:
     """
     WebSocket endpoint for task-specific updates.
 
@@ -148,7 +158,9 @@ async def task_websocket(websocket: WebSocket, task_id: str, token: str = Query(
 
 
 @router.websocket("/logs")
-async def logs_websocket(websocket: WebSocket, token: str = Query(..., description="Authentication token")) -> None:
+async def logs_websocket(
+    websocket: WebSocket, token: str = Query(..., description="Authentication token")
+) -> None:
     """
     WebSocket endpoint for streaming logs.
 
@@ -184,7 +196,9 @@ async def logs_websocket(websocket: WebSocket, token: str = Query(..., descripti
 
 
 @router.websocket("/dashboard")
-async def dashboard_websocket(websocket: WebSocket, token: str = Query(..., description="Authentication token")) -> None:
+async def dashboard_websocket(
+    websocket: WebSocket, token: str = Query(..., description="Authentication token")
+) -> None:
     """
     WebSocket endpoint for dashboard updates.
 
