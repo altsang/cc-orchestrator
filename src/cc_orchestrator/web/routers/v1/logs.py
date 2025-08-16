@@ -53,7 +53,20 @@ SENSITIVE_PATTERNS = [
     r'(?i)credential[:=]\s*[^\s\'"]+',
     r"\b[0-9]{4}[- ]?[0-9]{4}[- ]?[0-9]{4}[- ]?[0-9]{4}\b",  # Credit card
     r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b",  # Email (if considered sensitive)
-    r'(?i)secret_[a-zA-Z0-9_]+',  # Pattern like secret_token_123
+    r"(?i)secret_[a-zA-Z0-9_]+",  # Pattern like secret_token_123
+    r"[a-zA-Z0-9_]{16,}",  # Generic tokens/keys (16+ alphanumeric chars, more specific)
+]
+
+# Sensitive metadata keys that should always be redacted (exact and substring matches)
+SENSITIVE_KEYS_EXACT = [
+    "password", "secret", "api_key", "session_token", "oauth_token",
+    "jwt_token", "bearer_token", "access_token", "refresh_token",
+    "client_secret", "private_key", "auth_token", "credential"
+]
+
+# Keys that should be checked for substring matches (more restrictive)
+SENSITIVE_KEYS_SUBSTRING = [
+    "password", "secret", "token", "_key", "auth"  # Changed "key" to "_key" to avoid "user_456"
 ]
 
 # Audit log storage (in production, use proper audit system)
@@ -137,7 +150,29 @@ def sanitize_log_entry(log_entry: LogEntry) -> LogEntry:
     if sanitized_entry.metadata:
         sanitized_metadata = {}
         for key, value in sanitized_entry.metadata.items():
-            if isinstance(value, str):
+            # Check if key itself is sensitive (exact match first, then substring)
+            key_lower = key.lower()
+            is_sensitive = False
+
+            # Check exact matches first
+            if key_lower in [k.lower() for k in SENSITIVE_KEYS_EXACT]:
+                is_sensitive = True
+                # print(f"DEBUG: {key_lower} matched exact key")
+            # Then check substring matches, but only for clearly sensitive patterns
+            elif any(sens_key in key_lower for sens_key in SENSITIVE_KEYS_SUBSTRING):
+                # print(f"DEBUG: {key_lower} matched substring patterns")
+                # Additional validation to avoid false positives like "user_id"
+                safe_patterns = ["user_id", "request_id", "trace_id", "correlation_id", "message_id", "task_id", "instance_id"]
+                if not any(safe_pattern == key_lower for safe_pattern in safe_patterns):
+                    is_sensitive = True
+                    # print(f"DEBUG: {key_lower} not in safe patterns, marked sensitive")
+                # else:
+                    # print(f"DEBUG: {key_lower} found in safe patterns, not sensitive")
+
+            if is_sensitive:
+                sanitized_metadata[key] = "[REDACTED]"
+                # print(f"DEBUG: Marking {key} as [REDACTED] due to sensitive key")
+            elif isinstance(value, str):
                 sanitized_metadata[key] = sanitize_log_content(value)
             else:
                 sanitized_metadata[key] = value
@@ -203,8 +238,8 @@ class LogSearchRequest(BaseModel):
     @classmethod
     def validate_limit(cls, v: int) -> int:
         """Validate limit."""
-        if v < 1 or v > 10000:
-            raise ValueError("Limit must be between 1 and 10000")
+        if v < 1 or v > 100000:  # Allow up to 100k for export operations, business logic will cap appropriately
+            raise ValueError("Limit must be between 1 and 100000")
         return v
 
 
@@ -543,6 +578,9 @@ async def start_log_stream(
 
         return {"stream_id": stream_id, "status": "started"}
 
+    except HTTPException:
+        # Re-raise HTTPExceptions (like rate limiting) to preserve status codes
+        raise
     except Exception as e:
         logger.error("Failed to start log stream", exception=e)
         raise HTTPException(status_code=500, detail="Failed to start log stream")

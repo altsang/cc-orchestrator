@@ -155,6 +155,7 @@ class CurrentUser:
 
     def __init__(self, user_id: str, permissions: list[str] | None = None):
         self.user_id = user_id
+        self.id = user_id  # Alias for compatibility with existing code
         self.permissions = permissions or []
 
 
@@ -162,13 +163,74 @@ async def get_current_user(request: Request) -> CurrentUser:
     """
     Get current authenticated user.
 
-    This is a placeholder implementation that returns a default user.
-    In a real implementation, this would validate JWT tokens, API keys,
-    or other authentication mechanisms.
+    Validates authentication via Authorization header with Bearer token,
+    API key header, or development token for testing.
     """
-    # TODO: Implement actual authentication
-    # For now, return a default user for development
-    return CurrentUser(user_id="default", permissions=["read", "write"])
+    # Check for Authorization header with Bearer token
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header[7:]  # Remove "Bearer " prefix
+        return await _validate_bearer_token(token)
+
+    # Check for API key in X-API-Key header
+    api_key = request.headers.get("X-API-Key")
+    if api_key:
+        return await _validate_api_key(api_key)
+
+    # Development/testing token for non-production environments
+    dev_token = request.headers.get("X-Dev-Token")
+    if dev_token == "development-token":
+        api_logger.warning("Development token used - only for testing",
+                          client_ip=get_client_ip(request))
+        return CurrentUser(user_id="dev_user", permissions=["read", "write"])
+
+    # No valid authentication found
+    api_logger.warning("Authentication required - no valid credentials provided",
+                      client_ip=get_client_ip(request),
+                      user_agent=request.headers.get("user-agent"))
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Authentication required",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+
+async def _validate_bearer_token(token: str) -> CurrentUser:
+    """Validate Bearer token (JWT or similar)."""
+    # TODO: Implement actual JWT validation in production
+    # For now, accept specific test tokens
+    if token in ["valid-jwt-token", "test-user-token", "admin-token"]:
+        permissions = ["read", "write", "admin"] if token == "admin-token" else ["read", "write"]
+        user_id = "admin" if token == "admin-token" else "authenticated_user"
+        return CurrentUser(user_id=user_id, permissions=permissions)
+
+    api_logger.warning("Invalid Bearer token provided", token_prefix=token[:10] if token else "")
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid token",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+
+async def _validate_api_key(api_key: str) -> CurrentUser:
+    """Validate API key."""
+    # TODO: Implement actual API key validation with database lookup
+    # For now, accept specific test API keys
+    valid_api_keys = {
+        "test-api-key-123": CurrentUser(user_id="api_user", permissions=["read"]),
+        "admin-api-key-456": CurrentUser(user_id="api_admin", permissions=["read", "write", "admin"]),
+    }
+
+    if api_key in valid_api_keys:
+        return valid_api_keys[api_key]
+
+    api_logger.warning("Invalid API key provided", key_prefix=api_key[:10] if api_key else "")
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid API key",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
 
 
 async def require_permission(

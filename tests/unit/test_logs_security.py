@@ -5,7 +5,7 @@ Tests critical security requirements identified in code review.
 """
 
 from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi import HTTPException
@@ -15,7 +15,6 @@ from src.cc_orchestrator.web.app import app
 from src.cc_orchestrator.web.routers.v1.logs import (
     LOG_STREAMING_CONFIG,
     LogEntry,
-    LogEntryType,
     LogLevelEnum,
     LogSearchRequest,
     audit_log_access,
@@ -197,26 +196,17 @@ class TestRateLimiting:
             }
         )
 
-    @patch("src.cc_orchestrator.web.routers.v1.logs.get_current_user")
-    def test_search_limit_enforcement(self, mock_get_user):
+    def test_search_limit_enforcement(self):
         """Test that search limits are enforced."""
-        mock_user = MagicMock()
-        mock_user.id = "test_user"
-        mock_get_user.return_value = mock_user
-
-        # Try to request more than allowed limit
+        # Try to request more than allowed limit with authentication
         response = self.client.get(
-            f"/api/v1/logs/search?limit={LOG_STREAMING_CONFIG.max_entries_per_request + 1}"
+            f"/api/v1/logs/search?limit={LOG_STREAMING_CONFIG.max_entries_per_request + 1}",
+            headers={"X-Dev-Token": "development-token"}
         )
         assert response.status_code == 422  # Validation error
 
-    @patch("src.cc_orchestrator.web.routers.v1.logs.get_current_user")
-    def test_export_limit_enforcement(self, mock_get_user):
+    def test_export_limit_enforcement(self):
         """Test that export limits are enforced."""
-        mock_user = MagicMock()
-        mock_user.id = "test_user"
-        mock_get_user.return_value = mock_user
-
         # Add test log entries
         test_entry = LogEntry(
             id="test_1",
@@ -228,32 +218,31 @@ class TestRateLimiting:
         )
         log_storage.append(test_entry)
 
-        # Request export with limit exceeding maximum
+        # Request export with limit exceeding maximum, with authentication
         response = self.client.post(
             "/api/v1/logs/export",
             json={
                 "search": {"limit": LOG_STREAMING_CONFIG.max_export_entries + 1},
                 "format": "json",
             },
+            headers={"X-Dev-Token": "development-token"}
         )
 
         # Should succeed but limit should be capped
         assert response.status_code == 200
 
-    @patch("src.cc_orchestrator.web.routers.v1.logs.get_current_user")
     @patch("src.cc_orchestrator.web.routers.v1.logs.connection_manager")
-    def test_concurrent_stream_limit(self, mock_connection_manager, mock_get_user):
+    def test_concurrent_stream_limit(self, mock_connection_manager):
         """Test that concurrent stream limits are enforced."""
-        mock_user = MagicMock()
-        mock_user.id = "test_user"
-        mock_get_user.return_value = mock_user
         mock_connection_manager.broadcast_message = AsyncMock()
 
         # Set streams to maximum
         stream_stats["active_streams"] = LOG_STREAMING_CONFIG.max_concurrent_streams
 
         response = self.client.post(
-            "/api/v1/logs/stream/start", json={"level": ["INFO"], "buffer_size": 100}
+            "/api/v1/logs/stream/start",
+            json={"level": ["INFO"], "buffer_size": 100},
+            headers={"X-Dev-Token": "development-token"}
         )
         assert response.status_code == 429  # Too Many Requests
 
@@ -399,13 +388,8 @@ class TestDataExfiltrationProtection:
         self.client = TestClient(app)
         log_storage.clear()
 
-    @patch("src.cc_orchestrator.web.routers.v1.logs.get_current_user")
-    def test_export_sensitive_data_protection(self, mock_get_user):
+    def test_export_sensitive_data_protection(self):
         """Test that exported data is sanitized."""
-        mock_user = MagicMock()
-        mock_user.id = "test_user"
-        mock_get_user.return_value = mock_user
-
         # Add log entry with sensitive data
         sensitive_entry = LogEntry(
             id="sensitive_1",
@@ -418,7 +402,9 @@ class TestDataExfiltrationProtection:
         log_storage.append(sensitive_entry)
 
         response = self.client.post(
-            "/api/v1/logs/export", json={"search": {"limit": 100}, "format": "json"}
+            "/api/v1/logs/export",
+            json={"search": {"limit": 100}, "format": "json"},
+            headers={"X-Dev-Token": "development-token"}
         )
 
         assert response.status_code == 200
@@ -429,13 +415,8 @@ class TestDataExfiltrationProtection:
         assert "sensitive_key_456" not in content
         assert "[REDACTED]" in content
 
-    @patch("src.cc_orchestrator.web.routers.v1.logs.get_current_user")
-    def test_search_sensitive_data_protection(self, mock_get_user):
+    def test_search_sensitive_data_protection(self):
         """Test that search results are sanitized."""
-        mock_user = MagicMock()
-        mock_user.id = "test_user"
-        mock_get_user.return_value = mock_user
-
         # Add log entry with sensitive data
         sensitive_entry = LogEntry(
             id="sensitive_1",
@@ -447,7 +428,10 @@ class TestDataExfiltrationProtection:
         )
         log_storage.append(sensitive_entry)
 
-        response = self.client.get("/api/v1/logs/search")
+        response = self.client.get(
+            "/api/v1/logs/search",
+            headers={"X-Dev-Token": "development-token"}
+        )
         assert response.status_code == 200
 
         data = response.json()
@@ -476,13 +460,8 @@ class TestIntegrationSecurity:
             }
         )
 
-    @patch("src.cc_orchestrator.web.routers.v1.logs.get_current_user")
-    def test_complete_security_workflow(self, mock_get_user):
+    def test_complete_security_workflow(self):
         """Test complete security workflow from search to export."""
-        mock_user = MagicMock()
-        mock_user.id = "security_test_user"
-        mock_get_user.return_value = mock_user
-
         # Add log entries with mixed sensitive and normal data
         entries = [
             LogEntry(
@@ -507,7 +486,10 @@ class TestIntegrationSecurity:
             log_storage.append(entry)
 
         # 1. Test search with audit logging
-        search_response = self.client.get("/api/v1/logs/search?query=login")
+        search_response = self.client.get(
+            "/api/v1/logs/search?query=login",
+            headers={"X-Dev-Token": "development-token"}
+        )
         assert search_response.status_code == 200
 
         search_data = search_response.json()
@@ -519,6 +501,7 @@ class TestIntegrationSecurity:
         export_response = self.client.post(
             "/api/v1/logs/export",
             json={"search": {"query": "login", "limit": 100}, "format": "json"},
+            headers={"X-Dev-Token": "development-token"}
         )
         assert export_response.status_code == 200
 
@@ -532,5 +515,5 @@ class TestIntegrationSecurity:
         assert audit_log_storage[0]["action"] == "search"
         assert audit_log_storage[1]["action"] == "export"
         assert all(
-            entry["user_id"] == "security_test_user" for entry in audit_log_storage
+            entry["user_id"] == "dev_user" for entry in audit_log_storage
         )

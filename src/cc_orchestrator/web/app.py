@@ -17,13 +17,11 @@ from fastapi.responses import JSONResponse
 
 from ..database.connection import DatabaseManager
 from .logging_utils import api_logger
-from .middleware import (
-    LoggingMiddleware,
-    RateLimitMiddleware,
-    RequestIDMiddleware,
-)
+from .middleware import LoggingMiddleware, RequestIDMiddleware
+from .middlewares.rate_limiter import RateLimitMiddleware, rate_limiter
 from .routers import alerts, config, health, instances, tasks, worktrees
 from .routers.v1 import api_router_v1
+from .websocket.router import router as websocket_router
 
 
 @asynccontextmanager
@@ -43,6 +41,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             # For testing/development, create a mock db_manager
             app.state.db_manager = None
 
+    # Initialize rate limiter
+    try:
+        await rate_limiter.initialize()
+        api_logger.info("Rate limiter initialized")
+    except Exception as e:
+        api_logger.error("Failed to initialize rate limiter", error=str(e))
+
     api_logger.info("CC-Orchestrator API server started successfully")
 
     yield
@@ -54,6 +59,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     if hasattr(app.state, "db_manager") and app.state.db_manager:
         await app.state.db_manager.close()
         api_logger.info("Database connections closed")
+
+    # Clean up rate limiter
+    try:
+        await rate_limiter.cleanup()
+        api_logger.info("Rate limiter cleaned up")
+    except Exception as e:
+        api_logger.error("Failed to cleanup rate limiter", error=str(e))
 
     api_logger.info("CC-Orchestrator API server shutdown complete")
 
@@ -82,10 +94,11 @@ def create_app() -> FastAPI:
     # Add custom middleware
     app.add_middleware(RequestIDMiddleware)
     app.add_middleware(LoggingMiddleware)
-    app.add_middleware(RateLimitMiddleware, requests_per_minute=60)
+    app.add_middleware(RateLimitMiddleware, rate_limiter=rate_limiter)
 
     # Include routers
     app.include_router(api_router_v1, prefix="/api/v1")
+    app.include_router(websocket_router, prefix="/ws", tags=["websocket"])
 
     # Legacy routers (will be deprecated)
     app.include_router(instances.router, prefix="/instances", tags=["instances"])
