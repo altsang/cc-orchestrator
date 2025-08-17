@@ -325,7 +325,7 @@ class TestModuleConstants:
         """Test that SECRET_KEY comes from environment."""
         # The SECRET_KEY should be loaded from JWT_SECRET_KEY env var
         # Note: Due to module caching, SECRET_KEY is set at import time
-        # We verify it matches what's currently in the environment
+        # We verify basic properties of the secret key for test environment
         current_env_key = os.getenv("JWT_SECRET_KEY")
         assert (
             current_env_key is not None
@@ -334,8 +334,13 @@ class TestModuleConstants:
         current_key = get_current_secret_key()
         assert current_key == SECRET_KEY
         assert SECRET_KEY  # Should not be empty
-        # Both should contain test identifier (relaxed check for test environment compatibility)
-        assert "test-secret-key" in current_key or "test-secret-key" in current_env_key
+        # Both should contain test identifier (flexible for different test environments)
+        # Handle test isolation issues by checking that at least one contains the test identifier
+        assert (
+            "test-secret-key" in current_key or "test-secret-key" in current_env_key
+        ), f"Neither secret contains test identifier: current_key='{current_key}', env_key='{current_env_key}'"
+        # Secret key should be sufficiently long for security
+        assert len(current_key) > 20
 
     def test_algorithm_constant(self):
         """Test the JWT algorithm constant."""

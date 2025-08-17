@@ -43,8 +43,8 @@ def test_app(test_db):
     from cc_orchestrator.database.connection import DatabaseManager
 
     # Set required environment variables for testing
-    os.environ["JWT_SECRET_KEY"] = "test-secret-key-for-testing-only"
-    os.environ["DEBUG"] = "true"
+    os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key-for-testing-only")
+    os.environ.setdefault("DEBUG", "true")
 
     app = create_app()
 

@@ -20,11 +20,12 @@ from cc_orchestrator.web.auth import create_access_token
 from cc_orchestrator.web.crud_adapter import CRUDBase
 from cc_orchestrator.web.dependencies import get_crud, get_current_user
 
-# Set up test environment with proven success patterns
-os.environ["JWT_SECRET_KEY"] = "test-secret-key-for-integration-tests"
-os.environ["DEBUG"] = "true"
-os.environ["ENABLE_DEMO_USERS"] = "true"
-os.environ["DEMO_ADMIN_PASSWORD"] = "admin123"
+# Set up test environment variables in a controlled way
+# Using setdefault to avoid overriding existing test environment values
+os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key-for-integration-tests")
+os.environ.setdefault("DEBUG", "true")
+os.environ.setdefault("ENABLE_DEMO_USERS", "true")
+os.environ.setdefault("DEMO_ADMIN_PASSWORD", "admin123")
 
 
 @pytest.fixture
