@@ -763,8 +763,9 @@ class TestModelIndexes:
         """Test Instance model indexes are defined."""
         # These indexes should be defined in the module
         # We test by checking the module level variables
+        from sqlalchemy import Index
+
         import cc_orchestrator.database.models as models_module
-        from cc_orchestrator.database.models import Index
 
         # Look for index definitions
         index_names = []

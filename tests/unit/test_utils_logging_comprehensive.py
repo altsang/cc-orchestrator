@@ -355,7 +355,8 @@ class TestStructuredFormatter:
         result = formatter.format(record)
         data = json.loads(result)
 
-        assert data["exception"]["type"] == "UnknownError"
+        # Should NOT have exception data when exc_info[0] is None
+        assert "exception" not in data
 
     def test_excludes_standard_fields(self):
         """Test that standard LogRecord fields are excluded from extra data."""
@@ -591,7 +592,23 @@ class TestSetupLogging:
         ):
 
             mock_root_logger = Mock()
-            mock_get_logger.return_value = mock_root_logger
+            mock_root_logger.handlers = []  # Mock handlers as empty list
+            mock_urllib3_logger = Mock()
+            mock_requests_logger = Mock()
+            mock_git_logger = Mock()
+
+            def get_logger_side_effect(name=None):
+                if name == "urllib3":
+                    return mock_urllib3_logger
+                elif name == "requests":
+                    return mock_requests_logger
+                elif name == "git":
+                    return mock_git_logger
+                elif name is None or name == "":
+                    return mock_root_logger
+                return mock_root_logger
+
+            mock_get_logger.side_effect = get_logger_side_effect
             mock_handler = Mock()
             mock_stream_handler.return_value = mock_handler
 
@@ -604,7 +621,23 @@ class TestSetupLogging:
         """Test setup_logging with LogLevel enum."""
         with patch("logging.getLogger") as mock_get_logger:
             mock_root_logger = Mock()
-            mock_get_logger.return_value = mock_root_logger
+            mock_root_logger.handlers = []  # Mock handlers as empty list
+            mock_urllib3_logger = Mock()
+            mock_requests_logger = Mock()
+            mock_git_logger = Mock()
+
+            def get_logger_side_effect(name=None):
+                if name == "urllib3":
+                    return mock_urllib3_logger
+                elif name == "requests":
+                    return mock_requests_logger
+                elif name == "git":
+                    return mock_git_logger
+                elif name is None or name == "":
+                    return mock_root_logger
+                return mock_root_logger
+
+            mock_get_logger.side_effect = get_logger_side_effect
 
             setup_logging(log_level=LogLevel.DEBUG)
 
@@ -614,7 +647,23 @@ class TestSetupLogging:
         """Test setup_logging with string log level."""
         with patch("logging.getLogger") as mock_get_logger:
             mock_root_logger = Mock()
-            mock_get_logger.return_value = mock_root_logger
+            mock_root_logger.handlers = []  # Mock handlers as empty list
+            mock_urllib3_logger = Mock()
+            mock_requests_logger = Mock()
+            mock_git_logger = Mock()
+
+            def get_logger_side_effect(name=None):
+                if name == "urllib3":
+                    return mock_urllib3_logger
+                elif name == "requests":
+                    return mock_requests_logger
+                elif name == "git":
+                    return mock_git_logger
+                elif name is None or name == "":
+                    return mock_root_logger
+                return mock_root_logger
+
+            mock_get_logger.side_effect = get_logger_side_effect
 
             setup_logging(log_level="ERROR")
 
@@ -631,6 +680,7 @@ class TestSetupLogging:
             ):
 
                 mock_root_logger = Mock()
+                mock_root_logger.handlers = []  # Mock handlers as empty list
                 mock_get_logger.return_value = mock_root_logger
                 mock_handler = Mock()
                 mock_file_handler.return_value = mock_handler
@@ -659,6 +709,7 @@ class TestSetupLogging:
         ):
 
             mock_root_logger = Mock()
+            mock_root_logger.handlers = []  # Mock handlers as empty list
             mock_get_logger.return_value = mock_root_logger
             mock_handler = Mock()
             mock_stream_handler.return_value = mock_handler
@@ -671,6 +722,7 @@ class TestSetupLogging:
 
             # Reset and test plain formatting
             mock_handler.reset_mock()
+            mock_root_logger.handlers = []  # Reset handlers for second call
             setup_logging(enable_structured=False)
             mock_handler.setFormatter.assert_called()
             formatter_call = mock_handler.setFormatter.call_args[0][0]
@@ -685,6 +737,7 @@ class TestSetupLogging:
         ):
 
             mock_root_logger = Mock()
+            mock_root_logger.handlers = []  # Mock handlers as empty list
             mock_get_logger.return_value = mock_root_logger
 
             setup_logging(enable_console=False)
@@ -707,17 +760,20 @@ class TestSetupLogging:
         """Test setup_logging suppresses noisy third-party loggers."""
         with patch("logging.getLogger") as mock_get_logger:
             mock_root_logger = Mock()
+            mock_root_logger.handlers = []  # Mock handlers as empty list
             mock_urllib3_logger = Mock()
             mock_requests_logger = Mock()
             mock_git_logger = Mock()
 
-            def get_logger_side_effect(name):
+            def get_logger_side_effect(name=None):
                 if name == "urllib3":
                     return mock_urllib3_logger
                 elif name == "requests":
                     return mock_requests_logger
                 elif name == "git":
                     return mock_git_logger
+                elif name is None or name == "":
+                    return mock_root_logger
                 return mock_root_logger
 
             mock_get_logger.side_effect = get_logger_side_effect

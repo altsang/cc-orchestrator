@@ -415,47 +415,55 @@ class TestAuthenticationLogging:
 class TestLoggingDecorators:
     """Test logging decorator functions."""
 
-    @patch("cc_orchestrator.web.logging_utils.handle_errors")
-    def test_handle_api_errors_decorator(self, mock_handle_errors):
+    def test_handle_api_errors_decorator(self):
         """Test API error handling decorator."""
-        mock_decorator = Mock()
-        mock_handle_errors.return_value = mock_decorator
-
+        # Test that handle_api_errors returns a decorator function
         result = handle_api_errors()
+        assert callable(result)
 
-        assert result == mock_decorator
-        mock_handle_errors.assert_called_once_with(
-            recovery_strategy=None,
-            log_context=mock_handle_errors.call_args[1]["log_context"],
-            reraise=True,
-        )
+        # Test that the decorator returns a wrapper function
+        @result
+        def test_func():
+            return "success"
 
-    @patch("cc_orchestrator.web.logging_utils.handle_errors")
-    def test_handle_api_errors_decorator_with_recovery(self, mock_handle_errors):
+        wrapper = result(test_func)
+        assert callable(wrapper)
+        assert wrapper() == "success"
+
+    def test_handle_api_errors_decorator_with_recovery(self):
         """Test API error handling decorator with recovery strategy."""
-        recovery_func = Mock()
-        mock_decorator = Mock()
-        mock_handle_errors.return_value = mock_decorator
+        recovery_func = Mock(return_value="recovered")
 
+        # Test that handle_api_errors with recovery returns a decorator function
         result = handle_api_errors(recovery_strategy=recovery_func)
+        assert callable(result)
 
-        assert result == mock_decorator
-        mock_handle_errors.assert_called_once_with(
-            recovery_strategy=recovery_func,
-            log_context=mock_handle_errors.call_args[1]["log_context"],
-            reraise=True,
-        )
+        # Test that the decorator returns a wrapper function
+        @result
+        def test_func():
+            raise ValueError("test error")
 
-    @patch("cc_orchestrator.web.logging_utils.log_performance")
-    def test_track_api_performance_decorator(self, mock_log_performance):
+        wrapper = result(test_func)
+        assert callable(wrapper)
+
+        # Test that recovery function is called on exception
+        recovered_result = wrapper()
+        assert recovered_result == "recovered"
+
+    def test_track_api_performance_decorator(self):
         """Test API performance tracking decorator."""
-        mock_decorator = Mock()
-        mock_log_performance.return_value = mock_decorator
-
+        # Test that track_api_performance returns a decorator function
         result = track_api_performance()
+        assert callable(result)
 
-        assert result == mock_decorator
-        mock_log_performance.assert_called_once()
+        # Test that the decorator returns a wrapper function
+        @result
+        def test_func():
+            return "success"
+
+        wrapper = result(test_func)
+        assert callable(wrapper)
+        assert wrapper() == "success"
 
 
 class TestLoggingEdgeCases:

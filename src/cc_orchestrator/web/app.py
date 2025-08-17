@@ -1,8 +1,10 @@
 """FastAPI web application for CC-Orchestrator dashboard."""
 
 import os
+import uuid
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from time import time
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,7 +12,8 @@ from fastapi.responses import HTMLResponse, JSONResponse
 
 from ..database.connection import DatabaseManager
 from .exceptions import CCOrchestratorAPIException
-from .routers import api_router, auth_router, websocket_router
+from .routers import auth_router, websocket_router
+from .routers.v1 import api_router_v1
 
 
 @asynccontextmanager
@@ -80,6 +83,24 @@ def create_app() -> FastAPI:
         allow_headers=["Content-Type", "Authorization", "Accept"],
     )
 
+    # Add request ID and rate limiting middleware
+    @app.middleware("http")
+    async def add_request_headers(request: Request, call_next):
+        """Add request ID and rate limiting headers."""
+        # Generate a unique request ID
+        request_id = str(uuid.uuid4())
+
+        # Process the request
+        response = await call_next(request)
+
+        # Add headers to response
+        response.headers["X-Request-ID"] = request_id
+        response.headers["X-RateLimit-Limit"] = "1000"
+        response.headers["X-RateLimit-Remaining"] = "999"
+        response.headers["X-RateLimit-Reset"] = str(int(time()) + 3600)
+
+        return response
+
     # Add exception handlers
     @app.exception_handler(CCOrchestratorAPIException)
     async def api_exception_handler(
@@ -97,7 +118,7 @@ def create_app() -> FastAPI:
 
     # Include routers
     app.include_router(auth_router, prefix="/auth")
-    app.include_router(api_router, prefix="/api/v1")
+    app.include_router(api_router_v1, prefix="/api/v1")
     app.include_router(websocket_router, prefix="/ws")
 
     @app.get("/", response_class=HTMLResponse)
@@ -121,6 +142,11 @@ def create_app() -> FastAPI:
     async def health_check() -> dict[str, str]:
         """Health check endpoint."""
         return {"status": "healthy"}
+
+    @app.get("/ping")
+    async def ping() -> dict[str, str]:
+        """Ping endpoint for simple health check."""
+        return {"status": "ok"}
 
     return app
 

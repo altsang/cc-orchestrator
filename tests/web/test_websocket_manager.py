@@ -11,7 +11,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 from fastapi import WebSocket
 
-from src.cc_orchestrator.web.websocket.manager import (
+from cc_orchestrator.web.websocket.manager import (
     ConnectionManager,
     WebSocketConnection,
     WebSocketMessage,

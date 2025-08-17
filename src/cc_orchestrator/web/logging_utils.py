@@ -14,7 +14,10 @@ import time
 from collections.abc import Callable
 from typing import Any
 
-from ..utils.logging import CCOrchestratorException, LogContext, get_logger
+from ..utils.logging import (
+    LogContext,
+    get_logger,
+)
 
 # Web component loggers
 api_logger = get_logger(__name__ + ".api", LogContext.WEB)
@@ -48,7 +51,7 @@ def log_api_response(
     request_id: str | None = None,
 ) -> None:
     """Log API responses with timing."""
-    log_level = "info" if 200 <= status_code < 400 else "warning"
+    log_level = "info" if 200 <= status_code < 300 else "warning"
 
     getattr(api_logger, log_level)(
         "API response sent",
@@ -185,10 +188,12 @@ def handle_api_errors(
                 try:
                     return await func(*args, **kwargs)
                 except Exception as e:
-                    # Re-raise HTTPExceptions to let FastAPI handle them
+                    # Re-raise HTTPExceptions and CCOrchestratorAPIExceptions to let FastAPI handle them
                     from fastapi import HTTPException
 
-                    if isinstance(e, HTTPException):
+                    from .exceptions import CCOrchestratorAPIException
+
+                    if isinstance(e, (HTTPException, CCOrchestratorAPIException)):
                         raise
 
                     api_logger.error(
@@ -209,9 +214,11 @@ def handle_api_errors(
                                 function=func.__name__,
                                 recovery_error=str(recovery_error),
                             )
-                    # Convert to CCOrchestratorException
-                    raise CCOrchestratorException(
-                        f"API error in {func.__name__}: {str(e)}"
+                    # Convert to CCOrchestratorAPIException for proper HTTP error handling
+                    from .exceptions import CCOrchestratorAPIException
+
+                    raise CCOrchestratorAPIException(
+                        f"API error in {func.__name__}: {str(e)}", 500
                     ) from e
 
             return async_wrapper
@@ -222,10 +229,12 @@ def handle_api_errors(
                 try:
                     return func(*args, **kwargs)
                 except Exception as e:
-                    # Re-raise HTTPExceptions to let FastAPI handle them
+                    # Re-raise HTTPExceptions and CCOrchestratorAPIExceptions to let FastAPI handle them
                     from fastapi import HTTPException
 
-                    if isinstance(e, HTTPException):
+                    from .exceptions import CCOrchestratorAPIException
+
+                    if isinstance(e, (HTTPException, CCOrchestratorAPIException)):
                         raise
 
                     api_logger.error(
@@ -243,9 +252,11 @@ def handle_api_errors(
                                 function=func.__name__,
                                 recovery_error=str(recovery_error),
                             )
-                    # Convert to CCOrchestratorException
-                    raise CCOrchestratorException(
-                        f"API error in {func.__name__}: {str(e)}"
+                    # Convert to CCOrchestratorAPIException for proper HTTP error handling
+                    from .exceptions import CCOrchestratorAPIException
+
+                    raise CCOrchestratorAPIException(
+                        f"API error in {func.__name__}: {str(e)}", 500
                     ) from e
 
             return sync_wrapper

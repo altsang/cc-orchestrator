@@ -61,13 +61,14 @@ class TestInstanceBase:
 
     def test_instance_base_required_fields(self):
         """Test InstanceBase required fields."""
-        # Missing issue_id
+        # Missing issue_id should raise validation error
         with pytest.raises(ValidationError):
             InstanceBase(status="running")
 
-        # Missing status
-        with pytest.raises(ValidationError):
-            InstanceBase(issue_id="123")
+        # Missing status should use default value (not raise error)
+        instance = InstanceBase(issue_id="123")
+        assert instance.issue_id == "123"
+        assert instance.status == InstanceStatus.INITIALIZING  # Default value
 
 
 class TestInstanceCreate:
@@ -142,7 +143,7 @@ class TestInstanceResponse:
 
         assert response.id == 1
         assert response.issue_id == "123"
-        assert response.status == InstanceStatus.RUNNING
+        assert response.status == "running"  # InstanceResponse converts enum to string
         assert response.created_at == now
         assert response.updated_at == now
 
@@ -196,16 +197,18 @@ class TestInstanceListResponse:
             ),
         ]
 
-        response = InstanceListResponse(instances=instances, total=2)
-        assert len(response.instances) == 2
+        response = InstanceListResponse(
+            items=instances, total=2
+        )  # Use 'items' not 'instances'
+        assert len(response.items) == 2
         assert response.total == 2
-        assert response.instances[0].id == 1
-        assert response.instances[1].id == 2
+        assert response.items[0].id == 1
+        assert response.items[1].id == 2
 
     def test_instance_list_response_empty(self):
         """Test InstanceListResponse with empty list."""
-        response = InstanceListResponse(instances=[], total=0)
-        assert len(response.instances) == 0
+        response = InstanceListResponse(items=[], total=0)
+        assert len(response.items) == 0
         assert response.total == 0
 
     def test_instance_list_response_validation(self):

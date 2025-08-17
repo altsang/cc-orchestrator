@@ -140,3 +140,30 @@ def websocket_rate_limit(
 
 # WebSocket connection limiter
 ws_check_limit, ws_add_connection, ws_remove_connection = websocket_rate_limit()
+
+
+class RateLimiter:
+    """Simple rate limiter class for general use."""
+
+    def __init__(self, rate: int, window: int):
+        """Initialize rate limiter.
+
+        Args:
+            rate: Maximum number of requests per window
+            window: Time window in seconds
+        """
+        self.rate = rate
+        self.window = window
+        self._limiter = InMemoryRateLimiter()
+
+    def check_limit(self, identifier: str, endpoint: str = "default") -> None:
+        """Check if request is within rate limit.
+
+        Args:
+            identifier: Unique identifier (e.g. IP, user ID)
+            endpoint: Endpoint identifier
+
+        Raises:
+            RateLimitExceededError: If rate limit exceeded
+        """
+        self._limiter.check_rate_limit(identifier, endpoint, self.rate, self.window)

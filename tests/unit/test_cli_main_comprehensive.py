@@ -22,7 +22,8 @@ class TestMainCommand:
 
         assert result.exit_code == 0
         assert "Claude Code Orchestrator" in result.output
-        assert "Manage multiple Claude instances through git worktrees" in result.output
+        assert "Manage multiple Claude instances through git" in result.output
+        assert "worktrees" in result.output
         assert "--config" in result.output
         assert "--verbose" in result.output
         assert "--quiet" in result.output
@@ -37,7 +38,7 @@ class TestMainCommand:
 
     def test_main_command_with_verbose_and_quiet_fails(self):
         """Test main command fails with both verbose and quiet flags."""
-        result = self.runner.invoke(main, ["--verbose", "--quiet"])
+        result = self.runner.invoke(main, ["--verbose", "--quiet", "config", "--help"])
 
         assert result.exit_code != 0
         assert "Cannot use both --verbose and --quiet options" in result.output
@@ -52,128 +53,160 @@ class TestMainCommandContext:
 
     def test_main_callback_function_basic_setup(self):
         """Test main callback function sets up context properly."""
+        # Use standalone mode false to get context object
         from cc_orchestrator.cli.main import main as main_func
 
-        # Create a mock context
-        ctx = click.Context(main_func)
-        ctx.ensure_object(dict)
+        with main_func.make_context(
+            "main",
+            [
+                "--config",
+                "test-config.yaml",
+                "--profile",
+                "dev",
+                "--verbose",
+                "--json",
+                "--max-instances",
+                "10",
+                "--web-port",
+                "8080",
+                "--web-host",
+                "localhost",
+                "--log-level",
+                "DEBUG",
+                "--worktree-base-path",
+                "/tmp/worktrees",
+                "--cpu-threshold",
+                "80.5",
+                "--memory-limit",
+                "4096",
+            ],
+        ) as ctx:
+            # Manually invoke the callback function to set up context
+            with ctx:
+                main_func.callback(
+                    config="test-config.yaml",
+                    profile="dev",
+                    verbose=True,
+                    quiet=False,
+                    json=True,
+                    max_instances=10,
+                    web_port=8080,
+                    web_host="localhost",
+                    log_level="DEBUG",
+                    worktree_base_path="/tmp/worktrees",
+                    cpu_threshold=80.5,
+                    memory_limit=4096,
+                )
 
-        # Call the main function directly
-        main_func.callback(
-            ctx=ctx,
-            config="test-config.yaml",
-            profile="dev",
-            verbose=True,
-            quiet=False,
-            json=True,
-            max_instances=10,
-            web_port=8080,
-            web_host="localhost",
-            log_level="DEBUG",
-            worktree_base_path="/tmp/worktrees",
-            cpu_threshold=80.5,
-            memory_limit=4096,
-        )
+            # Verify context is set up correctly
+            assert ctx.obj["config"] == "test-config.yaml"
+            assert ctx.obj["profile"] == "dev"
+            assert ctx.obj["verbose"] is True
+            assert ctx.obj["quiet"] is False
+            assert ctx.obj["json"] is True
 
-        # Verify context is set up correctly
-        assert ctx.obj["config"] == "test-config.yaml"
-        assert ctx.obj["profile"] == "dev"
-        assert ctx.obj["verbose"] is True
-        assert ctx.obj["quiet"] is False
-        assert ctx.obj["json"] is True
-
-        overrides = ctx.obj["cli_overrides"]
-        assert overrides["max_instances"] == 10
-        assert overrides["web_port"] == 8080
-        assert overrides["web_host"] == "localhost"
-        assert overrides["log_level"] == "DEBUG"
-        assert overrides["worktree_base_path"] == "/tmp/worktrees"
-        assert overrides["cpu_threshold"] == 80.5
-        assert overrides["memory_limit"] == 4096
+            overrides = ctx.obj["cli_overrides"]
+            assert overrides["max_instances"] == 10
+            assert overrides["web_port"] == 8080
+            assert overrides["web_host"] == "localhost"
+            assert overrides["log_level"] == "DEBUG"
+            assert overrides["worktree_base_path"] == "/tmp/worktrees"
+            assert overrides["cpu_threshold"] == 80.5
+            assert overrides["memory_limit"] == 4096
 
     def test_main_callback_removes_none_values(self):
         """Test main callback removes None values from CLI overrides."""
         from cc_orchestrator.cli.main import main as main_func
 
-        ctx = click.Context(main_func)
-        ctx.ensure_object(dict)
+        with main_func.make_context("main", ["config"]) as ctx:
+            # Manually invoke the callback function with all None values
+            with ctx:
+                main_func.callback(
+                    config=None,
+                    profile=None,
+                    verbose=False,
+                    quiet=False,
+                    json=False,
+                    max_instances=None,
+                    web_port=None,
+                    web_host=None,
+                    log_level=None,
+                    worktree_base_path=None,
+                    cpu_threshold=None,
+                    memory_limit=None,
+                )
 
-        main_func.callback(
-            ctx=ctx,
-            config=None,
-            profile=None,
-            verbose=False,
-            quiet=False,
-            json=False,
-            max_instances=None,
-            web_port=None,
-            web_host=None,
-            log_level=None,
-            worktree_base_path=None,
-            cpu_threshold=None,
-            memory_limit=None,
-        )
-
-        overrides = ctx.obj["cli_overrides"]
-        assert len(overrides) == 0
+            overrides = ctx.obj["cli_overrides"]
+            assert len(overrides) == 0
 
     def test_main_callback_partial_overrides(self):
         """Test main callback with partial CLI overrides."""
         from cc_orchestrator.cli.main import main as main_func
 
-        ctx = click.Context(main_func)
-        ctx.ensure_object(dict)
+        with main_func.make_context(
+            "main",
+            [
+                "--config",
+                "config.yaml",
+                "--profile",
+                "prod",
+                "--quiet",
+                "--max-instances",
+                "5",
+                "--web-port",
+                "9000",
+            ],
+        ) as ctx:
+            # Manually invoke the callback function with partial overrides
+            with ctx:
+                main_func.callback(
+                    config="config.yaml",
+                    profile="prod",
+                    verbose=False,
+                    quiet=True,
+                    json=False,
+                    max_instances=5,
+                    web_port=9000,
+                    web_host=None,
+                    log_level=None,
+                    worktree_base_path=None,
+                    cpu_threshold=None,
+                    memory_limit=None,
+                )
 
-        main_func.callback(
-            ctx=ctx,
-            config="config.yaml",
-            profile="prod",
-            verbose=False,
-            quiet=True,
-            json=False,
-            max_instances=5,
-            web_port=9000,
-            web_host=None,
-            log_level=None,
-            worktree_base_path=None,
-            cpu_threshold=None,
-            memory_limit=None,
-        )
+            assert ctx.obj["config"] == "config.yaml"
+            assert ctx.obj["profile"] == "prod"
+            assert ctx.obj["quiet"] is True
 
-        assert ctx.obj["config"] == "config.yaml"
-        assert ctx.obj["profile"] == "prod"
-        assert ctx.obj["quiet"] is True
-
-        overrides = ctx.obj["cli_overrides"]
-        assert overrides["max_instances"] == 5
-        assert overrides["web_port"] == 9000
-        assert "web_host" not in overrides
-        assert "log_level" not in overrides
-        assert len(overrides) == 2
+            overrides = ctx.obj["cli_overrides"]
+            assert overrides["max_instances"] == 5
+            assert overrides["web_port"] == 9000
+            assert "web_host" not in overrides
+            assert "log_level" not in overrides
+            assert len(overrides) == 2
 
     def test_main_callback_verbose_quiet_validation(self):
         """Test main callback validates verbose and quiet conflict."""
         from cc_orchestrator.cli.main import main as main_func
 
-        ctx = click.Context(main_func)
-        ctx.ensure_object(dict)
-
         with pytest.raises(click.UsageError) as exc_info:
-            main_func.callback(
-                ctx=ctx,
-                config=None,
-                profile=None,
-                verbose=True,
-                quiet=True,
-                json=False,
-                max_instances=None,
-                web_port=None,
-                web_host=None,
-                log_level=None,
-                worktree_base_path=None,
-                cpu_threshold=None,
-                memory_limit=None,
-            )
+            with main_func.make_context("main", ["--verbose", "--quiet"]) as ctx:
+                # Manually invoke the callback to trigger validation
+                with ctx:
+                    main_func.callback(
+                        config=None,
+                        profile=None,
+                        verbose=True,
+                        quiet=True,
+                        json=False,
+                        max_instances=None,
+                        web_port=None,
+                        web_host=None,
+                        log_level=None,
+                        worktree_base_path=None,
+                        cpu_threshold=None,
+                        memory_limit=None,
+                    )
 
         assert "Cannot use both --verbose and --quiet options" in str(exc_info.value)
 

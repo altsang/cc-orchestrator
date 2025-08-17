@@ -27,16 +27,17 @@ class TestHealthRouterFunctions:
         """Mock CRUD adapter."""
         crud = AsyncMock()
 
-        # Mock health check data
+        # Mock health check data - return proper dictionary for validation
+        timestamp = datetime.now(UTC)
         mock_health_check = Mock()
         mock_health_check.id = 1
         mock_health_check.instance_id = 1
         mock_health_check.overall_status = HealthStatus.HEALTHY
         mock_health_check.check_results = '{"database": "healthy", "api": "healthy"}'
-        mock_health_check.check_timestamp = datetime.now(UTC)
+        mock_health_check.check_timestamp = timestamp
         mock_health_check.duration_ms = 150.5
-        mock_health_check.created_at = datetime.now(UTC)
-        mock_health_check.updated_at = datetime.now(UTC)
+        mock_health_check.created_at = timestamp
+        mock_health_check.updated_at = timestamp
 
         # Mock instance data
         mock_instance = Mock()

@@ -31,7 +31,7 @@ class TestTasksRouterFunctions:
         # Create proper task data that matches TaskResponse schema
         task_data = {
             "id": 1,
-            "name": "Test Task",
+            "title": "Test Task",
             "description": "Test task description",
             "instance_id": 1,
             "command": "test command",
@@ -126,7 +126,7 @@ class TestTasksRouterFunctions:
     async def test_create_task_success(self, mock_crud):
         """Test successful task creation."""
         task_data = TaskCreate(
-            name="New Task",
+            title="New Task",
             description="New task description",
             instance_id=1,
         )
@@ -145,7 +145,7 @@ class TestTasksRouterFunctions:
     async def test_create_task_with_worktree(self, mock_crud):
         """Test task creation with worktree validation."""
         task_data = TaskCreate(
-            name="Worktree Task", description="Task with worktree", worktree_id=1
+            title="Worktree Task", description="Task with worktree", worktree_id=1
         )
 
         result = await tasks.create_task(task_data=task_data, crud=mock_crud)
@@ -160,7 +160,7 @@ class TestTasksRouterFunctions:
         """Test task creation with non-existent instance."""
         mock_crud.get_instance.return_value = None
 
-        task_data = TaskCreate(name="Invalid Task", instance_id=999)
+        task_data = TaskCreate(title="Invalid Task", instance_id=999)
 
         with pytest.raises(Exception) as exc_info:
             await tasks.create_task(task_data=task_data, crud=mock_crud)
@@ -172,7 +172,7 @@ class TestTasksRouterFunctions:
         """Test task creation with non-existent worktree."""
         mock_crud.get_worktree.return_value = None
 
-        task_data = TaskCreate(name="Invalid Worktree Task", worktree_id=999)
+        task_data = TaskCreate(title="Invalid Worktree Task", worktree_id=999)
 
         with pytest.raises(Exception) as exc_info:
             await tasks.create_task(task_data=task_data, crud=mock_crud)
@@ -203,7 +203,7 @@ class TestTasksRouterFunctions:
     @pytest.mark.asyncio
     async def test_update_task_success(self, mock_crud):
         """Test successful task update."""
-        update_data = TaskUpdate(name="Updated Task")
+        update_data = TaskUpdate(title="Updated Task")
 
         result = await tasks.update_task(
             task_id=1, task_data=update_data, crud=mock_crud
@@ -220,7 +220,7 @@ class TestTasksRouterFunctions:
         """Test task update for non-existent task."""
         mock_crud.get_task.return_value = None
 
-        update_data = TaskUpdate(name="Updated Task")
+        update_data = TaskUpdate(title="Updated Task")
 
         with pytest.raises(Exception) as exc_info:
             await tasks.update_task(task_id=999, task_data=update_data, crud=mock_crud)
@@ -400,7 +400,7 @@ class TestTaskValidation:
         """Test TaskResponse model validation."""
         task_data = {
             "id": 1,
-            "name": "Test Task",
+            "title": "Test Task",
             "description": "Test description",
             "status": "pending",
             "instance_id": 1,
@@ -419,18 +419,18 @@ class TestTaskValidation:
         }
 
         response_model = TaskResponse.model_validate(task_data)
-        assert response_model.name == "Test Task"
+        assert response_model.title == "Test Task"
         assert response_model.status == "pending"
 
     def test_task_create_model_validation(self):
         """Test TaskCreate model validation."""
         create_data = {
-            "name": "New Task",
+            "title": "New Task",
             "description": "New task description",
         }
 
         create_model = TaskCreate.model_validate(create_data)
-        assert create_model.name == "New Task"
+        assert create_model.title == "New Task"
 
     def test_task_status_enum_values(self):
         """Test TaskStatus enum contains expected values."""

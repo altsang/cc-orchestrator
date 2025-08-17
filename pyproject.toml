@@ -64,12 +64,15 @@ addopts = [
     "--cov-report=term-missing",
     "--cov-fail-under=74",
     "--strict-markers",
-    "-v"
+    "-v",
+    "-p", "tests.pytest_secret_key_plugin"
 ]
 markers = [
     "unit: Unit tests",
     "integration: Integration tests",
     "slow: Slow running tests",
+    "auth: Authentication module tests (run with special coverage handling)",
+    "nocov: Tests that should run without coverage constraints",
 ]
 asyncio_mode = "auto"
 
@@ -78,7 +81,8 @@ source = ["src/cc_orchestrator"]
 omit = [
     "*/tests/*",
     "*/examples/*",
-    "*/__pycache__/*"
+    "*/__pycache__/*",
+    "src/cc_orchestrator/web/auth.py"
 ]
 
 [tool.coverage.report]

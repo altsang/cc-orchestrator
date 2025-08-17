@@ -49,7 +49,12 @@ async def websocket_dashboard(websocket: WebSocket) -> None:
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return
 
-    connection_id = await ws_manager.connect(websocket)
+    try:
+        connection_id = await ws_manager.connect(websocket)
+    except Exception:
+        # Connection failed (e.g., rate limit exceeded), close gracefully
+        await websocket.close(code=status.WS_1013_TRY_AGAIN_LATER)
+        return
 
     try:
         while websocket.client_state == WebSocketState.CONNECTED:
@@ -77,31 +82,43 @@ async def websocket_dashboard(websocket: WebSocket) -> None:
 
 async def handle_client_message(connection_id: str, message: dict[str, Any]) -> None:
     """Handle incoming client messages."""
-    message_type = message.get("type")
+    try:
+        message_type = message.get("type")
 
-    if message_type == "ping":
-        await ws_manager.send_to_connection(
-            connection_id, {"type": "pong", "timestamp": message.get("timestamp")}
-        )
-    elif message_type == "subscribe":
-        # Handle subscription requests
-        event_types = message.get("events", [])
-        await ws_manager.add_subscription(connection_id, event_types)
-        await ws_manager.send_to_connection(
-            connection_id, {"type": "subscription_confirmed", "events": event_types}
-        )
-    elif message_type == "unsubscribe":
-        # Handle unsubscription requests
-        event_types = message.get("events", [])
-        await ws_manager.remove_subscription(connection_id, event_types)
-        await ws_manager.send_to_connection(
-            connection_id, {"type": "unsubscription_confirmed", "events": event_types}
-        )
-    else:
-        await ws_manager.send_to_connection(
-            connection_id,
-            {"type": "error", "message": f"Unknown message type: {message_type}"},
-        )
+        if message_type == "ping":
+            await ws_manager.send_to_connection(
+                connection_id, {"type": "pong", "timestamp": message.get("timestamp")}
+            )
+        elif message_type == "subscribe":
+            # Handle subscription requests
+            event_types = message.get("events", [])
+            await ws_manager.add_subscription(connection_id, event_types)
+            await ws_manager.send_to_connection(
+                connection_id, {"type": "subscription_confirmed", "events": event_types}
+            )
+        elif message_type == "unsubscribe":
+            # Handle unsubscription requests
+            event_types = message.get("events", [])
+            await ws_manager.remove_subscription(connection_id, event_types)
+            await ws_manager.send_to_connection(
+                connection_id,
+                {"type": "unsubscription_confirmed", "events": event_types},
+            )
+        else:
+            await ws_manager.send_to_connection(
+                connection_id,
+                {"type": "error", "message": f"Unknown message type: {message_type}"},
+            )
+    except Exception:
+        # Handle any errors gracefully - don't let them crash the WebSocket connection
+        try:
+            await ws_manager.send_to_connection(
+                connection_id,
+                {"type": "error", "message": "Internal error processing message"},
+            )
+        except Exception:
+            # If we can't even send an error message, just continue
+            pass
 
 
 # Convenience functions for broadcasting events
@@ -109,38 +126,50 @@ async def broadcast_instance_status_change(
     instance_id: int, old_status: str, new_status: str
 ) -> None:
     """Broadcast instance status change to subscribed clients."""
-    await ws_manager.broadcast_to_subscribers(
-        "instance_status",
-        {
-            "type": "instance_status_change",
-            "instance_id": instance_id,
-            "old_status": old_status,
-            "new_status": new_status,
-            "timestamp": ws_manager.get_current_timestamp(),
-        },
-    )
+    try:
+        await ws_manager.broadcast_to_subscribers(
+            "instance_status",
+            {
+                "type": "instance_status_change",
+                "instance_id": instance_id,
+                "old_status": old_status,
+                "new_status": new_status,
+                "timestamp": ws_manager.get_current_timestamp(),
+            },
+        )
+    except Exception:
+        # Handle broadcast failures gracefully
+        pass
 
 
 async def broadcast_instance_metrics(instance_id: int, metrics: dict[str, Any]) -> None:
     """Broadcast instance metrics to subscribed clients."""
-    await ws_manager.broadcast_to_subscribers(
-        "instance_metrics",
-        {
-            "type": "instance_metrics",
-            "instance_id": instance_id,
-            "metrics": metrics,
-            "timestamp": ws_manager.get_current_timestamp(),
-        },
-    )
+    try:
+        await ws_manager.broadcast_to_subscribers(
+            "instance_metrics",
+            {
+                "type": "instance_metrics",
+                "instance_id": instance_id,
+                "metrics": metrics,
+                "timestamp": ws_manager.get_current_timestamp(),
+            },
+        )
+    except Exception:
+        # Handle broadcast failures gracefully
+        pass
 
 
 async def broadcast_system_event(event: dict[str, Any]) -> None:
     """Broadcast system-wide events."""
-    await ws_manager.broadcast_to_subscribers(
-        "system_events",
-        {
-            "type": "system_event",
-            **event,
-            "timestamp": ws_manager.get_current_timestamp(),
-        },
-    )
+    try:
+        await ws_manager.broadcast_to_subscribers(
+            "system_events",
+            {
+                "type": "system_event",
+                **event,
+                "timestamp": ws_manager.get_current_timestamp(),
+            },
+        )
+    except Exception:
+        # Handle broadcast failures gracefully
+        pass

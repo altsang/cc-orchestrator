@@ -276,7 +276,7 @@ async def get_worktree_status(
         "id": worktree.id,
         "name": worktree.name,
         "path": worktree.path,
-        "branch": worktree.branch_name,  # Map branch_name to branch for API consistency
+        "branch_name": worktree.branch_name,  # Keep consistent field name
         "base_branch": getattr(
             worktree, "base_branch", "main"
         ),  # Add base_branch if not present

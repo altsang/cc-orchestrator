@@ -4,9 +4,14 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Generic, TypeVar
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
-from ..database.models import ConfigScope, Instance, InstanceStatus
+from ..database.models import (
+    Instance,
+    InstanceStatus,
+    TaskPriority,
+    TaskStatus,
+)
 
 # Explicit exports for mypy - only include what's actually defined
 __all__ = [
@@ -33,13 +38,28 @@ class InstanceBase(BaseModel):
 class InstanceCreate(InstanceBase):
     """Schema for creating instances."""
 
-    pass
+    # Additional fields for instance creation
+    workspace_path: str | None = None
+    branch_name: str | None = None
+    tmux_session: str | None = None
 
 
 class InstanceStatusUpdate(BaseModel):
     """Schema for updating instance status."""
 
     status: InstanceStatus
+
+    @field_validator("status", mode="before")
+    @classmethod
+    def validate_status(cls, value):
+        """Convert status string to InstanceStatus enum."""
+        if isinstance(value, str):
+            try:
+                return InstanceStatus(value.lower())
+            except ValueError:
+                # If invalid enum value, return as-is to let Pydantic handle validation error
+                return value
+        return value
 
 
 class InstanceResponse(InstanceBase):
@@ -48,6 +68,32 @@ class InstanceResponse(InstanceBase):
     id: int
     created_at: datetime
     updated_at: datetime | None = None
+
+    # Override parent class status field to be string instead of enum
+    status: str
+
+    # Additional fields used in router endpoints
+    health_status: str | None = None
+    last_health_check: datetime | None = None
+    last_activity: datetime | None = None
+    process_id: int | None = None
+    tmux_session: str | None = None
+
+    @field_validator("status", mode="before")
+    @classmethod
+    def validate_status(cls, value):
+        """Convert InstanceStatus enum to string value."""
+        if hasattr(value, "value"):
+            return value.value
+        return value
+
+    @field_validator("health_status", mode="before")
+    @classmethod
+    def validate_health_status(cls, value):
+        """Convert HealthStatus enum to string value."""
+        if hasattr(value, "value"):
+            return value.value
+        return value
 
     @classmethod
     def from_model(cls, instance: Instance) -> "InstanceResponse":
@@ -58,6 +104,11 @@ class InstanceResponse(InstanceBase):
             status=instance.status,
             created_at=instance.created_at,
             updated_at=instance.updated_at,
+            health_status=getattr(instance, "health_status", None),
+            last_health_check=getattr(instance, "last_health_check", None),
+            last_activity=getattr(instance, "last_activity", None),
+            process_id=getattr(instance, "process_id", None),
+            tmux_session=getattr(instance, "tmux_session", None),
         )
 
     class Config:
@@ -67,7 +118,7 @@ class InstanceResponse(InstanceBase):
 class InstanceListResponse(BaseModel):
     """Schema for instance list responses."""
 
-    instances: list[InstanceResponse]
+    items: list[InstanceResponse]
     total: int
 
 
@@ -142,7 +193,7 @@ class PaginatedResponse(BaseModel, Generic[T]):
     items: list[T]
     total: int
     page: int = 1
-    page_size: int = 20
+    size: int = 20
     pages: int = 1
 
 
@@ -190,8 +241,10 @@ class AlertResponse(BaseModel):
 class TaskCreate(BaseModel):
     """Schema for creating tasks."""
 
-    name: str = Field(min_length=1, max_length=200)
+    title: str = Field(min_length=1, max_length=200)
     description: str = ""
+    status: TaskStatus = TaskStatus.PENDING
+    priority: TaskPriority = TaskPriority.MEDIUM
     instance_id: int | None = None
     command: str | None = None
     schedule: str | None = None  # Cron expression
@@ -201,8 +254,10 @@ class TaskCreate(BaseModel):
 class TaskUpdate(BaseModel):
     """Schema for updating tasks."""
 
-    name: str | None = None
+    title: str | None = None
     description: str | None = None
+    status: TaskStatus | None = None
+    priority: TaskPriority | None = None
     command: str | None = None
     schedule: str | None = None
     enabled: bool | None = None
@@ -214,8 +269,10 @@ class TaskResponse(BaseModel):
     """Schema for task responses."""
 
     id: int
-    name: str
+    title: str
     description: str
+    status: str = "pending"
+    priority: str = "medium"
     instance_id: int | None = None
     command: str | None = None
     schedule: str | None = None
@@ -224,7 +281,30 @@ class TaskResponse(BaseModel):
     updated_at: datetime | None = None
     last_run: datetime | None = None
     next_run: datetime | None = None
-    status: str = "pending"
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    due_date: datetime | None = None
+    estimated_duration: int | None = None
+    actual_duration: int | None = None
+    requirements: dict[str, Any] = Field(default_factory=dict)
+    results: dict[str, Any] = Field(default_factory=dict)
+    extra_metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("status", mode="before")
+    @classmethod
+    def validate_status(cls, value):
+        """Convert TaskStatus enum to string value."""
+        if hasattr(value, "value"):
+            return value.value
+        return value
+
+    @field_validator("priority", mode="before")
+    @classmethod
+    def validate_priority(cls, value):
+        """Convert TaskPriority enum to string value."""
+        if hasattr(value, "value"):
+            return value.name.lower()
+        return value
 
 
 # Worktree Schemas
@@ -232,7 +312,7 @@ class WorktreeCreate(BaseModel):
     """Schema for creating worktrees."""
 
     name: str = Field(min_length=1, max_length=100)
-    branch: str = Field(min_length=1, max_length=100)
+    branch_name: str = Field(min_length=1, max_length=100)
     base_branch: str = "main"
     path: str | None = None
     instance_id: int | None = None
@@ -242,7 +322,7 @@ class WorktreeUpdate(BaseModel):
     """Schema for updating worktrees."""
 
     name: str | None = None
-    branch: str | None = None
+    branch_name: str | None = None
     active: bool | None = None
     instance_id: int | None = None
 
@@ -252,7 +332,7 @@ class WorktreeResponse(BaseModel):
 
     id: int
     name: str
-    branch: str
+    branch_name: str
     base_branch: str
     path: str
     active: bool = True
@@ -297,12 +377,20 @@ class ConfigurationResponse(BaseModel):
     value: str
     description: str | None = None
     category: str
-    scope: ConfigScope
+    scope: str  # Changed from ConfigScope to str for API consistency
     instance_id: int | None = None
     is_secret: bool = False
     is_readonly: bool = False
     created_at: datetime
     updated_at: datetime | None = None
+
+    @field_validator("scope", mode="before")
+    @classmethod
+    def validate_scope(cls, value):
+        """Convert ConfigScope enum to string value."""
+        if hasattr(value, "value"):
+            return value.value
+        return value
 
 
 # Health Check Schemas
@@ -312,13 +400,29 @@ class HealthStatus(str, Enum):
     HEALTHY = "healthy"
     DEGRADED = "degraded"
     UNHEALTHY = "unhealthy"
+    CRITICAL = "critical"
+    UNKNOWN = "unknown"
 
 
 class HealthCheckResponse(BaseModel):
     """Schema for health check responses."""
 
-    status: HealthStatus
-    timestamp: datetime
-    checks: dict[str, Any] = Field(default_factory=dict)
-    uptime_seconds: int = 0
-    version: str = "unknown"
+    id: int
+    instance_id: int
+    overall_status: HealthStatus
+    check_results: str  # JSON string
+    duration_ms: float
+    check_timestamp: datetime
+    created_at: datetime
+    updated_at: datetime | None = None
+
+    @field_validator("overall_status", mode="before")
+    @classmethod
+    def validate_overall_status(cls, value):
+        """Convert HealthStatus enum to string value if needed."""
+        if hasattr(value, "value"):
+            return value.value
+        return value
+
+    class Config:
+        from_attributes = True

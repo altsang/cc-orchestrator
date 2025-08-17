@@ -188,7 +188,7 @@ class TestInstanceOperations:
             mock_crud.list_all.return_value = mock_instances
 
             crud = CRUDBase(Mock(spec=Session))
-            instances, total = await crud.list_instances(filters={"status": "active"})
+            instances, total = await crud.list_instances(filters={"status": "running"})
 
             assert instances == mock_instances
             assert total == 1
@@ -205,7 +205,7 @@ class TestInstanceOperations:
 
             crud = CRUDBase(Mock(spec=Session))
             instances, total = await crud.list_instances(
-                filters={"status": InstanceStatus.ACTIVE}
+                filters={"status": InstanceStatus.RUNNING}
             )
 
             assert instances == mock_instances
@@ -249,7 +249,7 @@ class TestInstanceOperations:
         """Test creating instance with string status."""
         mock_instance = Mock(spec=Instance)
         mock_session = Mock(spec=Session)
-        instance_data = {"issue_id": "ISSUE-123", "status": "active"}
+        instance_data = {"issue_id": "ISSUE-123", "status": "running"}
 
         with patch("cc_orchestrator.web.crud_adapter.InstanceCRUD") as mock_crud:
             mock_crud.create.return_value = mock_instance
@@ -266,7 +266,7 @@ class TestInstanceOperations:
         """Test creating instance with enum status."""
         mock_instance = Mock(spec=Instance)
         mock_session = Mock(spec=Session)
-        instance_data = {"issue_id": "ISSUE-123", "status": InstanceStatus.ACTIVE}
+        instance_data = {"issue_id": "ISSUE-123", "status": InstanceStatus.RUNNING}
 
         with patch("cc_orchestrator.web.crud_adapter.InstanceCRUD") as mock_crud:
             mock_crud.create.return_value = mock_instance
@@ -357,7 +357,7 @@ class TestInstanceOperations:
     async def test_update_instance_with_status_string(self):
         """Test updating instance with string status."""
         mock_instance = Mock(spec=Instance)
-        update_data = {"status": "completed"}
+        update_data = {"status": "stopped"}
 
         with patch("cc_orchestrator.web.crud_adapter.InstanceCRUD") as mock_crud:
             mock_crud.update.return_value = mock_instance
@@ -368,13 +368,13 @@ class TestInstanceOperations:
             assert result is mock_instance
             # Should convert string to enum
             call_args = mock_crud.update.call_args
-            assert call_args[1]["status"] == InstanceStatus.COMPLETED
+            assert call_args[1]["status"] == InstanceStatus.STOPPED
 
     @pytest.mark.asyncio
     async def test_update_instance_with_status_enum(self):
         """Test updating instance with enum status."""
         mock_instance = Mock(spec=Instance)
-        update_data = {"status": InstanceStatus.FAILED}
+        update_data = {"status": InstanceStatus.ERROR}
 
         with patch("cc_orchestrator.web.crud_adapter.InstanceCRUD") as mock_crud:
             mock_crud.update.return_value = mock_instance
@@ -493,9 +493,9 @@ class TestTaskOperations:
 
     @pytest.mark.asyncio
     async def test_create_task_with_string_priority(self):
-        """Test creating task with string priority."""
+        """Test creating task with integer priority that gets converted to enum."""
         mock_task = Mock(spec=Task)
-        task_data = {"title": "Test Task", "priority": "high"}
+        task_data = {"title": "Test Task", "priority": 3}  # TaskPriority.HIGH value
 
         with patch("cc_orchestrator.web.crud_adapter.TaskCRUD") as mock_crud:
             mock_crud.create.return_value = mock_task
@@ -866,7 +866,7 @@ class TestWorktreeOperations:
         mock_worktree = Mock(spec=Worktree)
         mock_worktree.status = WorktreeStatus.ACTIVE
         update_data = {
-            "status": WorktreeStatus.SYNCHRONIZING,
+            "status": WorktreeStatus.DIRTY,
             "current_commit": "def456",
             "has_uncommitted_changes": False,
         }
@@ -1387,7 +1387,7 @@ class TestEdgeCasesAndErrorHandling:
         test_cases = [
             ("active", WorktreeStatus.ACTIVE),
             ("inactive", WorktreeStatus.INACTIVE),
-            ("synchronizing", WorktreeStatus.SYNCHRONIZING),
+            ("dirty", WorktreeStatus.DIRTY),
             ("error", WorktreeStatus.ERROR),
         ]
 
@@ -1484,7 +1484,7 @@ class TestIntegrationScenarios:
 
             # Create instance
             instance = await crud.create_instance(
-                {"issue_id": "ISSUE-123", "status": "active"}
+                {"issue_id": "ISSUE-123", "status": "running"}
             )
 
             # Create task for the instance
@@ -1492,7 +1492,7 @@ class TestIntegrationScenarios:
                 {
                     "title": "Setup worktree",
                     "instance_id": instance.id,
-                    "priority": "high",
+                    "priority": 3,  # TaskPriority.HIGH
                 }
             )
 
@@ -1526,7 +1526,7 @@ class TestIntegrationScenarios:
             updated_worktree = await crud.update_worktree(
                 worktree.id,
                 {
-                    "status": "synchronizing",
+                    "status": "active",  # Use valid WorktreeStatus
                     "current_commit": "abc123",
                     "has_uncommitted_changes": False,
                 },

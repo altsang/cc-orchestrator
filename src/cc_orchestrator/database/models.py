@@ -23,7 +23,8 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 class Base(DeclarativeBase):
     """Base class for all database models."""
 
-    pass
+    # Define default table args that can be inherited by all models
+    __table_args__ = {}
 
 
 class InstanceStatus(Enum):
@@ -108,6 +109,22 @@ class Instance(Base):
     recovery_attempt_count: Mapped[int] = mapped_column(Integer, default=0)
     health_check_details: Mapped[str | None] = mapped_column(Text)
 
+    def __init__(self, **kwargs):
+        # Set Python-level defaults for enum fields if not provided
+        if "status" not in kwargs:
+            kwargs["status"] = InstanceStatus.INITIALIZING
+        if "health_status" not in kwargs:
+            kwargs["health_status"] = HealthStatus.UNKNOWN
+        if "health_check_count" not in kwargs:
+            kwargs["health_check_count"] = 0
+        if "healthy_check_count" not in kwargs:
+            kwargs["healthy_check_count"] = 0
+        if "recovery_attempt_count" not in kwargs:
+            kwargs["recovery_attempt_count"] = 0
+        if "extra_metadata" not in kwargs:
+            kwargs["extra_metadata"] = {}
+        super().__init__(**kwargs)
+
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, default=datetime.now
@@ -186,6 +203,20 @@ class Task(Base):
         "Worktree", back_populates="tasks"
     )
 
+    def __init__(self, **kwargs):
+        # Set Python-level defaults for enum and other fields if not provided
+        if "status" not in kwargs:
+            kwargs["status"] = TaskStatus.PENDING
+        if "priority" not in kwargs:
+            kwargs["priority"] = TaskPriority.MEDIUM
+        if "requirements" not in kwargs:
+            kwargs["requirements"] = {}
+        if "results" not in kwargs:
+            kwargs["results"] = {}
+        if "extra_metadata" not in kwargs:
+            kwargs["extra_metadata"] = {}
+        super().__init__(**kwargs)
+
     def __repr__(self) -> str:
         return (
             f"<Task(id={self.id}, title='{self.title}', status='{self.status.value}')>"
@@ -233,6 +264,18 @@ class Worktree(Base):
         "Instance", back_populates="worktree"
     )
     tasks: Mapped[list["Task"]] = relationship("Task", back_populates="worktree")
+
+    def __init__(self, **kwargs):
+        # Set Python-level defaults for enum and other fields if not provided
+        if "status" not in kwargs:
+            kwargs["status"] = WorktreeStatus.ACTIVE
+        if "has_uncommitted_changes" not in kwargs:
+            kwargs["has_uncommitted_changes"] = False
+        if "git_config" not in kwargs:
+            kwargs["git_config"] = {}
+        if "extra_metadata" not in kwargs:
+            kwargs["extra_metadata"] = {}
+        super().__init__(**kwargs)
 
     def __repr__(self) -> str:
         return (
@@ -309,6 +352,18 @@ class Configuration(Base):
         "Instance", back_populates="configurations"
     )
 
+    def __init__(self, **kwargs):
+        # Set Python-level defaults for enum and other fields if not provided
+        if "scope" not in kwargs:
+            kwargs["scope"] = ConfigScope.GLOBAL
+        if "is_secret" not in kwargs:
+            kwargs["is_secret"] = False
+        if "is_readonly" not in kwargs:
+            kwargs["is_readonly"] = False
+        if "extra_metadata" not in kwargs:
+            kwargs["extra_metadata"] = {}
+        super().__init__(**kwargs)
+
     def __repr__(self) -> str:
         return f"<Configuration(id={self.id}, key='{self.key}', scope='{self.scope.value}')>"
 
@@ -316,26 +371,34 @@ class Configuration(Base):
 # Create indexes for performance
 
 # Instance indexes
-Index("idx_instances_issue_id", Instance.issue_id)
-Index("idx_instances_status", Instance.status)
-Index("idx_instances_created_at", Instance.created_at)
+idx_instances_issue_id = Index("idx_instances_issue_id", Instance.issue_id)
+idx_instances_status = Index("idx_instances_status", Instance.status)
+idx_instances_created_at = Index("idx_instances_created_at", Instance.created_at)
 
 # Task indexes
-Index("idx_tasks_status", Task.status)
-Index("idx_tasks_priority", Task.priority)
-Index("idx_tasks_instance_id", Task.instance_id)
-Index("idx_tasks_created_at", Task.created_at)
-Index("idx_tasks_due_date", Task.due_date)
+idx_tasks_status = Index("idx_tasks_status", Task.status)
+idx_tasks_priority = Index("idx_tasks_priority", Task.priority)
+idx_tasks_instance_id = Index("idx_tasks_instance_id", Task.instance_id)
+idx_tasks_created_at = Index("idx_tasks_created_at", Task.created_at)
+idx_tasks_due_date = Index("idx_tasks_due_date", Task.due_date)
 
 # Worktree indexes
-Index("idx_worktrees_path", Worktree.path)
-Index("idx_worktrees_branch", Worktree.branch_name)
-Index("idx_worktrees_status", Worktree.status)
+idx_worktrees_path = Index("idx_worktrees_path", Worktree.path)
+idx_worktrees_branch = Index("idx_worktrees_branch", Worktree.branch_name)
+idx_worktrees_status = Index("idx_worktrees_status", Worktree.status)
 
 # Configuration indexes
-Index("idx_configurations_key_scope", Configuration.key, Configuration.scope)
-Index("idx_configurations_instance_id", Configuration.instance_id)
+idx_configurations_key_scope = Index(
+    "idx_configurations_key_scope", Configuration.key, Configuration.scope
+)
+idx_configurations_instance_id = Index(
+    "idx_configurations_instance_id", Configuration.instance_id
+)
 
 # Health check indexes
-Index("idx_health_checks_instance_id", HealthCheck.instance_id)
-Index("idx_health_checks_timestamp", HealthCheck.check_timestamp)
+idx_health_checks_instance_id = Index(
+    "idx_health_checks_instance_id", HealthCheck.instance_id
+)
+idx_health_checks_timestamp = Index(
+    "idx_health_checks_timestamp", HealthCheck.check_timestamp
+)

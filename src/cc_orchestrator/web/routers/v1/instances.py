@@ -352,7 +352,29 @@ async def get_instance_tasks(
     # Convert to response schemas
     from ...schemas import TaskResponse
 
-    task_responses = [TaskResponse.model_validate(task) for task in tasks]
+    task_responses = []
+    for task in tasks:
+        # Convert task object to dictionary if needed for Pydantic validation
+        if hasattr(task, "__dict__"):
+            task_data = {
+                "id": getattr(task, "id", None),
+                "title": getattr(
+                    task, "title", getattr(task, "name", "")
+                ),  # Handle name -> title mapping
+                "description": getattr(task, "description", ""),
+                "status": getattr(task, "status", "pending"),
+                "instance_id": getattr(task, "instance_id", None),
+                "command": getattr(task, "command", None),
+                "schedule": getattr(task, "schedule", None),
+                "enabled": getattr(task, "enabled", True),
+                "created_at": getattr(task, "created_at", None),
+                "updated_at": getattr(task, "updated_at", None),
+                "last_run": getattr(task, "last_run", None),
+                "next_run": getattr(task, "next_run", None),
+            }
+            task_responses.append(TaskResponse.model_validate(task_data))
+        else:
+            task_responses.append(TaskResponse.model_validate(task))
 
     return {
         "items": task_responses,
@@ -360,4 +382,148 @@ async def get_instance_tasks(
         "page": pagination.page,
         "size": pagination.size,
         "pages": (total + pagination.size - 1) // pagination.size,
+    }
+
+
+@router.post("/{instance_id}/restart", response_model=APIResponse)
+@track_api_performance()
+@handle_api_errors()
+async def restart_instance(
+    instance_id: int = Depends(validate_instance_id),
+    crud: CRUDBase = Depends(get_crud),
+) -> dict[str, Any]:
+    """
+    Restart a Claude Code instance.
+
+    - **instance_id**: The ID of the instance to restart
+    """
+    # Check if instance exists
+    instance = await crud.get_instance(instance_id)
+    if not instance:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Instance with ID {instance_id} not found",
+        )
+
+    # Update status to running (restart operation)
+    # TODO: Integrate with actual instance management system
+    updated_instance = await crud.update_instance(
+        instance_id, {"status": InstanceStatus.RUNNING}
+    )
+
+    return {
+        "success": True,
+        "message": "Instance restarted successfully",
+        "data": InstanceResponse.model_validate(updated_instance),
+    }
+
+
+@router.patch("/{instance_id}/status", response_model=APIResponse)
+@track_api_performance()
+@handle_api_errors()
+async def update_instance_status(
+    instance_data: InstanceUpdate,
+    instance_id: int = Depends(validate_instance_id),
+    crud: CRUDBase = Depends(get_crud),
+) -> dict[str, Any]:
+    """
+    Update an instance's status.
+
+    - **instance_id**: The ID of the instance to update
+    - **status**: The new status for the instance
+    """
+    # Check if instance exists
+    existing = await crud.get_instance(instance_id)
+    if not existing:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Instance with ID {instance_id} not found",
+        )
+
+    # Update the instance status
+    update_data = instance_data.model_dump(exclude_unset=True)
+    instance = await crud.update_instance(instance_id, update_data)
+
+    return {
+        "success": True,
+        "message": "Instance status updated successfully",
+        "data": InstanceResponse.model_validate(instance),
+    }
+
+
+@router.get("/{instance_id}/health", response_model=APIResponse)
+@track_api_performance()
+@handle_api_errors()
+async def get_instance_health(
+    instance_id: int = Depends(validate_instance_id),
+    crud: CRUDBase = Depends(get_crud),
+) -> dict[str, Any]:
+    """
+    Get instance health metrics.
+
+    - **instance_id**: The ID of the instance
+    """
+    instance = await crud.get_instance(instance_id)
+    if not instance:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Instance with ID {instance_id} not found",
+        )
+
+    # TODO: Implement actual health checking
+    health_data = {
+        "instance_id": instance_id,
+        "status": instance.status,
+        "health": "healthy",
+        "cpu_usage": 0.0,
+        "memory_usage": 0.0,
+        "uptime_seconds": 0,
+        "last_activity": (
+            instance.updated_at.isoformat() if instance.updated_at else None
+        ),
+    }
+
+    return {
+        "success": True,
+        "message": "Instance health retrieved successfully",
+        "data": health_data,
+    }
+
+
+@router.get("/{instance_id}/logs", response_model=APIResponse)
+@track_api_performance()
+@handle_api_errors()
+async def get_instance_logs(
+    instance_id: int = Depends(validate_instance_id),
+    limit: int = Query(100, le=1000, description="Maximum number of log entries"),
+    search: str | None = Query(None, description="Search filter for log entries"),
+    crud: CRUDBase = Depends(get_crud),
+) -> dict[str, Any]:
+    """
+    Get instance logs with optional search filtering.
+
+    - **instance_id**: The ID of the instance
+    - **limit**: Maximum number of log entries to return (default: 100)
+    - **search**: Optional search filter for log entries
+    """
+    instance = await crud.get_instance(instance_id)
+    if not instance:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Instance with ID {instance_id} not found",
+        )
+
+    # TODO: Implement actual log retrieval
+    logs_data = {
+        "instance_id": instance_id,
+        "logs": [],
+        "total": 0,
+        "limit": limit,
+        "search": search,
+    }
+
+    return {
+        "success": True,
+        "message": "Instance logs retrieved successfully",
+        "data": logs_data,
     }

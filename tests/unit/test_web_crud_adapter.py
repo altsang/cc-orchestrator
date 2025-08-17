@@ -394,15 +394,21 @@ class TestTaskOperations:
     async def test_create_task_with_string_priority_bug(
         self, crud_adapter, mock_session
     ):
-        """Test creating a task with string priority (demonstrates the bug)."""
+        """Test creating a task with string priority (should work correctly now)."""
+        mock_task = Mock(spec=Task, id=1, title="Test Task")
         task_data = {
             "title": "Test Task",
-            "priority": "HIGH",  # This will fail due to enum constructor mismatch
+            "priority": "HIGH",  # Should now convert to TaskPriority.HIGH
         }
 
-        # This should fail due to the bug in the CRUD adapter
-        with pytest.raises(ValueError, match="'HIGH' is not a valid TaskPriority"):
-            await crud_adapter.create_task(task_data)
+        with patch("cc_orchestrator.web.crud_adapter.TaskCRUD") as mock_crud:
+            mock_crud.create.return_value = mock_task
+
+            result = await crud_adapter.create_task(task_data)
+
+            assert result == mock_task
+            # Should convert string to enum correctly
+            assert mock_crud.create.call_args[1]["priority"] == TaskPriority.HIGH
 
     @pytest.mark.asyncio
     async def test_create_task_with_int_priority(self, crud_adapter, mock_session):
@@ -492,12 +498,20 @@ class TestTaskOperations:
 
     @pytest.mark.asyncio
     async def test_update_task_with_string_status_bug(self, crud_adapter, mock_session):
-        """Test updating a task with string status (demonstrates the bug)."""
-        update_data = {"status": "completed"}  # lowercase string - this will fail
+        """Test updating a task with string status (should work correctly now)."""
+        mock_task = Mock(spec=Task, id=1, title="Test Task")
+        update_data = {"status": "completed"}  # lowercase string - should work
 
-        # This should fail due to the bug in the CRUD adapter
-        with pytest.raises(ValueError, match="'COMPLETED' is not a valid TaskStatus"):
-            await crud_adapter.update_task(1, update_data)
+        with patch("cc_orchestrator.web.crud_adapter.TaskCRUD") as mock_crud:
+            mock_crud.update_status.return_value = mock_task
+
+            result = await crud_adapter.update_task(1, update_data)
+
+            assert result == mock_task
+            # Should convert string to enum correctly
+            mock_crud.update_status.assert_called_once_with(
+                mock_session, 1, TaskStatus.COMPLETED
+            )
 
     @pytest.mark.asyncio
     async def test_update_task_without_status(self, crud_adapter, mock_session):

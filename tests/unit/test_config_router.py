@@ -494,6 +494,7 @@ class TestConfigValidation:
             "value": "test_value",
             "description": "Test config",
             "category": "general",
+            "scope": ConfigScope.GLOBAL.value,
             "created_at": datetime.now(UTC),
             "updated_at": datetime.now(UTC),
         }

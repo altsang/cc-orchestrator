@@ -51,7 +51,9 @@ class WebSocketManager:
                 self.max_connections_per_ip, "connections per IP"
             )
 
-        await websocket.accept()
+        # Only accept if not already connected (router may have already done this)
+        if websocket.client_state == WebSocketState.CONNECTING:
+            await websocket.accept()
         connection_id = str(uuid.uuid4())
         current_time = time.time()
 
@@ -280,3 +282,32 @@ class WebSocketManager:
         # Close all connections
         for connection_id in list(self.connections.keys()):
             await self.disconnect(connection_id)
+
+
+class ConnectionManager:
+    """Alias/wrapper for WebSocketManager for compatibility."""
+
+    def __init__(self, max_connections: int = 100, max_connections_per_ip: int = 5):
+        """Initialize connection manager.
+
+        Args:
+            max_connections: Maximum total connections
+            max_connections_per_ip: Maximum connections per IP
+        """
+        self._manager = WebSocketManager(max_connections, max_connections_per_ip)
+
+    async def connect(self, websocket: WebSocket) -> str:
+        """Accept a new WebSocket connection."""
+        return await self._manager.connect(websocket)
+
+    async def disconnect(self, connection_id: str) -> None:
+        """Disconnect a WebSocket connection."""
+        await self._manager.disconnect(connection_id)
+
+    async def send_message(self, connection_id: str, message: dict[str, Any]) -> None:
+        """Send message to a specific connection."""
+        await self._manager.send_to_connection(connection_id, message)
+
+    def get_connection_count(self) -> int:
+        """Get total number of active connections."""
+        return self._manager.get_connection_count()

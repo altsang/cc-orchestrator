@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
 
 from ...database.connection import get_db_session
@@ -30,7 +30,7 @@ router = APIRouter(tags=["instances"])
 @track_api_performance()
 async def get_instances(
     request: Request,
-    status_filter: InstanceStatus | None = None,
+    status: str | None = Query(None, description="Filter by instance status"),
     db: Session = Depends(get_db_session),
     current_user: dict[str, Any] = Depends(get_current_user),
 ) -> InstanceListResponse:
@@ -39,9 +39,18 @@ async def get_instances(
     client_ip = get_client_ip(request)
     rate_limiter.check_rate_limit(client_ip, "GET:/api/v1/instances", 30, 60)
 
+    # Convert status string to enum if provided
+    status_filter = None
+    if status:
+        try:
+            status_filter = InstanceStatus(status.lower())
+        except ValueError:
+            # Invalid status value, ignore filter
+            status_filter = None
+
     instances = InstanceCRUD.list_all(db, status=status_filter)
     return InstanceListResponse(
-        instances=[InstanceResponse.from_model(instance) for instance in instances],
+        items=[InstanceResponse.from_model(instance) for instance in instances],
         total=len(instances),
     )
 

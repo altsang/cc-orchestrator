@@ -1,7 +1,6 @@
 """Focused tests for WebSocket manager to improve coverage."""
 
 import json
-from unittest.mock import AsyncMock
 
 import pytest
 from fastapi.websockets import WebSocketState
@@ -249,16 +248,20 @@ class TestWebSocketHeartbeat:
         """Test heartbeat with some failed connections."""
         ws1 = MockWebSocket()
         ws2 = MockWebSocket()
-        ws2.closed = True
 
         await websocket_manager.connect(ws1)
         await websocket_manager.connect(ws2)
 
+        # Now close ws2 after it's connected to simulate a failed connection during heartbeat
+        ws2.closed = True
+
         await websocket_manager.send_heartbeat()
 
         # Only healthy connection should receive heartbeat
-        assert len(ws1.messages_sent) == 2  # Connect + message
-        assert len(ws2.messages_sent) == 1  # Only connect message (failed to send)
+        assert len(ws1.messages_sent) == 2  # Connect + heartbeat message
+        assert (
+            len(ws2.messages_sent) == 1
+        )  # Only connect message (failed to send heartbeat)
 
         # Failed connection should be removed
         assert websocket_manager.get_connection_count() == 1
@@ -344,8 +347,16 @@ class TestWebSocketCleanup:
         """Test error handling when sending messages."""
         connection_id = await websocket_manager.connect(mock_websocket)
 
-        # Mock send_json to raise exception
-        mock_websocket.send_json = AsyncMock(side_effect=Exception("Send failed"))
+        # Reset messages (connect message was already sent successfully)
+        mock_websocket.messages_sent.clear()
+
+        # Mock send_text to raise exception (WebSocketManager uses send_text, not send_json)
+        original_send_text = mock_websocket.send_text
+
+        async def failing_send_text(data):
+            raise Exception("Send failed")
+
+        mock_websocket.send_text = failing_send_text
 
         message = {"type": "test", "data": {}}
         success = await websocket_manager.send_to_connection(connection_id, message)

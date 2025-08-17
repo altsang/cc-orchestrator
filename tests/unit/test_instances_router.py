@@ -49,7 +49,7 @@ class TestInstancesRouterFunctions:
         # Create proper task data that matches TaskResponse schema
         task_data = {
             "id": 1,
-            "name": "test-task",
+            "title": "test-task",
             "description": "Test task description",
             "instance_id": 1,
             "created_at": datetime.now(UTC),
@@ -338,7 +338,7 @@ class TestInstancesRouterFunctions:
         status_data = result["data"]
         assert status_data["id"] == 1
         assert status_data["issue_id"] == "test-issue-001"
-        assert status_data["status"] == InstanceStatus.RUNNING
+        assert status_data["status"] == InstanceStatus.RUNNING.value
 
         mock_crud.get_instance.assert_called_once_with(1)
 
@@ -358,27 +358,28 @@ class TestInstancesRouterFunctions:
         # Create a proper mock task with all required fields
         from datetime import datetime
 
-        from cc_orchestrator.database.models import TaskPriority, TaskStatus
+        # Create a mock object that returns dictionary data for validation
+        class MockTask:
+            def __init__(self, data):
+                for key, value in data.items():
+                    setattr(self, key, value)
 
-        mock_task = Mock()
-        mock_task.id = 1
-        mock_task.title = "Test Task"
-        mock_task.description = "Test Description"
-        mock_task.status = TaskStatus.PENDING
-        mock_task.priority = TaskPriority.MEDIUM
-        mock_task.instance_id = 1
-        mock_task.worktree_id = None
-        mock_task.due_date = None
-        mock_task.estimated_duration = None
-        mock_task.actual_duration = None
-        mock_task.requirements = {}
-        mock_task.results = {}
-        mock_task.extra_metadata = {}
-        mock_task.started_at = None
-        mock_task.completed_at = None
-        mock_task.created_at = datetime.now(UTC)
-        mock_task.updated_at = datetime.now(UTC)
+        mock_task_data = {
+            "id": 1,
+            "name": "Test Task",  # TaskResponse expects 'name', not 'title'
+            "description": "Test Description",
+            "status": "pending",
+            "instance_id": 1,
+            "command": None,
+            "schedule": None,
+            "enabled": True,
+            "created_at": datetime.now(UTC),
+            "updated_at": datetime.now(UTC),
+            "last_run": None,
+            "next_run": None,
+        }
 
+        mock_task = MockTask(mock_task_data)
         mock_crud.list_tasks.return_value = ([mock_task], 1)
 
         result = await instances.get_instance_tasks(

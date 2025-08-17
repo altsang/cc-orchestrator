@@ -40,9 +40,21 @@ class TestAppCreation:
 
     def test_create_app_production_mode_missing_frontend_url(self):
         """Test app creation fails without FRONTEND_URL in production."""
+        import sys
+
+        # Clear the module cache to force re-import
+        if "cc_orchestrator.web.app" in sys.modules:
+            del sys.modules["cc_orchestrator.web.app"]
+
         with patch.dict(
-            os.environ, {"DEBUG": "false", "JWT_SECRET_KEY": "test-secret-key"}
+            os.environ,
+            {"DEBUG": "false", "JWT_SECRET_KEY": "test-secret-key"},
+            clear=False,
         ):
+            # Ensure FRONTEND_URL is not set
+            if "FRONTEND_URL" in os.environ:
+                del os.environ["FRONTEND_URL"]
+
             with pytest.raises(
                 ValueError, match="FRONTEND_URL must be set when DEBUG=false"
             ):

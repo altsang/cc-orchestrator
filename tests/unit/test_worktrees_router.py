@@ -33,7 +33,7 @@ class TestWorktreesRouterFunctions:
         mock_worktree_data = {
             "id": 1,
             "name": "test-worktree",
-            "branch": "feature-branch",  # API schema uses 'branch'
+            "branch_name": "feature-branch",  # API schema uses 'branch_name'
             "base_branch": "main",
             "path": "/workspace/test-worktree",
             "active": True,
@@ -43,8 +43,8 @@ class TestWorktreesRouterFunctions:
             "last_sync": datetime.now(UTC),
             "created_at": datetime.now(UTC),
             "updated_at": datetime.now(UTC),
-            # Database model specific attribute for mapping
-            "branch_name": "feature-branch",  # Database model uses branch_name
+            # Status from WorktreeStatus enum values
+            "status": "active",  # Use valid WorktreeStatus value
         }
 
         # Create a mock object with dictionary-like access for the router code
@@ -138,7 +138,7 @@ class TestWorktreesRouterFunctions:
         """Test successful worktree creation."""
         worktree_data = WorktreeCreate(
             name="new-worktree",
-            branch="new-branch",
+            branch_name="new-branch",
             base_branch="main",
             path="/workspace/new-worktree",
             instance_id=1,
@@ -168,7 +168,7 @@ class TestWorktreesRouterFunctions:
 
         worktree_data = WorktreeCreate(
             name="duplicate-worktree",
-            branch="duplicate-branch",
+            branch_name="duplicate-branch",
             base_branch="main",
             path="/workspace/duplicate",
         )
@@ -187,7 +187,7 @@ class TestWorktreesRouterFunctions:
 
         worktree_data = WorktreeCreate(
             name="invalid-worktree",
-            branch="invalid-branch",
+            branch_name="invalid-branch",
             base_branch="main",
             path="/workspace/invalid",
             instance_id=999,
@@ -372,7 +372,7 @@ class TestWorktreeValidation:
         worktree_data = {
             "id": 1,
             "name": "test-worktree",
-            "branch": "main",
+            "branch_name": "main",
             "base_branch": "main",
             "path": "/workspace/test",
             "active": True,
@@ -389,14 +389,14 @@ class TestWorktreeValidation:
         """Test WorktreeCreate model validation."""
         create_data = {
             "name": "new-worktree",
-            "branch": "new-branch",
+            "branch_name": "new-branch",
             "base_branch": "main",
             "path": "/workspace/new",
         }
 
         create_model = WorktreeCreate.model_validate(create_data)
         assert create_model.name == "new-worktree"
-        assert create_model.branch == "new-branch"
+        assert create_model.branch_name == "new-branch"
 
     def test_worktree_status_enum_values(self):
         """Test WorktreeStatus enum contains expected values."""
