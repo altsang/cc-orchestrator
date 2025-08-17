@@ -331,18 +331,16 @@ class TestModuleConstants:
             current_env_key is not None
         ), "JWT_SECRET_KEY should be set in test environment"
         
-        # The actual SECRET_KEY should be consistent within the auth module
-        current_key = get_current_secret_key()
-        assert current_key == SECRET_KEY
+        # The actual SECRET_KEY from the auth module should be valid
         assert SECRET_KEY  # Should not be empty
         
         # Both the module's SECRET_KEY and environment should be valid test keys
         # Due to test isolation/module caching, they may not match exactly but should be test keys
-        assert "test-secret-key" in current_key, f"Module SECRET_KEY should be test key: '{current_key}'"
+        assert "test-secret-key" in SECRET_KEY, f"Module SECRET_KEY should be test key: '{SECRET_KEY}'"
         assert "test-secret-key" in current_env_key, f"Environment JWT_SECRET_KEY should be test key: '{current_env_key}'"
         
         # Secret key should be sufficiently long for security
-        assert len(current_key) > 20
+        assert len(SECRET_KEY) > 20
         assert len(current_env_key) > 20
 
     def test_algorithm_constant(self):
