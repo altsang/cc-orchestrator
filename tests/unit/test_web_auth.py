@@ -322,7 +322,7 @@ class TestModuleConstants:
 
     @pytest.mark.auth
     def test_secret_key_from_environment(self):
-        """Test that SECRET_KEY comes from environment."""
+        """Test that SECRET_KEY configuration is valid for testing."""
         # The SECRET_KEY should be loaded from JWT_SECRET_KEY env var
         # Note: Due to module caching, SECRET_KEY is set at import time
         # We verify basic properties of the secret key for test environment
@@ -330,17 +330,20 @@ class TestModuleConstants:
         assert (
             current_env_key is not None
         ), "JWT_SECRET_KEY should be set in test environment"
-        # The actual SECRET_KEY should be what we're using for consistency
+        
+        # The actual SECRET_KEY should be consistent within the auth module
         current_key = get_current_secret_key()
         assert current_key == SECRET_KEY
         assert SECRET_KEY  # Should not be empty
-        # Both should contain test identifier (flexible for different test environments)
-        # Handle test isolation issues by checking that at least one contains the test identifier
-        assert (
-            "test-secret-key" in current_key or "test-secret-key" in current_env_key
-        ), f"Neither secret contains test identifier: current_key='{current_key}', env_key='{current_env_key}'"
+        
+        # Both the module's SECRET_KEY and environment should be valid test keys
+        # Due to test isolation/module caching, they may not match exactly but should be test keys
+        assert "test-secret-key" in current_key, f"Module SECRET_KEY should be test key: '{current_key}'"
+        assert "test-secret-key" in current_env_key, f"Environment JWT_SECRET_KEY should be test key: '{current_env_key}'"
+        
         # Secret key should be sufficiently long for security
         assert len(current_key) > 20
+        assert len(current_env_key) > 20
 
     def test_algorithm_constant(self):
         """Test the JWT algorithm constant."""
