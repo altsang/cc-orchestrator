@@ -193,7 +193,7 @@ def handle_api_errors(
 
                     from .exceptions import CCOrchestratorAPIException
 
-                    if isinstance(e, (HTTPException, CCOrchestratorAPIException)):
+                    if isinstance(e, HTTPException | CCOrchestratorAPIException):
                         raise
 
                     api_logger.error(
@@ -234,7 +234,7 @@ def handle_api_errors(
 
                     from .exceptions import CCOrchestratorAPIException
 
-                    if isinstance(e, (HTTPException, CCOrchestratorAPIException)):
+                    if isinstance(e, HTTPException | CCOrchestratorAPIException):
                         raise
 
                     api_logger.error(

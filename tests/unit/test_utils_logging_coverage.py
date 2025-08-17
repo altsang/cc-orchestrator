@@ -774,7 +774,7 @@ class TestHandleErrorsDecorator:
             test_function()
 
         assert "Unexpected error in test_function" in str(exc_info.value)
-        assert exc_info.value.__cause__.__class__ == ValueError
+        assert exc_info.value.__cause__.__class__ is ValueError
 
     def test_handle_errors_generic_exception_no_reraise(self):
         """Test handle_errors with generic exception and reraise=False."""
@@ -1004,7 +1004,7 @@ class TestIntegrationScenarios:
 
         try:
             raise CustomTestException("test exception")
-        except:
+        except Exception:
             exc_info = sys.exc_info()
 
         record = logging.LogRecord(

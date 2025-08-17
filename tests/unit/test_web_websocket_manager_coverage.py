@@ -443,7 +443,7 @@ class TestConnectionManager:
         # Fill up to capacity
         for i in range(manager.config.max_connections):
             mock_ws = AsyncMock(spec=WebSocket)
-            connection_id = await manager.connect(mock_ws, f"127.0.0.{i}")
+            await manager.connect(mock_ws, f"127.0.0.{i}")
 
         # Next connection should be refused
         with pytest.raises(
@@ -583,7 +583,7 @@ class TestConnectionManager:
         message = WebSocketMessage(type="test", data={"key": "value"})
 
         # Fill the queue to capacity
-        for i in range(manager.config.max_queue_size):
+        for _i in range(manager.config.max_queue_size):
             await manager.send_message("offline-id", message, queue_if_offline=True)
 
         # Next message should remove the oldest
@@ -1522,7 +1522,7 @@ class TestConnectionManager:
 
         # Should still accept one more
         mock_ws = AsyncMock(spec=WebSocket)
-        final_conn_id = await manager.connect(mock_ws, "127.0.0.100")
+        await manager.connect(mock_ws, "127.0.0.100")
 
         # Now should refuse
         mock_ws_refused = AsyncMock(spec=WebSocket)

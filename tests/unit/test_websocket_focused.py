@@ -351,7 +351,6 @@ class TestWebSocketCleanup:
         mock_websocket.messages_sent.clear()
 
         # Mock send_text to raise exception (WebSocketManager uses send_text, not send_json)
-        original_send_text = mock_websocket.send_text
 
         async def failing_send_text(data):
             raise Exception("Send failed")

@@ -685,7 +685,7 @@ class TestDecoratorFunctionality:
             pagination.size = 20
             pagination.offset = 0
 
-            result = await instances.list_instances(
+            await instances.list_instances(
                 pagination=pagination,
                 status_filter=None,
                 branch_name=None,
@@ -697,7 +697,7 @@ class TestDecoratorFunctionality:
             assert mock_logger.info.called
 
             # Check for performance logging messages
-            info_calls = [call for call in mock_logger.info.call_args_list]
+            info_calls = list(mock_logger.info.call_args_list)
             assert any("completed" in str(call) for call in info_calls)
 
     @pytest.mark.asyncio
@@ -723,13 +723,13 @@ class TestDecoratorFunctionality:
                 )
 
             # Verify performance logging for errors
-            warning_calls = [call for call in mock_logger.warning.call_args_list]
+            warning_calls = list(mock_logger.warning.call_args_list)
             assert any("failed" in str(call) for call in warning_calls)
 
     @pytest.mark.asyncio
     async def test_handle_api_errors_decorator_http_exception_reraise(self):
         """Test @handle_api_errors decorator re-raising HTTPException."""
-        with patch("cc_orchestrator.web.logging_utils.api_logger") as mock_logger:
+        with patch("cc_orchestrator.web.logging_utils.api_logger"):
             # Create mock CRUD that raises HTTPException
             mock_crud = AsyncMock()
             http_exc = HTTPException(status_code=400, detail="Bad request")
@@ -765,7 +765,7 @@ class TestDecoratorFunctionality:
 
             # Verify error logging
             assert mock_logger.error.called
-            error_calls = [call for call in mock_logger.error.call_args_list]
+            error_calls = list(mock_logger.error.call_args_list)
             assert any(
                 "API error in list_instances" in str(call) for call in error_calls
             )

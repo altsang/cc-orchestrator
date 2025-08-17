@@ -563,7 +563,7 @@ class TestAsyncCommandExecution:
         """Test logging occurs during error conditions."""
         # Mock orchestrator to raise exception
         mock_orchestrator.side_effect = Exception("Test error")
-        result = self.runner.invoke(status)
+        self.runner.invoke(status)
 
         # Verify logger was called for error
         mock_logger.error.assert_called()

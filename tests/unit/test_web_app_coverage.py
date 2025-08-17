@@ -57,7 +57,7 @@ class TestCreateAppDevelopment:
         """Test CORS origins in debug mode."""
         with patch.dict(os.environ, {"DEBUG": "true"}, clear=False):
             with patch("fastapi.FastAPI.add_middleware") as mock_add_middleware:
-                app = create_app()
+                create_app()
 
                 # Should add CORS middleware with development origins
                 mock_add_middleware.assert_called()

@@ -214,7 +214,7 @@ class TestWebAPIIntegration:
         response = client.get(f"/api/v1/instances/{instance_id}", headers=auth_headers)
         assert response.status_code == 200
         instance_response = response.json()
-        assert instance_response["success"] == True
+        assert instance_response["success"]
         assert "data" in instance_response
         instance_data = instance_response["data"]
         assert instance_data["id"] == instance_id
@@ -227,7 +227,7 @@ class TestWebAPIIntegration:
         )
         assert response.status_code == 201
         create_response = response.json()
-        assert create_response["success"] == True
+        assert create_response["success"]
         assert "data" in create_response
         new_instance = create_response["data"]
         assert new_instance["issue_id"] == "new-test-456"
@@ -239,7 +239,7 @@ class TestWebAPIIntegration:
         )
         assert response.status_code == 200
         start_response = response.json()
-        assert start_response["success"] == True
+        assert start_response["success"]
         assert "message" in start_response
         assert "data" in start_response
         assert start_response["message"] == "Instance started successfully"
@@ -268,7 +268,7 @@ class TestWebAPIIntegration:
         )
         assert response.status_code == 200
         health_response = response.json()
-        assert health_response["success"] == True
+        assert health_response["success"]
         assert "data" in health_response
         health_data = health_response["data"]
         assert "instance_id" in health_data
@@ -281,7 +281,7 @@ class TestWebAPIIntegration:
         )
         assert response.status_code == 200
         logs_response = response.json()
-        assert logs_response["success"] == True
+        assert logs_response["success"]
         assert "data" in logs_response
         logs_data = logs_response["data"]
         assert "instance_id" in logs_data

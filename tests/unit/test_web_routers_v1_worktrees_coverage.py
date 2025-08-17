@@ -162,7 +162,7 @@ class TestWorktreesRouterComprehensiveCoverage:
         mock_crud.list_worktrees.return_value = ([mock_worktree_model], 1)
 
         with self.mock_worktree_response():
-            result = await worktrees.list_worktrees(
+            await worktrees.list_worktrees(
                 pagination=pagination_params,
                 status_filter=WorktreeStatus.ACTIVE,
                 branch_name=None,
@@ -184,7 +184,7 @@ class TestWorktreesRouterComprehensiveCoverage:
         mock_crud.list_worktrees.return_value = ([mock_worktree_model], 1)
 
         with self.mock_worktree_response():
-            result = await worktrees.list_worktrees(
+            await worktrees.list_worktrees(
                 pagination=pagination_params,
                 status_filter=None,
                 branch_name="feature/test",
@@ -206,7 +206,7 @@ class TestWorktreesRouterComprehensiveCoverage:
         mock_crud.list_worktrees.return_value = ([mock_worktree_model], 1)
 
         with self.mock_worktree_response():
-            result = await worktrees.list_worktrees(
+            await worktrees.list_worktrees(
                 pagination=pagination_params,
                 status_filter=None,
                 branch_name=None,
@@ -228,7 +228,7 @@ class TestWorktreesRouterComprehensiveCoverage:
         mock_crud.list_worktrees.return_value = ([mock_worktree_model], 1)
 
         with self.mock_worktree_response():
-            result = await worktrees.list_worktrees(
+            await worktrees.list_worktrees(
                 pagination=pagination_params,
                 status_filter=WorktreeStatus.INACTIVE,
                 branch_name="main",
@@ -819,7 +819,7 @@ class TestWorktreesRouterComprehensiveCoverage:
         ) as mock_response:
             mock_response.model_validate.return_value = {"id": 1, "name": "test"}
 
-            result = await worktrees.get_worktree(worktree_id=1, crud=mock_crud)
+            await worktrees.get_worktree(worktree_id=1, crud=mock_crud)
 
             mock_response.model_validate.assert_called_once_with(mock_worktree_model)
 

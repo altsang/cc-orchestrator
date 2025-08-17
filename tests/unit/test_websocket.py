@@ -109,10 +109,8 @@ class TestWebSocketMessaging:
 
         with (
             patch.object(ws_manager, "connect") as mock_connect,
-            patch.object(
-                ws_manager, "send_to_connection", side_effect=track_send
-            ) as mock_send,
-            patch.object(ws_manager, "disconnect") as mock_disconnect,
+            patch.object(ws_manager, "send_to_connection", side_effect=track_send),
+            patch.object(ws_manager, "disconnect"),
         ):
             mock_connect.return_value = "test-connection-id"
 

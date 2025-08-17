@@ -234,7 +234,7 @@ class TestInstanceOperations:
             mock_instance = Mock(spec=Instance)
             mock_crud.create.return_value = mock_instance
 
-            result = await crud.create_instance(instance_data)
+            await crud.create_instance(instance_data)
 
             # Lines 112-115: String to enum conversion
             # Lines 119-120: Status assignment and flush
@@ -254,7 +254,7 @@ class TestInstanceOperations:
             mock_instance = Mock(spec=Instance)
             mock_crud.create.return_value = mock_instance
 
-            result = await crud.create_instance(instance_data)
+            await crud.create_instance(instance_data)
 
             # Lines 116-117: Direct enum use
             # Lines 119-120: Status assignment and flush
@@ -536,7 +536,7 @@ class TestTaskOperations:
             mock_task = Mock(spec=Task)
             mock_crud.create.return_value = mock_task
 
-            result = await crud.create_task(task_data)
+            await crud.create_task(task_data)
 
             # Lines 232-242: Integer priority mapping
             call_kwargs = mock_crud.create.call_args[1]
@@ -557,7 +557,7 @@ class TestTaskOperations:
             mock_task = Mock(spec=Task)
             mock_crud.create.return_value = mock_task
 
-            result = await crud.create_task(task_data)
+            await crud.create_task(task_data)
 
             # Line 242: Default to MEDIUM for invalid priority
             call_kwargs = mock_crud.create.call_args[1]
@@ -585,7 +585,7 @@ class TestTaskOperations:
             mock_task = Mock(spec=Task)
             mock_crud.create.return_value = mock_task
 
-            result = await crud.create_task(task_data)
+            await crud.create_task(task_data)
 
             # Lines 244-255: All parameters passed
             mock_crud.create.assert_called_once_with(
@@ -664,7 +664,7 @@ class TestTaskOperations:
             mock_task = Mock(spec=Task)
             mock_crud.update_status.return_value = mock_task
 
-            result = await crud.update_task(1, update_data)
+            await crud.update_task(1, update_data)
 
             # Lines 281-284: Direct enum status update
             mock_crud.update_status.assert_called_with(
@@ -683,7 +683,7 @@ class TestTaskOperations:
             mock_task = Mock(spec=Task)
             mock_crud.update.return_value = mock_task
 
-            result = await crud.update_task(1, update_data)
+            await crud.update_task(1, update_data)
 
             # Lines 286-287: General update path
             mock_crud.update.assert_called_with(mock_session, 1, **update_data)
@@ -784,7 +784,7 @@ class TestWorktreeOperations:
             mock_worktree = Mock(spec=Worktree)
             mock_crud.create.return_value = mock_worktree
 
-            result = await crud.create_worktree(worktree_data)
+            await crud.create_worktree(worktree_data)
 
             # Lines 336-345: All parameters passed
             mock_crud.create.assert_called_once_with(
@@ -879,7 +879,7 @@ class TestWorktreeOperations:
             mock_updated_worktree = Mock(spec=Worktree)
             mock_crud.update_status.return_value = mock_updated_worktree
 
-            result = await crud.update_worktree(1, update_data)
+            await crud.update_worktree(1, update_data)
 
             # Lines 383-384: Get current worktree
             mock_crud.get_by_id.assert_called_with(mock_session, 1)
@@ -908,7 +908,7 @@ class TestWorktreeOperations:
             mock_updated_worktree = Mock(spec=Worktree)
             mock_crud.update_status.return_value = mock_updated_worktree
 
-            result = await crud.update_worktree(1, update_data)
+            await crud.update_worktree(1, update_data)
 
             # Lines 394-403: Direct enum use
             mock_crud.update_status.assert_called_with(
@@ -935,7 +935,7 @@ class TestWorktreeOperations:
             mock_updated_worktree = Mock(spec=Worktree)
             mock_crud.update_status.return_value = mock_updated_worktree
 
-            result = await crud.update_worktree(1, update_data)
+            await crud.update_worktree(1, update_data)
 
             # Lines 383-403: Use existing status with git info
             mock_crud.update_status.assert_called_with(
@@ -1011,7 +1011,7 @@ class TestConfigurationOperations:
             mock_config = Mock(spec=Configuration)
             mock_crud.create.return_value = mock_config
 
-            result = await crud.create_configuration(config_data)
+            await crud.create_configuration(config_data)
 
             # Lines 441-461: Scope conversion and creation
             mock_crud.create.assert_called_once_with(
@@ -1105,9 +1105,7 @@ class TestConfigurationOperations:
             mock_crud.get_by_key_scope.return_value = mock_config
 
             for scope_str, expected_enum in scope_tests:
-                result = await crud.get_configuration_by_key_scope(
-                    "test.key", scope_str
-                )
+                await crud.get_configuration_by_key_scope("test.key", scope_str)
 
                 # Verify correct enum conversion
                 mock_crud.get_by_key_scope.assert_called_with(
@@ -1124,9 +1122,7 @@ class TestConfigurationOperations:
             mock_config = Mock(spec=Configuration)
             mock_crud.get_by_key_scope.return_value = mock_config
 
-            result = await crud.get_configuration_by_key_scope(
-                "test.key", ConfigScope.USER
-            )
+            await crud.get_configuration_by_key_scope("test.key", ConfigScope.USER)
 
             # Lines 495-504: Direct enum use
             mock_crud.get_by_key_scope.assert_called_with(
@@ -1302,7 +1298,7 @@ class TestHealthCheckOperations:
             mock_check = Mock(spec=HealthCheck)
             mock_crud.create.return_value = mock_check
 
-            result = await crud.create_health_check(check_data)
+            await crud.create_health_check(check_data)
 
             # Lines 607-618: String to enum conversion and creation
             mock_crud.create.assert_called_once_with(
@@ -1332,7 +1328,7 @@ class TestHealthCheckOperations:
             mock_check = Mock(spec=HealthCheck)
             mock_crud.create.return_value = mock_check
 
-            result = await crud.create_health_check(check_data)
+            await crud.create_health_check(check_data)
 
             # Lines 611-618: Direct enum use
             mock_crud.create.assert_called_once_with(
@@ -1562,7 +1558,7 @@ class TestAsyncOperationPatterns:
             task_data = {"title": "Test", "priority": "INVALID_PRIORITY"}
 
             # The code now properly maps string priorities and defaults to MEDIUM for invalid strings
-            result = await crud.create_task(task_data)
+            await crud.create_task(task_data)
 
             # Should default to MEDIUM for invalid priority strings
             call_kwargs = mock_crud.create.call_args[1]

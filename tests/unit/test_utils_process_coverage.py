@@ -63,7 +63,7 @@ class TestProcessManagerAdvanced:
             with patch.object(process_manager, "_monitor_process"):
                 with patch("asyncio.create_task"):
                     with patch.dict(os.environ, {"EXISTING_VAR": "existing_value"}):
-                        result = await process_manager.spawn_claude_process(
+                        await process_manager.spawn_claude_process(
                             instance_id=instance_id,
                             working_directory=temp_dir,
                             environment=custom_env,
@@ -1000,7 +1000,7 @@ class TestCoverageGapsSpecific:
                 # Set shutdown to exit the loop
                 process_manager._shutdown_event.set()
 
-        with patch("asyncio.sleep", side_effect=mock_sleep) as mock_sleep_patch:
+        with patch("asyncio.sleep", side_effect=mock_sleep):
             with patch.object(process_manager, "_update_resource_usage") as mock_update:
                 await process_manager._monitor_process(instance_id, mock_process)
 
@@ -1122,7 +1122,7 @@ class TestIntegrationScenarios:
 
         # Mock subprocess for each instance
         mock_processes = []
-        for i, instance_id in enumerate(instance_ids):
+        for i, _instance_id in enumerate(instance_ids):
             mock_process = MagicMock()
             mock_process.pid = 12345 + i
             mock_process.poll.return_value = None

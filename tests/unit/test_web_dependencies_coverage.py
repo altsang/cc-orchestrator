@@ -68,7 +68,7 @@ class TestPaginationParams:
         # Test that negative page numbers might be handled
         # (depends on actual validation implementation)
         try:
-            params = PaginationParams(page=0, size=20)
+            PaginationParams(page=0, size=20)
             # If no validation, this will work
         except Exception:
             # If there is validation, it might raise an exception

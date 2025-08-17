@@ -219,7 +219,7 @@ class TestCompleteUserWorkflows:
         )
         assert create_response.status_code == 201
         create_data = create_response.json()
-        assert create_data["success"] == True
+        assert create_data["success"]
         assert "data" in create_data
         instance = create_data["data"]
         instance_id = instance["id"]
@@ -241,7 +241,7 @@ class TestCompleteUserWorkflows:
         )
         assert detail_response.status_code == 200
         detail_response_data = detail_response.json()
-        assert detail_response_data["success"] == True
+        assert detail_response_data["success"]
         assert "data" in detail_response_data
         detail_data = detail_response_data["data"]
         assert detail_data["id"] == instance_id
@@ -252,7 +252,7 @@ class TestCompleteUserWorkflows:
         )
         assert start_response.status_code == 200
         start_response_data = start_response.json()
-        assert start_response_data["success"] == True
+        assert start_response_data["success"]
         assert "message" in start_response_data
         assert start_response_data["message"] == "Instance started successfully"
         assert "data" in start_response_data
@@ -265,7 +265,7 @@ class TestCompleteUserWorkflows:
         )
         assert detail_response.status_code == 200
         detail_response_data = detail_response.json()
-        assert detail_response_data["success"] == True
+        assert detail_response_data["success"]
         updated_instance = detail_response_data["data"]
         assert updated_instance["status"] == InstanceStatus.RUNNING.value
 
@@ -275,7 +275,7 @@ class TestCompleteUserWorkflows:
         )
         assert health_response.status_code == 200
         health_response_data = health_response.json()
-        assert health_response_data["success"] == True
+        assert health_response_data["success"]
         assert "data" in health_response_data
         health_data = health_response_data["data"]
         assert health_data["instance_id"] == instance_id
@@ -288,7 +288,7 @@ class TestCompleteUserWorkflows:
         )
         assert logs_response.status_code == 200
         logs_response_data = logs_response.json()
-        assert logs_response_data["success"] == True
+        assert logs_response_data["success"]
         assert "data" in logs_response_data
         logs_data = logs_response_data["data"]
         assert logs_data["instance_id"] == instance_id
@@ -312,7 +312,7 @@ class TestCompleteUserWorkflows:
         )
         assert detail_response.status_code == 200
         detail_response_data = detail_response.json()
-        assert detail_response_data["success"] == True
+        assert detail_response_data["success"]
         final_instance = detail_response_data["data"]
         assert final_instance["status"] == InstanceStatus.STOPPED.value
 
@@ -336,7 +336,7 @@ class TestCompleteUserWorkflows:
             )
             assert response.status_code == 201
             create_data = response.json()
-            assert create_data["success"] == True
+            assert create_data["success"]
             instances.append(create_data["data"])
 
         # Verify all instances exist
@@ -358,7 +358,7 @@ class TestCompleteUserWorkflows:
                 f"/api/v1/instances/{instance['id']}", headers=headers
             )
             detail_data = detail_response.json()
-            assert detail_data["success"] == True
+            assert detail_data["success"]
             instance_data = detail_data["data"]
             assert instance_data["status"] == InstanceStatus.RUNNING.value
 
@@ -425,7 +425,7 @@ class TestCompleteUserWorkflows:
         )
         assert create_response.status_code == 201
         create_data = create_response.json()
-        assert create_data["success"] == True
+        assert create_data["success"]
         instance_id = create_data["data"]["id"]
 
         # Valid operations should work after errors
@@ -557,7 +557,7 @@ class TestConcurrencyAndScale:
             )
             assert response.status_code == 201
             create_data = response.json()
-            assert create_data["success"] == True
+            assert create_data["success"]
             instances.append(create_data["data"])
 
         # Simulate concurrent operations
@@ -657,7 +657,7 @@ class TestDataConsistency:
         )
         assert create_response.status_code == 201
         create_data = create_response.json()
-        assert create_data["success"] == True
+        assert create_data["success"]
         instance_id = create_data["data"]["id"]
 
         # Track state through multiple operations

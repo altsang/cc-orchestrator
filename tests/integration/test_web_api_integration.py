@@ -975,7 +975,7 @@ class TestErrorConditions:
         response = await client.post("/api/v1/tasks/", json=task_data)
         task_response = response.json()
         assert task_response["success"] is True
-        task_id = task_response["data"]["id"]
+        task_response["data"]["id"]
 
         # Create configuration for the instance - use unique key with randomness
         import random

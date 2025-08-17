@@ -485,7 +485,7 @@ class TestIntegrationWithRealDatabase:
         finally:
             try:
                 engine.dispose()
-            except:
+            except Exception:
                 pass
 
     def test_create_sample_data_integration(self):
@@ -518,7 +518,7 @@ class TestIntegrationWithRealDatabase:
         finally:
             try:
                 engine.dispose()
-            except:
+            except Exception:
                 pass
 
     def test_export_schema_sql_integration(self):
@@ -554,7 +554,7 @@ class TestIntegrationWithRealDatabase:
         finally:
             try:
                 engine.dispose()
-            except:
+            except Exception:
                 pass
 
 

@@ -652,7 +652,7 @@ class TestConnectionManager:
         message = WebSocketMessage(type="test", data={"key": "value"})
 
         # Fill the queue to capacity
-        for i in range(manager.config.max_queue_size):
+        for _i in range(manager.config.max_queue_size):
             await manager.send_message("offline-id", message, queue_if_offline=True)
 
         # Verify queue is at capacity

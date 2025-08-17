@@ -49,7 +49,7 @@ class TestMainCLI:
 
     def test_config_option(self):
         """Test config file option is accepted."""
-        runner = CliRunner()
+        CliRunner()
         # Test that config option exists
         config_param = None
         for param in main.params:
@@ -63,7 +63,7 @@ class TestMainCLI:
 
     def test_profile_option(self):
         """Test profile option is accepted."""
-        runner = CliRunner()
+        CliRunner()
         # Test that profile option exists
         profile_param = None
         for param in main.params:
@@ -77,7 +77,7 @@ class TestMainCLI:
 
     def test_verbose_flag(self):
         """Test verbose flag is accepted."""
-        runner = CliRunner()
+        CliRunner()
         verbose_param = None
         for param in main.params:
             if hasattr(param, "name") and param.name == "verbose":
@@ -89,7 +89,7 @@ class TestMainCLI:
 
     def test_quiet_flag(self):
         """Test quiet flag is accepted."""
-        runner = CliRunner()
+        CliRunner()
         quiet_param = None
         for param in main.params:
             if hasattr(param, "name") and param.name == "quiet":
@@ -101,7 +101,7 @@ class TestMainCLI:
 
     def test_json_flag(self):
         """Test JSON flag is accepted."""
-        runner = CliRunner()
+        CliRunner()
         json_param = None
         for param in main.params:
             if hasattr(param, "name") and param.name == "json":
@@ -113,7 +113,7 @@ class TestMainCLI:
 
     def test_max_instances_option(self):
         """Test max-instances option accepts integer."""
-        runner = CliRunner()
+        CliRunner()
         max_instances_param = None
         for param in main.params:
             if hasattr(param, "name") and param.name == "max_instances":
@@ -125,7 +125,7 @@ class TestMainCLI:
 
     def test_web_port_option(self):
         """Test web-port option accepts integer."""
-        runner = CliRunner()
+        CliRunner()
         web_port_param = None
         for param in main.params:
             if hasattr(param, "name") and param.name == "web_port":
@@ -137,7 +137,7 @@ class TestMainCLI:
 
     def test_web_host_option(self):
         """Test web-host option is string type."""
-        runner = CliRunner()
+        CliRunner()
         web_host_param = None
         for param in main.params:
             if hasattr(param, "name") and param.name == "web_host":
@@ -148,7 +148,7 @@ class TestMainCLI:
 
     def test_log_level_option(self):
         """Test log-level option exists."""
-        runner = CliRunner()
+        CliRunner()
         log_level_param = None
         for param in main.params:
             if hasattr(param, "name") and param.name == "log_level":
@@ -159,7 +159,7 @@ class TestMainCLI:
 
     def test_worktree_base_path_option(self):
         """Test worktree-base-path option exists."""
-        runner = CliRunner()
+        CliRunner()
         worktree_param = None
         for param in main.params:
             if hasattr(param, "name") and param.name == "worktree_base_path":
@@ -170,7 +170,7 @@ class TestMainCLI:
 
     def test_cpu_threshold_option(self):
         """Test cpu-threshold option accepts float."""
-        runner = CliRunner()
+        CliRunner()
         cpu_param = None
         for param in main.params:
             if hasattr(param, "name") and param.name == "cpu_threshold":
@@ -182,7 +182,7 @@ class TestMainCLI:
 
     def test_memory_limit_option(self):
         """Test memory-limit option accepts integer."""
-        runner = CliRunner()
+        CliRunner()
         memory_param = None
         for param in main.params:
             if hasattr(param, "name") and param.name == "memory_limit":
@@ -194,7 +194,7 @@ class TestMainCLI:
 
     def test_context_passing(self):
         """Test click context is properly passed."""
-        runner = CliRunner()
+        CliRunner()
 
         # Test that main function accepts context
         import inspect
@@ -276,9 +276,9 @@ class TestMainCLI:
         sig = inspect.signature(main.callback)
 
         # Test specific type annotations
-        assert sig.parameters["verbose"].annotation == bool
-        assert sig.parameters["quiet"].annotation == bool
-        assert sig.parameters["json"].annotation == bool
+        assert sig.parameters["verbose"].annotation is bool
+        assert sig.parameters["quiet"].annotation is bool
+        assert sig.parameters["json"].annotation is bool
 
         # Optional types
         assert "None" in str(sig.parameters["config"].annotation)
@@ -293,10 +293,8 @@ class TestMainCLI:
         current_filters = warnings.filters
 
         # Look for our Pydantic filter
-        pydantic_filter_found = False
         for filter_item in current_filters:
             if "Pydantic serializer warnings" in str(filter_item):
-                pydantic_filter_found = True
                 break
 
         # Note: This might not always pass depending on when filters are applied
@@ -318,14 +316,12 @@ class TestMainCLI:
         assert hasattr(main, "commands")
 
         # Test version option is applied
-        version_option_found = False
         for param in main.params:
             if (
                 hasattr(param, "help")
                 and param.help
                 and "version" in param.help.lower()
             ):
-                version_option_found = True
                 break
 
         # Note: Version option might be handled differently by Click

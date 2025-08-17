@@ -531,7 +531,7 @@ class TestGetInstanceAlertsEndpoint:
         self, mock_crud, pagination_params
     ):
         """Test instance alerts without level filter - covers line 171."""
-        result = await alerts.get_instance_alerts(
+        await alerts.get_instance_alerts(
             instance_id=1, pagination=pagination_params, level=None, crud=mock_crud
         )
 
@@ -616,7 +616,7 @@ class TestGetAlertsByLevelEndpoint:
         self, mock_crud, pagination_params
     ):
         """Test alerts by level without instance filter - covers line 209."""
-        result = await alerts.get_alerts_by_level(
+        await alerts.get_alerts_by_level(
             level=AlertLevel.WARNING,
             pagination=pagination_params,
             instance_id=None,
@@ -665,7 +665,7 @@ class TestGetAlertSummaryEndpoint:
             (AlertLevel.CRITICAL, "critical"),  # Duplicate to test counting
         ]
 
-        for i, (level, level_str) in enumerate(levels_data):
+        for _i, (level, _level_str) in enumerate(levels_data):
             alert = Mock()
             alert.level = level
             mock_alerts.append(alert)
@@ -883,7 +883,7 @@ class TestGetRecentCriticalAlertsEndpoint:
         self, mock_crud, pagination_params
     ):
         """Test critical alerts without instance filter - covers line 304."""
-        result = await alerts.get_recent_critical_alerts(
+        await alerts.get_recent_critical_alerts(
             pagination=pagination_params, instance_id=None, crud=mock_crud
         )
 

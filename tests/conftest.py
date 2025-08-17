@@ -107,7 +107,7 @@ def pytest_collection_modifyitems(config, items):
             config.pluginmanager.unregister(
                 config.pluginmanager.get_plugin("pytest_cov.plugin")
             )
-        except:
+        except Exception:
             pass
         # Set coverage options to disable
         for attr in ["cov", "cov_source", "cov_report", "cov_fail_under"]:

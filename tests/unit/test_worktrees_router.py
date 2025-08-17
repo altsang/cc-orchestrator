@@ -42,9 +42,7 @@ class TestWorktreesRouterFunctions:
             "has_uncommitted_changes": False,
             "last_sync": datetime.now(UTC),
             "created_at": datetime.now(UTC),
-            "updated_at": datetime.now(UTC),
-            # Status from WorktreeStatus enum values
-            "status": "active",  # Use valid WorktreeStatus value
+            "updated_at": datetime.now(UTC),  # Use valid WorktreeStatus value
         }
 
         # Create a mock object with dictionary-like access for the router code

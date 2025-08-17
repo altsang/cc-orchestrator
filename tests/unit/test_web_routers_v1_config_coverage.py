@@ -219,7 +219,7 @@ class TestListConfigurations:
         mock_crud.list_configurations.return_value = ([mock_configuration], 1)
 
         # Execute
-        result = await list_configurations(
+        await list_configurations(
             pagination=mock_pagination,
             scope=ConfigScope.GLOBAL,
             instance_id=None,
@@ -243,7 +243,7 @@ class TestListConfigurations:
         mock_crud.list_configurations.return_value = ([mock_configuration], 1)
 
         # Execute
-        result = await list_configurations(
+        await list_configurations(
             pagination=mock_pagination,
             scope=None,
             instance_id=123,
@@ -267,7 +267,7 @@ class TestListConfigurations:
         mock_crud.list_configurations.return_value = ([mock_configuration], 1)
 
         # Execute
-        result = await list_configurations(
+        await list_configurations(
             pagination=mock_pagination,
             scope=None,
             instance_id=None,
@@ -291,7 +291,7 @@ class TestListConfigurations:
         mock_crud.list_configurations.return_value = ([mock_configuration], 1)
 
         # Execute
-        result = await list_configurations(
+        await list_configurations(
             pagination=mock_pagination,
             scope=ConfigScope.INSTANCE,
             instance_id=123,
@@ -866,7 +866,7 @@ class TestGetConfigurationByKey:
         mock_crud.get_configuration_by_key_scope.return_value = mock_configuration
 
         # Execute
-        result = await get_configuration_by_key(
+        await get_configuration_by_key(
             key=key, scope=scope, instance_id=None, crud=mock_crud
         )
 
