@@ -21,6 +21,14 @@ from cc_orchestrator.web.auth import (
 )
 
 
+# Get the current SECRET_KEY dynamically to handle test isolation issues
+def get_current_secret_key():
+    """Get the current SECRET_KEY from auth module to handle test isolation."""
+    from cc_orchestrator.web.auth import SECRET_KEY as current_key
+
+    return current_key
+
+
 class TestPasswordOperations:
     """Test password hashing and verification."""
 
@@ -94,7 +102,7 @@ class TestTokenOperations:
         assert len(token) > 50  # JWT tokens are long
 
         # Decode to verify content
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, get_current_secret_key(), algorithms=[ALGORITHM])
         assert payload["sub"] == "test_user"
         assert payload["role"] == "admin"
         assert "exp" in payload
@@ -110,7 +118,10 @@ class TestTokenOperations:
 
         # Decode and verify the token structure without time validation
         payload = jwt.decode(
-            token, SECRET_KEY, algorithms=[ALGORITHM], options={"verify_exp": False}
+            token,
+            get_current_secret_key(),
+            algorithms=[ALGORITHM],
+            options={"verify_exp": False},
         )
         assert payload["sub"] == "test_user"
         assert "exp" in payload
@@ -125,7 +136,10 @@ class TestTokenOperations:
 
         # Decode and verify the token structure without time validation
         payload = jwt.decode(
-            token, SECRET_KEY, algorithms=[ALGORITHM], options={"verify_exp": False}
+            token,
+            get_current_secret_key(),
+            algorithms=[ALGORITHM],
+            options={"verify_exp": False},
         )
         assert payload["sub"] == "test_user"
         assert "exp" in payload
@@ -170,7 +184,7 @@ class TestTokenOperations:
         # Create expired token
         past_time = datetime.now(UTC) - timedelta(hours=1)
         data["exp"] = past_time.timestamp()
-        expired_token = jwt.encode(data, SECRET_KEY, algorithm=ALGORITHM)
+        expired_token = jwt.encode(data, get_current_secret_key(), algorithm=ALGORITHM)
 
         with pytest.raises(HTTPException) as exc_info:
             verify_token(expired_token)
@@ -211,7 +225,9 @@ class TestGetCurrentUser:
         expired_payload = data.copy()
         expired_payload["exp"] = past_time.timestamp()
 
-        expired_token = jwt.encode(expired_payload, SECRET_KEY, algorithm=ALGORITHM)
+        expired_token = jwt.encode(
+            expired_payload, get_current_secret_key(), algorithm=ALGORITHM
+        )
         credentials = HTTPAuthorizationCredentials(
             scheme="Bearer", credentials=expired_token
         )
@@ -234,7 +250,9 @@ class TestGetCurrentUser:
 
         # Use verify=False to bypass JWT library expiration check
         # and test the manual expiration check in get_current_user
-        token = jwt.encode(expired_payload, SECRET_KEY, algorithm=ALGORITHM)
+        token = jwt.encode(
+            expired_payload, get_current_secret_key(), algorithm=ALGORITHM
+        )
         credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
 
         # Mock verify_token to return payload without expiration checking
@@ -254,7 +272,7 @@ class TestGetCurrentUser:
         """Test get_current_user with token that has no exp claim."""
         # Create token manually without exp claim
         data = {"sub": "test_user", "role": "admin"}
-        token = jwt.encode(data, SECRET_KEY, algorithm=ALGORITHM)
+        token = jwt.encode(data, get_current_secret_key(), algorithm=ALGORITHM)
 
         credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
 

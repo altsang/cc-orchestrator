@@ -19,8 +19,13 @@ from cc_orchestrator.web.auth import (
     verify_token,
 )
 
-# Use the actual SECRET_KEY from the auth module to ensure consistency
-EXPECTED_SECRET_KEY = SECRET_KEY
+
+# Get the current SECRET_KEY dynamically to handle test isolation issues
+def get_current_secret_key():
+    """Get the current SECRET_KEY from auth module to handle test isolation."""
+    from cc_orchestrator.web.auth import SECRET_KEY as current_key
+
+    return current_key
 
 
 class TestPasswordFunctions:
@@ -77,7 +82,7 @@ class TestTokenFunctions:
         assert len(token) > 0
 
         # Decode to verify contents
-        payload = jwt.decode(token, EXPECTED_SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, get_current_secret_key(), algorithms=[ALGORITHM])
         assert payload["user_id"] == 1
         assert payload["username"] == "testuser"
         assert "exp" in payload
@@ -90,7 +95,7 @@ class TestTokenFunctions:
 
         token = create_access_token(data, expires_delta)
 
-        payload = jwt.decode(token, EXPECTED_SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, get_current_secret_key(), algorithms=[ALGORITHM])
         exp = datetime.fromtimestamp(payload["exp"], tz=UTC)
 
         # Should expire approximately 2 hours from now
@@ -142,7 +147,7 @@ class TestTokenFunctions:
         expired_payload["exp"] = past_time.timestamp()
 
         expired_token = jwt.encode(
-            expired_payload, EXPECTED_SECRET_KEY, algorithm=ALGORITHM
+            expired_payload, get_current_secret_key(), algorithm=ALGORITHM
         )
 
         # Should raise exception for expired token
@@ -217,7 +222,7 @@ class TestGetCurrentUser:
         """Test user retrieval with token that has no exp claim."""
         # Create token manually without exp claim
         data = {"user_id": 1, "username": "testuser"}
-        token = jwt.encode(data, EXPECTED_SECRET_KEY, algorithm=ALGORITHM)
+        token = jwt.encode(data, get_current_secret_key(), algorithm=ALGORITHM)
 
         credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
 
@@ -326,8 +331,11 @@ class TestModuleConstants:
             current_env_key is not None
         ), "JWT_SECRET_KEY should be set in test environment"
         # The actual SECRET_KEY should be what we're using for consistency
-        assert EXPECTED_SECRET_KEY == SECRET_KEY
+        current_key = get_current_secret_key()
+        assert current_key == SECRET_KEY
         assert SECRET_KEY  # Should not be empty
+        # Both should contain test identifier (relaxed check for test environment compatibility)
+        assert "test-secret-key" in current_key or "test-secret-key" in current_env_key
 
     def test_algorithm_constant(self):
         """Test the JWT algorithm constant."""
@@ -338,19 +346,19 @@ class TestModuleConstants:
         # This test verifies the validation logic by checking the current SECRET_KEY
         # Since the module is already loaded with valid environment variables,
         # we verify that the SECRET_KEY is properly set
-        assert EXPECTED_SECRET_KEY
-        assert EXPECTED_SECRET_KEY != ""
-        assert EXPECTED_SECRET_KEY != "dev-secret-key-change-in-production"
+        current_key = get_current_secret_key()
+        assert current_key
+        assert current_key != ""
+        assert current_key != "dev-secret-key-change-in-production"
 
     def test_secret_key_dev_key_validation(self):
         """Test SECRET_KEY validation rejects dev key."""
         # This test verifies that the current SECRET_KEY is not the default dev key
         # Since the module is already loaded with valid environment variables,
         # we verify that it's properly configured for testing
-        assert EXPECTED_SECRET_KEY != "dev-secret-key-change-in-production"
-        assert (
-            "test-secret-key" in EXPECTED_SECRET_KEY
-        )  # Should contain test identifier
+        current_key = get_current_secret_key()
+        assert current_key != "dev-secret-key-change-in-production"
+        assert "test-secret-key" in current_key  # Should contain test identifier
 
 
 class TestDemoUsersConfiguration:
