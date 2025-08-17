@@ -65,7 +65,6 @@ addopts = [
     "--cov-fail-under=74",
     "--strict-markers",
     "-v",
-    "-p", "tests.pytest_secret_key_plugin"
 ]
 markers = [
     "unit: Unit tests",

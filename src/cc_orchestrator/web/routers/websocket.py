@@ -1,6 +1,7 @@
 """WebSocket endpoints for real-time communication."""
 
 import json
+import logging
 from typing import Any
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
@@ -116,9 +117,9 @@ async def handle_client_message(connection_id: str, message: dict[str, Any]) -> 
                 connection_id,
                 {"type": "error", "message": "Internal error processing message"},
             )
-        except Exception:
-            # If we can't even send an error message, just continue
-            pass
+        except Exception as e:
+            # If we can't even send an error message, log and continue
+            logging.warning(f"Failed to send error message to WebSocket: {e}")
 
 
 # Convenience functions for broadcasting events
@@ -137,9 +138,9 @@ async def broadcast_instance_status_change(
                 "timestamp": ws_manager.get_current_timestamp(),
             },
         )
-    except Exception:
+    except Exception as e:
         # Handle broadcast failures gracefully
-        pass
+        logging.warning(f"Failed to broadcast instance status update: {e}")
 
 
 async def broadcast_instance_metrics(instance_id: int, metrics: dict[str, Any]) -> None:
@@ -154,9 +155,9 @@ async def broadcast_instance_metrics(instance_id: int, metrics: dict[str, Any]) 
                 "timestamp": ws_manager.get_current_timestamp(),
             },
         )
-    except Exception:
+    except Exception as e:
         # Handle broadcast failures gracefully
-        pass
+        logging.warning(f"Failed to broadcast instance metrics: {e}")
 
 
 async def broadcast_system_event(event: dict[str, Any]) -> None:
@@ -170,6 +171,6 @@ async def broadcast_system_event(event: dict[str, Any]) -> None:
                 "timestamp": ws_manager.get_current_timestamp(),
             },
         )
-    except Exception:
+    except Exception as e:
         # Handle broadcast failures gracefully
-        pass
+        logging.warning(f"Failed to broadcast system event: {e}")
