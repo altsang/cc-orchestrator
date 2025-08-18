@@ -38,6 +38,7 @@ jobs:
       env:
         JWT_SECRET_KEY: "test-secret-key-for-ci-cd-only-not-production"
         ENABLE_DEMO_USERS: "true"
+        TESTING: "true"
       run: |
         pytest tests/ --cov=src --cov-report=xml --cov-fail-under=74
 

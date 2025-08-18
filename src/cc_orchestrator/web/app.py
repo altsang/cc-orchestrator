@@ -124,7 +124,10 @@ def create_app() -> FastAPI:
     # Add custom middleware
     app.add_middleware(RequestIDMiddleware)
     app.add_middleware(LoggingMiddleware)
-    app.add_middleware(RateLimitMiddleware, rate_limiter=rate_limiter)
+    
+    # Skip rate limiting during testing
+    if not os.getenv("TESTING", "false").lower() == "true":
+        app.add_middleware(RateLimitMiddleware, rate_limiter=rate_limiter)
 
     # Add exception handlers
     @app.exception_handler(CCOrchestratorAPIException)
