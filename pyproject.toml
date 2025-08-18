@@ -115,6 +115,7 @@ extend-exclude = '''
 [tool.ruff]
 target-version = "py311"
 line-length = 88
+exclude = [".github/"]
 
 [tool.ruff.lint]
 select = [
