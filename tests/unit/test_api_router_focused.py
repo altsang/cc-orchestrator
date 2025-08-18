@@ -1,7 +1,7 @@
 """Focused tests for V1 API router to improve coverage."""
 
 import os
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -135,27 +135,43 @@ def client(mock_db_session, mock_crud):
             "JWT_SECRET_KEY": "test-secret-key-for-testing",
             "ENABLE_DEMO_USERS": "true",
             "DEBUG": "true",
+            "TESTING": "true",  # Skip rate limiting during tests
         },
     ):
-        # Mock database manager to avoid SQLite table creation issues
-        with patch("cc_orchestrator.database.connection.DatabaseManager"):
-            from cc_orchestrator.web.app import create_app
-            from cc_orchestrator.web.dependencies import get_crud, get_db_session
+        # Mock the rate limiter with proper async methods
+        with patch("cc_orchestrator.web.middlewares.rate_limiter.rate_limiter") as mock_rate_limiter:
+            # Set up async methods on the rate limiter
+            mock_rate_limiter.initialize = AsyncMock()
+            mock_rate_limiter.cleanup = AsyncMock()
+            
+            # Mock database manager to avoid SQLite table creation issues
+            with patch("cc_orchestrator.database.connection.DatabaseManager") as mock_db_manager_class:
+                # Create a mock database manager instance
+                mock_db_manager = Mock()
+                # Make close() return a simple coroutine that can be awaited
+                async def mock_close():
+                    return None
+                mock_db_manager.close = mock_close
+                mock_db_manager.create_tables = Mock()
+                mock_db_manager_class.return_value = mock_db_manager
+                
+                from cc_orchestrator.web.app import create_app
+                from cc_orchestrator.web.dependencies import get_crud, get_db_session
 
-            app = create_app()
+                app = create_app()
 
-            # Override FastAPI dependencies at the app level - this is the correct way!
-            async def override_get_crud():
-                return mock_crud
+                # Override FastAPI dependencies at the app level - this is the correct way!
+                async def override_get_crud():
+                    return mock_crud
 
-            async def override_get_db_session():
-                yield mock_db_session
+                async def override_get_db_session():
+                    yield mock_db_session
 
-            app.dependency_overrides[get_crud] = override_get_crud
-            app.dependency_overrides[get_db_session] = override_get_db_session
+                app.dependency_overrides[get_crud] = override_get_crud
+                app.dependency_overrides[get_db_session] = override_get_db_session
 
-            with TestClient(app) as client:
-                yield client
+                with TestClient(app) as client:
+                    yield client
 
 
 @pytest.fixture
