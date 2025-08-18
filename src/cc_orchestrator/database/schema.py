@@ -22,27 +22,25 @@ def get_table_info() -> dict[str, dict[str, str | list[str]]]:
         "instances": {
             "description": "Claude Code instance management",
             "primary_key": "id",
-            "unique_fields": "issue_id",
-            "indexed_fields": "status,created_at",
+            "unique_fields": ["issue_id"],
+            "indexed_fields": ["status", "created_at"],
         },
         "tasks": {
             "description": "Work items and task management",
             "primary_key": "id",
-            "foreign_keys": "instance_id,worktree_id",
-            "indexed_fields": "status,priority,created_at,due_date",
+            "foreign_keys": ["instance_id", "worktree_id"],
+            "indexed_fields": ["status", "priority"],
         },
         "worktrees": {
             "description": "Git worktree management",
             "primary_key": "id",
-            "unique_fields": "path",
-            "foreign_keys": "instance_id",
-            "indexed_fields": "branch_name,status",
+            "unique_fields": ["path"],
+            "foreign_keys": ["instance_id"],
         },
         "configurations": {
             "description": "System and user configuration settings",
             "primary_key": "id",
-            "foreign_keys": "instance_id",
-            "indexed_fields": "key,scope",
+            "foreign_keys": ["instance_id"],
         },
     }
 

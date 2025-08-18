@@ -94,7 +94,10 @@ async def create_worktree(
     - **instance_id**: Associated instance ID
     """
     # Check if worktree with this path already exists
-    existing = await crud.get_worktree_by_path(worktree_data.path)
+    if worktree_data.path:
+        existing = await crud.get_worktree_by_path(worktree_data.path)
+    else:
+        existing = None
     if existing:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -273,11 +276,17 @@ async def get_worktree_status(
         "id": worktree.id,
         "name": worktree.name,
         "path": worktree.path,
-        "branch_name": worktree.branch_name,
+        "branch_name": worktree.branch_name,  # Keep consistent field name
+        "base_branch": getattr(
+            worktree, "base_branch", "main"
+        ),  # Add base_branch if not present
+        "active": getattr(worktree, "active", True),
         "status": worktree.status,
         "current_commit": worktree.current_commit,
         "has_uncommitted_changes": worktree.has_uncommitted_changes,
         "last_sync": worktree.last_sync,
+        "created_at": worktree.created_at,
+        "updated_at": worktree.updated_at,
     }
 
     return {

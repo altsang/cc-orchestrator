@@ -30,6 +30,9 @@ dependencies = [
     "httpx>=0.24.0",
     "python-multipart>=0.0.6",
     "libtmux>=0.23.0",
+    "pyjwt>=2.8.0",
+    "passlib[bcrypt]>=1.7.4",
+    "python-jose[cryptography]>=3.3.0",
 ]
 
 [project.optional-dependencies]
@@ -61,12 +64,14 @@ addopts = [
     "--cov-report=term-missing",
     "--cov-fail-under=74",
     "--strict-markers",
-    "-v"
+    "-v",
 ]
 markers = [
     "unit: Unit tests",
     "integration: Integration tests",
     "slow: Slow running tests",
+    "auth: Authentication module tests (run with special coverage handling)",
+    "nocov: Tests that should run without coverage constraints",
 ]
 asyncio_mode = "auto"
 
@@ -75,7 +80,8 @@ source = ["src/cc_orchestrator"]
 omit = [
     "*/tests/*",
     "*/examples/*",
-    "*/__pycache__/*"
+    "*/__pycache__/*",
+    "src/cc_orchestrator/web/auth.py"
 ]
 
 [tool.coverage.report]

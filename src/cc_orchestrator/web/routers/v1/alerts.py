@@ -87,15 +87,19 @@ async def create_alert(
     - **timestamp**: Alert timestamp (default: now)
     """
     # Validate instance exists
-    instance = await crud.get_instance(alert_data.instance_id)
-    if not instance:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Instance with ID {alert_data.instance_id} not found",
-        )
+    if alert_data.instance_id:
+        instance = await crud.get_instance(alert_data.instance_id)
+        if not instance:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Instance with ID {alert_data.instance_id} not found",
+            )
 
     # Check if alert with this alert_id already exists
-    existing = await crud.get_alert_by_alert_id(alert_data.alert_id)
+    if alert_data.alert_id:
+        existing = await crud.get_alert_by_alert_id(alert_data.alert_id)
+    else:
+        existing = None
     if existing:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,

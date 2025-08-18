@@ -1,42 +1,25 @@
-import React from 'react';
-import { Toaster } from 'react-hot-toast';
-import { Dashboard } from './components/Dashboard';
-import { ErrorBoundary, DashboardErrorBoundary } from './components/ErrorBoundary';
+import React from 'react'
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { WebSocketProvider } from './contexts/WebSocketContext'
+import Layout from './components/Layout'
+import Dashboard from './pages/Dashboard'
+import InstanceDetail from './pages/InstanceDetail'
+import Logs from './pages/Logs'
 
 function App() {
   return (
-    <ErrorBoundary>
-      <div className="App">
-        <DashboardErrorBoundary>
-          <Dashboard />
-        </DashboardErrorBoundary>
-        <Toaster
-        position="top-right"
-        toastOptions={{
-          duration: 4000,
-          style: {
-            background: '#363636',
-            color: '#fff',
-          },
-          success: {
-            duration: 3000,
-            iconTheme: {
-              primary: '#10b981',
-              secondary: '#fff',
-            },
-          },
-          error: {
-            duration: 5000,
-            iconTheme: {
-              primary: '#ef4444',
-              secondary: '#fff',
-            },
-          },
-        }}
-        />
-      </div>
-    </ErrorBoundary>
-  );
+    <Router>
+      <WebSocketProvider>
+        <Layout>
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/instances/:id" element={<InstanceDetail />} />
+            <Route path="/logs" element={<Logs />} />
+          </Routes>
+        </Layout>
+      </WebSocketProvider>
+    </Router>
+  )
 }
 
-export default App;
+export default App

@@ -29,17 +29,20 @@ class TestAlertsRouterFunctions:
         """Mock CRUD adapter."""
         crud = AsyncMock()
 
-        # Mock alert data
-        mock_alert = Mock()
-        mock_alert.id = 1
-        mock_alert.alert_id = "ALERT-001"
-        mock_alert.instance_id = 1
-        mock_alert.level = AlertLevel.ERROR
-        mock_alert.message = "Test alert message"
-        mock_alert.details = '{"error_code": "ERR_001"}'  # String, not dict
-        mock_alert.timestamp = datetime.now(UTC)
-        mock_alert.created_at = datetime.now(UTC)
-        mock_alert.updated_at = datetime.now(UTC)
+        # Create proper alert data that matches AlertResponse schema
+        alert_data = {
+            "id": 1,
+            "title": "Test Alert",
+            "message": "Test alert message",
+            "level": AlertLevel.ERROR,
+            "instance_id": 1,
+            "created_at": datetime.now(UTC),
+            "acknowledged": False,
+            "acknowledged_at": None,
+        }
+
+        # Create AlertResponse object instead of Mock
+        mock_alert = AlertResponse(**alert_data)
 
         # Mock instance data
         mock_instance = Mock()
@@ -99,11 +102,11 @@ class TestAlertsRouterFunctions:
     async def test_create_alert_success(self, mock_crud):
         """Test successful alert creation."""
         alert_data = AlertCreate(
+            title="Test Alert Title",
             instance_id=1,
             alert_id="ALERT-NEW",
             level=AlertLevel.ERROR,
             message="New test alert",
-            details="test data",
         )
 
         # Mock no existing alert
@@ -126,6 +129,7 @@ class TestAlertsRouterFunctions:
         mock_crud.get_instance.return_value = None
 
         alert_data = AlertCreate(
+            title="Test Alert",
             instance_id=999,
             alert_id="ALERT-NEW",
             level=AlertLevel.ERROR,
@@ -146,6 +150,7 @@ class TestAlertsRouterFunctions:
         mock_crud.get_alert_by_alert_id.return_value = mock_existing
 
         alert_data = AlertCreate(
+            title="Test Alert",
             instance_id=1,
             alert_id="ALERT-001",  # Duplicate
             level=AlertLevel.ERROR,
@@ -358,19 +363,18 @@ class TestAlertValidation:
         # Test with valid data
         alert_data = {
             "id": 1,
-            "alert_id": "ALERT-001",
-            "instance_id": 1,
-            "level": AlertLevel.ERROR,
+            "title": "Test Alert",
             "message": "Test alert",
-            "details": "test data",  # String, not dict
-            "timestamp": datetime.now(UTC),
+            "level": AlertLevel.ERROR,
+            "instance_id": 1,
             "created_at": datetime.now(UTC),
-            "updated_at": datetime.now(UTC),
+            "acknowledged": False,
+            "acknowledged_at": None,
         }
 
         # This should not raise an exception
         response_model = AlertResponse.model_validate(alert_data)
-        assert response_model.alert_id == "ALERT-001"
+        assert response_model.title == "Test Alert"
         assert (
             response_model.level == AlertLevel.ERROR.value
         )  # Pydantic converts to string
@@ -379,11 +383,11 @@ class TestAlertValidation:
         """Test AlertCreate model validation."""
         # Test with valid data
         create_data = {
+            "title": "New Alert",
+            "message": "New alert message",
+            "level": AlertLevel.WARNING,
             "instance_id": 1,
             "alert_id": "ALERT-NEW",
-            "level": AlertLevel.WARNING,
-            "message": "New alert message",
-            "details": "test details",  # String, not dict
         }
 
         # This should not raise an exception

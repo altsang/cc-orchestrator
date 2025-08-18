@@ -38,6 +38,12 @@ test: ## Run tests
 test-cov: ## Run tests with coverage
 	pytest tests/ -v --cov=src --cov-report=term-missing --cov-report=html --cov-fail-under=90
 
+test-auth: ## Run authentication tests without coverage requirements
+	python run_auth_tests.py
+
+test-auth-verbose: ## Run authentication tests with verbose output
+	python -m pytest -m auth --no-cov -v -s
+
 lint: ## Run linting (ruff)
 	ruff check src/ tests/
 

@@ -15,6 +15,12 @@ from ..utils.process import (
 logger = get_logger(__name__, LogContext.INSTANCE)
 
 
+class InstanceError(Exception):
+    """Base exception for instance-related operations."""
+
+    pass
+
+
 class InstanceStatus(Enum):
     """Status of a Claude Code instance."""
 
@@ -22,6 +28,10 @@ class InstanceStatus(Enum):
     RUNNING = "running"
     STOPPED = "stopped"
     ERROR = "error"
+
+
+# Alias for compatibility
+InstanceState = InstanceStatus
 
 
 class ClaudeInstance:
