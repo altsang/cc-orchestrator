@@ -211,11 +211,8 @@ class TestInstanceListEndpoint:
     ):
         """Test successful instances retrieval."""
 
-        # Override method for this test
-        async def list_instances_override(offset=0, limit=20, filters=None):
-            return ([], 0)
-
-        mock_crud.list_instances = list_instances_override
+        # Override method for this test - use AsyncMock for proper async handling
+        mock_crud.list_instances = AsyncMock(return_value=([], 0))
 
         response = client.get("/api/v1/instances/", headers=auth_headers)
         assert response.status_code == 200
@@ -238,11 +235,8 @@ class TestInstanceListEndpoint:
     ):
         """Test instances retrieval with status filter."""
 
-        # Override method for this test
-        async def list_instances_override(offset=0, limit=20, filters=None):
-            return ([], 0)
-
-        mock_crud.list_instances = list_instances_override
+        # Override method for this test - use AsyncMock for proper async handling
+        mock_crud.list_instances = AsyncMock(return_value=([], 0))
 
         response = client.get("/api/v1/instances/?status=running", headers=auth_headers)
         assert response.status_code == 200
@@ -844,11 +838,8 @@ class TestErrorHandling:
     ):
         """Test that endpoints work under normal load."""
 
-        # Override method for this test
-        async def list_instances_override(offset=0, limit=20, filters=None):
-            return ([], 0)
-
-        mock_crud.list_instances = list_instances_override
+        # Override method for this test - use AsyncMock for proper async handling
+        mock_crud.list_instances = AsyncMock(return_value=([], 0))
 
         # Make several requests
         for _ in range(3):

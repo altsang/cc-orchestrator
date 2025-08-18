@@ -905,13 +905,13 @@ class TestLogsRouter:
 
         # Test limit validation - too high
         with pytest.raises(ValidationError) as exc_info:
-            LogSearchRequest(limit=20000)
-        assert "Limit must be between 1 and 10000" in str(exc_info.value)
+            LogSearchRequest(limit=200000)
+        assert "Limit must be between 1 and 100000" in str(exc_info.value)
 
         # Test limit validation - too low
         with pytest.raises(ValidationError) as exc_info:
             LogSearchRequest(limit=0)
-        assert "Limit must be between 1 and 10000" in str(exc_info.value)
+        assert "Limit must be between 1 and 100000" in str(exc_info.value)
 
     def test_log_stream_filter_validation(self):
         """Test LogStreamFilter model validations."""

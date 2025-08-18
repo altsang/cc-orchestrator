@@ -17,23 +17,32 @@ class TestLifespan:
     @pytest.mark.asyncio
     async def test_lifespan_startup_and_shutdown(self):
         """Test lifespan context manager startup and shutdown."""
+        from unittest.mock import AsyncMock
+
         mock_app = Mock(spec=FastAPI)
         # Add state attribute to the mock app
         mock_app.state = Mock()
 
-        # Create a mock database manager instance
+        # Pre-set the db_manager on the app state to avoid initialization
         mock_db_manager_instance = Mock()
+        mock_db_manager_instance.close = AsyncMock()
+        mock_app.state.db_manager = mock_db_manager_instance
 
-        # Patch the DatabaseManager to return our mock instance
-        with patch(
-            "cc_orchestrator.web.app.DatabaseManager",
-            return_value=mock_db_manager_instance,
-        ):
+        # Mock the rate limiter to avoid issues
+        with patch("cc_orchestrator.web.app.rate_limiter") as mock_rate_limiter:
+            mock_rate_limiter.initialize = AsyncMock()
+            mock_rate_limiter.cleanup = AsyncMock()
+
             # Test that lifespan completes without error and doesn't raise an exception
             try:
                 async with lifespan(mock_app):
                     # Lifespan should complete without error
                     assert hasattr(mock_app.state, "db_manager")
+
+                # Verify cleanup was called
+                mock_db_manager_instance.close.assert_called_once()
+                mock_rate_limiter.cleanup.assert_called_once()
+
             except Exception as e:
                 pytest.fail(f"Lifespan context manager failed: {e}")
 
