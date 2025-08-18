@@ -109,3 +109,43 @@ def format_output(
         # Default human format
         for key, value in data.items():
             click.echo(f"{key}: {value}")
+
+
+def handle_api_error(error: Exception, exit_code: int = 1) -> None:
+    """Handle API errors with consistent formatting and exit.
+
+    Args:
+        error: The exception to handle
+        exit_code: Exit code to use when exiting
+    """
+    if hasattr(error, "status_code"):
+        # Handle HTTP errors
+        click.echo(
+            click.style(f"API Error {error.status_code}: {error}", fg="red"), err=True
+        )
+    else:
+        # Handle generic errors
+        click.echo(click.style(f"API Error: {error}", fg="red"), err=True)
+    sys.exit(exit_code)
+
+
+def validate_issue_id(issue_id: str) -> bool:
+    """Validate that an issue ID follows expected format.
+
+    Args:
+        issue_id: The issue ID to validate
+
+    Returns:
+        True if valid, False otherwise
+    """
+    if not issue_id:
+        return False
+
+    # Basic validation - should be non-empty string with reasonable length
+    if len(issue_id) > 50 or len(issue_id) < 1:
+        return False
+
+    # Allow alphanumeric, hyphens, underscores
+    import re
+
+    return bool(re.match(r"^[a-zA-Z0-9_-]+$", issue_id))

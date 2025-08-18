@@ -12,6 +12,12 @@ from pydantic import BaseModel, Field
 warnings.filterwarnings("ignore", message=".*Pydantic serializer warnings.*")
 
 
+class ConfigurationError(Exception):
+    """Exception for configuration-related errors."""
+
+    pass
+
+
 class OrchestratorConfig(BaseModel):
     """Configuration model for CC-Orchestrator."""
 
@@ -193,3 +199,42 @@ def save_config(config: OrchestratorConfig, config_path: str | None = None) -> P
         yaml.dump(config_dict, f, default_flow_style=False, sort_keys=True)
 
     return path
+
+
+# Default configuration values
+DEFAULT_CONFIG = {
+    "max_instances": 5,
+    "instance_timeout": 3600,
+    "worktree_base_path": "~/workspace",
+    "auto_cleanup": True,
+    "web_host": "localhost",
+    "web_port": 8000,
+    "log_level": "INFO",
+    "default_output_format": "human",
+    "cpu_threshold": 80.0,
+}
+
+
+class ConfigurationLoader:
+    """Helper class for configuration loading operations."""
+
+    def __init__(self, config_path: str | None = None, profile: str | None = None):
+        """Initialize configuration loader.
+
+        Args:
+            config_path: Path to configuration file
+            profile: Configuration profile to use
+        """
+        self.config_path = config_path
+        self.profile = profile
+
+    def load(self, cli_overrides: dict[str, Any] | None = None) -> OrchestratorConfig:
+        """Load configuration with current settings.
+
+        Args:
+            cli_overrides: CLI parameter overrides
+
+        Returns:
+            Loaded and validated configuration
+        """
+        return load_config(self.config_path, self.profile, cli_overrides)

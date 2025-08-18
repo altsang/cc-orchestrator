@@ -13,10 +13,53 @@ from ..utils.logging import LogContext, get_logger
 logger = get_logger(__name__, LogContext.WORKTREE)
 
 
-class GitWorktreeError(Exception):
+class GitError(Exception):
+    """Base exception for git operations."""
+
+    pass
+
+
+class GitWorktreeError(GitError):
     """Base exception for git worktree operations."""
 
     pass
+
+
+class GitRepository:
+    """Wrapper class for Git repository operations."""
+
+    def __init__(self, repo_path: str | None = None):
+        """Initialize the GitRepository.
+
+        Args:
+            repo_path: Path to the git repository. If None, uses current directory.
+        """
+        self.repo_path = repo_path or os.getcwd()
+        self._repo: Repo | None = None
+
+    @property
+    def repo(self) -> Repo:
+        """Get the Git repository object."""
+        if self._repo is None:
+            try:
+                self._repo = Repo(self.repo_path)
+            except InvalidGitRepositoryError as e:
+                raise GitError(f"Invalid git repository at {self.repo_path}") from e
+        return self._repo
+
+    def get_current_branch(self) -> str:
+        """Get the current branch name."""
+        try:
+            return self.repo.active_branch.name
+        except Exception as e:
+            raise GitError(f"Failed to get current branch: {e}") from e
+
+    def get_current_commit(self) -> str:
+        """Get the current commit SHA."""
+        try:
+            return self.repo.head.commit.hexsha
+        except Exception as e:
+            raise GitError(f"Failed to get current commit: {e}") from e
 
 
 class GitWorktreeManager:

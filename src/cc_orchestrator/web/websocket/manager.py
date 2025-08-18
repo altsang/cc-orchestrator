@@ -603,21 +603,30 @@ class ConnectionManager:
 
                 # Clean up expired messages from all queues
                 with self._connection_lock:
+                    queues_to_remove = []
                     for connection_id in list(self.message_queues.keys()):
                         queue = self.message_queues[connection_id]
 
                         # Remove expired messages
-                        self.message_queues[connection_id] = [
-                            queued_msg
-                            for queued_msg in queue
-                            if not queued_msg.is_expired()
-                        ]
+                        filtered_queue = []
+                        for queued_msg in queue:
+                            if not queued_msg.is_expired():
+                                filtered_queue.append(queued_msg)
 
-                        # Remove empty queues for disconnected clients
-                        if (
-                            not self.message_queues[connection_id]
-                            and connection_id not in self.connections
-                        ):
+                        if filtered_queue:
+                            # Update queue with non-expired messages
+                            self.message_queues[connection_id] = filtered_queue
+                        else:
+                            # Mark empty queues for disconnected clients for removal
+                            if connection_id not in self.connections:
+                                queues_to_remove.append(connection_id)
+                            else:
+                                # Keep empty queue for connected clients
+                                self.message_queues[connection_id] = []
+
+                    # Remove empty queues for disconnected clients
+                    for connection_id in queues_to_remove:
+                        if connection_id in self.message_queues:
                             del self.message_queues[connection_id]
 
             except asyncio.CancelledError:

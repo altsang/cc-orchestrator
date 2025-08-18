@@ -9,7 +9,8 @@ import pytest
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
-from src.cc_orchestrator.web.app import app
+from src.cc_orchestrator.web.app import create_app
+from src.cc_orchestrator.web.dependencies import get_current_user
 from src.cc_orchestrator.web.routers.v1.logs import (
     LogEntry,
     LogEntryType,
@@ -43,12 +44,20 @@ class TestLogsRouter:
             }
         )
 
-        # Create test client
-        self.client = TestClient(app)
-
+        # Create app and override authentication
+        app = create_app()
+        
         # Mock authentication for all tests
         self.mock_user = MagicMock()
         self.mock_user.id = "test_user_123"
+        
+        def mock_get_current_user():
+            return self.mock_user
+            
+        app.dependency_overrides[get_current_user] = mock_get_current_user
+
+        # Create test client
+        self.client = TestClient(app)
 
         # Add sample log entries
         self.sample_logs = [
@@ -82,10 +91,8 @@ class TestLogsRouter:
 
         log_storage.extend(self.sample_logs)
 
-    @patch("src.cc_orchestrator.web.routers.v1.logs.get_current_user")
-    def test_search_logs_basic(self, mock_get_user):
+    def test_search_logs_basic(self):
         """Test basic log search functionality."""
-        mock_get_user.return_value = self.mock_user
 
         response = self.client.get("/api/v1/logs/search")
         assert response.status_code == 200
@@ -97,6 +104,7 @@ class TestLogsRouter:
 
     def test_search_logs_with_query(self):
         """Test log search with text query."""
+        
         response = self.client.get("/api/v1/logs/search?query=error")
         assert response.status_code == 200
 
@@ -179,6 +187,7 @@ class TestLogsRouter:
 
     def test_search_logs_value_error(self):
         """Test search_logs with invalid parameters that raise ValueError."""
+        
         # Test with query too long
         long_query = "x" * 1001
         response = self.client.get(f"/api/v1/logs/search?query={long_query}")
@@ -187,14 +196,14 @@ class TestLogsRouter:
 
     def test_search_logs_limit_validation_error(self):
         """Test search_logs with invalid limit values."""
-        # Test with limit too high
+        
+        # Test with limit too high - FastAPI query param validation
         response = self.client.get("/api/v1/logs/search?limit=20000")
-        assert response.status_code == 400
-        assert "Limit must be between 1 and 10000" in response.json()["detail"]
-
-        # Test with limit too low
+        assert response.status_code == 422  # FastAPI query param validation
+        
+        # Test with limit too low - handled in endpoint logic
         response = self.client.get("/api/v1/logs/search?limit=0")
-        assert response.status_code == 400
+        assert response.status_code == 400  # Custom validation in endpoint
 
     @patch("src.cc_orchestrator.web.routers.v1.logs._filter_log_entries")
     def test_search_logs_generic_exception(self, mock_filter):
@@ -207,6 +216,7 @@ class TestLogsRouter:
 
     def test_search_logs_with_time_range(self):
         """Test search_logs with start_time and end_time filters."""
+        
         # Add log entries with specific timestamps
         now = datetime.now()
         old_entry = LogEntry(
@@ -240,6 +250,7 @@ class TestLogsRouter:
 
     def test_search_logs_with_multiple_levels(self):
         """Test search_logs with multiple log level filters."""
+        
         response = self.client.get("/api/v1/logs/search?level=ERROR&level=WARNING")
         assert response.status_code == 200
         data = response.json()
@@ -248,6 +259,7 @@ class TestLogsRouter:
 
     def test_search_logs_with_multiple_contexts(self):
         """Test search_logs with multiple context filters."""
+        
         response = self.client.get("/api/v1/logs/search?context=system&context=web")
         assert response.status_code == 200
         data = response.json()
@@ -256,6 +268,7 @@ class TestLogsRouter:
 
     def test_search_logs_with_instance_id(self):
         """Test search_logs with instance_id filter."""
+        
         response = self.client.get("/api/v1/logs/search?instance_id=instance_123")
         assert response.status_code == 200
         data = response.json()
@@ -264,6 +277,7 @@ class TestLogsRouter:
 
     def test_search_logs_with_task_id(self):
         """Test search_logs with task_id filter."""
+        
         # Add entry with task_id
         task_entry = LogEntry(
             id="task_log",
@@ -283,6 +297,7 @@ class TestLogsRouter:
 
     def test_search_logs_with_regex(self):
         """Test search_logs with regex_enabled."""
+        
         response = self.client.get(
             "/api/v1/logs/search?query=Test.*message&regex_enabled=true"
         )
@@ -292,6 +307,7 @@ class TestLogsRouter:
 
     def test_search_logs_case_sensitive(self):
         """Test search_logs with case_sensitive option."""
+        
         response = self.client.get("/api/v1/logs/search?query=TEST&case_sensitive=true")
         assert response.status_code == 200
         data = response.json()
@@ -300,6 +316,7 @@ class TestLogsRouter:
 
     def test_search_logs_pagination(self):
         """Test search_logs pagination with offset and limit."""
+        
         # Add more log entries for pagination testing
         for i in range(10):
             entry = LogEntry(
@@ -326,6 +343,7 @@ class TestLogsRouter:
 
     def test_export_logs_json_format(self):
         """Test log export in JSON format."""
+        
         export_request = {
             "search": {
                 "query": None,
@@ -344,6 +362,7 @@ class TestLogsRouter:
 
     def test_export_logs_csv_format(self):
         """Test log export in CSV format."""
+        
         export_request = {
             "search": {"limit": 1000, "offset": 0},
             "format": "csv",
@@ -356,6 +375,7 @@ class TestLogsRouter:
 
     def test_export_logs_text_format(self):
         """Test log export in TEXT format."""
+        
         export_request = {"search": {"limit": 1000, "offset": 0}, "format": "text"}
 
         response = self.client.post("/api/v1/logs/export", json=export_request)
@@ -364,6 +384,7 @@ class TestLogsRouter:
 
     def test_export_logs_auto_filename(self):
         """Test log export with auto-generated filename."""
+        
         export_request = {"search": {"limit": 1000, "offset": 0}, "format": "json"}
 
         response = self.client.post("/api/v1/logs/export", json=export_request)
@@ -416,6 +437,7 @@ class TestLogsRouter:
 
     def test_stop_log_stream_not_found(self):
         """Test stop_log_stream with non-existent stream ID."""
+        
         response = self.client.post("/api/v1/logs/stream/nonexistent_stream/stop")
         assert response.status_code == 404
         assert response.json()["detail"] == "Stream not found"

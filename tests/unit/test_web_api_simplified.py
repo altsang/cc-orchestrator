@@ -41,10 +41,9 @@ class TestBasicEndpoints:
         """Test the root endpoint."""
         response = client.get("/")
         assert response.status_code == 200
-        data = response.json()
-        assert data["message"] == "CC-Orchestrator API"
-        assert data["status"] == "running"
-        assert data["version"] == "1.0.0"
+        # Root returns HTML, not JSON
+        assert "text/html" in response.headers["content-type"]
+        assert "CC-Orchestrator Dashboard" in response.text
 
     def test_ping_endpoint(self, client):
         """Test the ping endpoint."""

@@ -40,7 +40,7 @@ from cc_orchestrator.tmux.logging_utils import (
     log_session_list,
     log_session_operation,
 )
-from cc_orchestrator.utils.logging import CCOrchestratorException
+from cc_orchestrator.web.exceptions import CCOrchestratorAPIException
 from cc_orchestrator.web.logging_utils import (
     handle_api_errors,
     log_api_request,
@@ -522,8 +522,8 @@ class TestComponentDecoratorFunctionality:
             raise ValueError("API error")
 
         with pytest.raises(
-            CCOrchestratorException
-        ):  # Should convert to CCOrchestratorException
+            CCOrchestratorAPIException
+        ):  # Should convert to CCOrchestratorAPIException
             api_function()
 
     def test_track_api_performance_decorator(self):

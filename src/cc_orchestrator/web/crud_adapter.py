@@ -228,7 +228,14 @@ class CRUDBase:
             if isinstance(priority, str):
                 from ..database.models import TaskPriority
 
-                priority = TaskPriority(priority.upper())
+                # Map string values to enum values since TaskPriority uses integer values
+                priority_str_map = {
+                    "low": TaskPriority.LOW,
+                    "medium": TaskPriority.MEDIUM,
+                    "high": TaskPriority.HIGH,
+                    "urgent": TaskPriority.URGENT,
+                }
+                priority = priority_str_map.get(priority.lower(), TaskPriority.MEDIUM)
             elif isinstance(priority, int):
                 from ..database.models import TaskPriority
 
@@ -277,7 +284,7 @@ class CRUDBase:
                 if isinstance(status_value, str):
                     from ..database.models import TaskStatus
 
-                    status = TaskStatus(status_value.upper())
+                    status = TaskStatus(status_value.lower())
                 else:
                     status = status_value
                 # Use update_status for status changes as it handles timestamps

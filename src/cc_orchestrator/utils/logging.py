@@ -159,16 +159,18 @@ class StructuredFormatter(logging.Formatter):
             if key not in standard_fields and not key.startswith("_"):
                 log_data[key] = value
 
-        # Add exception info if present
+        # Add exception info if present and valid
         if record.exc_info and record.exc_info[0] is not None:
+            exc_type = record.exc_info[0]
+            exc_value = record.exc_info[1]
+            exc_traceback = record.exc_info[2]
+
             log_data["exception"] = {
-                "type": (
-                    record.exc_info[0].__name__
-                    if record.exc_info[0] is not None
-                    else "UnknownError"
+                "type": exc_type.__name__,
+                "message": str(exc_value) if exc_value is not None else "",
+                "traceback": traceback.format_exception(
+                    exc_type, exc_value, exc_traceback
                 ),
-                "message": str(record.exc_info[1]),
-                "traceback": traceback.format_exception(*record.exc_info),
             }
 
         return json.dumps(log_data)
