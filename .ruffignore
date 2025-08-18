@@ -1,0 +1,5 @@
+.github/
+*.yml
+*.yaml
+**/*.yml
+**/*.yaml
