@@ -36,7 +36,7 @@ class TestWebSocketEndpointsFunctional:
         # Setup authentication and rate limiting
         mock_auth.return_value = Mock(user_id="test_user", permissions=["read", "write"])
         mock_rate_limiter.check_websocket_rate_limit.return_value = True
-        
+
         # Setup connection manager
         mock_manager.connect = AsyncMock(return_value="test-connection-123")
         mock_manager.handle_message = AsyncMock()
@@ -56,7 +56,7 @@ class TestWebSocketEndpointsFunctional:
         # Verify authentication and rate limiting were checked
         mock_auth.assert_called_once_with("test-token")
         mock_rate_limiter.check_websocket_rate_limit.assert_called_once_with("127.0.0.1")
-        
+
         # Verify connection flow
         mock_manager.connect.assert_called_once_with(mock_websocket, "127.0.0.1")
         mock_manager.handle_message.assert_called_once_with(
@@ -77,7 +77,7 @@ class TestWebSocketEndpointsFunctional:
         # Setup authentication and rate limiting
         mock_auth.return_value = Mock(user_id="test_user", permissions=["read", "write"])
         mock_rate_limiter.check_websocket_rate_limit.return_value = True
-        
+
         # Setup - no client info
         mock_websocket.client = None
         mock_manager.connect = AsyncMock(return_value="test-connection-456")
@@ -92,7 +92,7 @@ class TestWebSocketEndpointsFunctional:
         # Verify authentication and rate limiting were checked
         mock_auth.assert_called_once_with("test-token")
         mock_rate_limiter.check_websocket_rate_limit.assert_called_once_with("unknown")
-        
+
         # Verify unknown client handling
         mock_manager.connect.assert_called_once_with(mock_websocket, "unknown")
         mock_manager.disconnect.assert_called_once_with(
@@ -110,7 +110,7 @@ class TestWebSocketEndpointsFunctional:
         # Setup authentication and rate limiting
         mock_auth.return_value = Mock(user_id="test_user", permissions=["read", "write"])
         mock_rate_limiter.check_websocket_rate_limit.return_value = True
-        
+
         # Setup
         mock_manager.connect = AsyncMock(return_value="test-connection-error")
         mock_manager.disconnect = AsyncMock()
@@ -124,7 +124,7 @@ class TestWebSocketEndpointsFunctional:
         # Verify authentication and rate limiting were checked
         mock_auth.assert_called_once_with("test-token")
         mock_rate_limiter.check_websocket_rate_limit.assert_called_once_with("127.0.0.1")
-        
+
         # Verify error handling
         mock_manager.connect.assert_called_once()
         mock_manager.disconnect.assert_called_once_with(
@@ -140,7 +140,7 @@ class TestWebSocketEndpointsFunctional:
         # Setup authentication and rate limiting
         mock_auth.return_value = Mock(user_id="test_user", permissions=["read", "write"])
         mock_rate_limiter.check_websocket_rate_limit.return_value = True
-        
+
         # Setup connection manager
         mock_manager.connect = AsyncMock(return_value="instance-connection-123")
         mock_manager.subscribe = AsyncMock()
@@ -159,7 +159,7 @@ class TestWebSocketEndpointsFunctional:
         # Verify authentication and rate limiting were checked
         mock_auth.assert_called_once_with("test-token")
         mock_rate_limiter.check_websocket_rate_limit.assert_called_once_with("127.0.0.1")
-        
+
         # Verify instance-specific behavior
         mock_manager.connect.assert_called_once_with(mock_websocket, "127.0.0.1")
         mock_manager.subscribe.assert_called_once_with(
@@ -181,7 +181,7 @@ class TestWebSocketEndpointsFunctional:
         # Setup authentication and rate limiting
         mock_auth.return_value = Mock(user_id="test_user", permissions=["read", "write"])
         mock_rate_limiter.check_websocket_rate_limit.return_value = True
-        
+
         # Setup
         mock_manager.connect = AsyncMock(return_value="task-connection-789")
         mock_manager.subscribe = AsyncMock()
@@ -200,7 +200,7 @@ class TestWebSocketEndpointsFunctional:
         # Verify authentication and rate limiting were checked
         mock_auth.assert_called_once_with("test-token")
         mock_rate_limiter.check_websocket_rate_limit.assert_called_once_with("127.0.0.1")
-        
+
         # Verify task-specific behavior
         mock_manager.connect.assert_called_once_with(mock_websocket, "127.0.0.1")
         mock_manager.subscribe.assert_called_once_with(
@@ -222,7 +222,7 @@ class TestWebSocketEndpointsFunctional:
         # Setup authentication and rate limiting
         mock_auth.return_value = Mock(user_id="test_user", permissions=["read", "write"])
         mock_rate_limiter.check_websocket_rate_limit.return_value = True
-        
+
         # Setup
         mock_manager.connect = AsyncMock(return_value="logs-connection-111")
         mock_manager.subscribe = AsyncMock()
@@ -241,7 +241,7 @@ class TestWebSocketEndpointsFunctional:
         # Verify authentication and rate limiting were checked
         mock_auth.assert_called_once_with("test-token")
         mock_rate_limiter.check_websocket_rate_limit.assert_called_once_with("127.0.0.1")
-        
+
         # Verify logs-specific behavior
         mock_manager.connect.assert_called_once_with(mock_websocket, "127.0.0.1")
         mock_manager.subscribe.assert_called_once_with("logs-connection-111", "logs")
@@ -261,7 +261,7 @@ class TestWebSocketEndpointsFunctional:
         # Setup authentication and rate limiting
         mock_auth.return_value = Mock(user_id="test_user", permissions=["read", "write"])
         mock_rate_limiter.check_websocket_rate_limit.return_value = True
-        
+
         # Setup
         mock_manager.connect = AsyncMock(return_value="dashboard-connection-222")
         mock_manager.subscribe = AsyncMock()
@@ -281,7 +281,7 @@ class TestWebSocketEndpointsFunctional:
         # Verify authentication and rate limiting were checked
         mock_auth.assert_called_once_with("test-token")
         mock_rate_limiter.check_websocket_rate_limit.assert_called_once_with("127.0.0.1")
-        
+
         # Verify dashboard-specific behavior
         mock_manager.connect.assert_called_once_with(mock_websocket, "127.0.0.1")
 
@@ -322,7 +322,7 @@ class TestWebSocketEndpointsFunctional:
         # Setup authentication and rate limiting
         mock_auth.return_value = Mock(user_id="test_user", permissions=["read", "write"])
         mock_rate_limiter.check_websocket_rate_limit.return_value = True
-        
+
         # Setup
         mock_manager.connect = AsyncMock(return_value="multi-msg-connection")
         mock_manager.handle_message = AsyncMock()
@@ -364,7 +364,7 @@ class TestWebSocketEndpointsFunctional:
         # Setup authentication and rate limiting
         mock_auth.return_value = Mock(user_id="test_user", permissions=["read", "write"])
         mock_rate_limiter.check_websocket_rate_limit.return_value = True
-        
+
         # Setup
         mock_manager.connect = AsyncMock(return_value="error-after-msg")
         mock_manager.handle_message = AsyncMock()
@@ -414,7 +414,7 @@ class TestWebSocketEndpointVariations:
         # Setup authentication and rate limiting (these will be reset for each endpoint)
         mock_auth.return_value = Mock(user_id="test_user", permissions=["read", "write"])
         mock_rate_limiter.check_websocket_rate_limit.return_value = True
-        
+
         mock_manager.connect = AsyncMock(return_value="no-client-connection")
         mock_manager.disconnect = AsyncMock()
         mock_manager.subscribe = AsyncMock()
@@ -442,7 +442,7 @@ class TestWebSocketEndpointVariations:
             mock_manager.reset_mock()
             mock_auth.reset_mock()
             mock_rate_limiter.reset_mock()
-            
+
             # Setup fresh mock returns
             mock_auth.return_value = Mock(user_id="test_user", permissions=["read", "write"])
             mock_rate_limiter.check_websocket_rate_limit.return_value = True
@@ -480,7 +480,7 @@ class TestWebSocketEndpointVariations:
     async def test_different_exception_types(self, mock_manager, mock_auth, mock_rate_limiter, mock_websocket):
         """Test handling of different exception types."""
         mock_websocket.client.host = "192.168.1.100"
-        
+
         from cc_orchestrator.web.websocket.router import websocket_endpoint
 
         # Test different exception types
@@ -496,7 +496,7 @@ class TestWebSocketEndpointVariations:
             mock_manager.reset_mock()
             mock_auth.reset_mock()
             mock_rate_limiter.reset_mock()
-            
+
             # Setup fresh mock returns
             mock_auth.return_value = Mock(user_id="test_user", permissions=["read", "write"])
             mock_rate_limiter.check_websocket_rate_limit.return_value = True

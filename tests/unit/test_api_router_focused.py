@@ -143,7 +143,7 @@ def client(mock_db_session, mock_crud):
             # Set up async methods on the rate limiter
             mock_rate_limiter.initialize = AsyncMock()
             mock_rate_limiter.cleanup = AsyncMock()
-            
+
             # Mock database manager to avoid SQLite table creation issues
             with patch("cc_orchestrator.database.connection.DatabaseManager") as mock_db_manager_class:
                 # Create a mock database manager instance
@@ -154,7 +154,7 @@ def client(mock_db_session, mock_crud):
                 mock_db_manager.close = mock_close
                 mock_db_manager.create_tables = Mock()
                 mock_db_manager_class.return_value = mock_db_manager
-                
+
                 from cc_orchestrator.web.app import create_app
                 from cc_orchestrator.web.dependencies import get_crud, get_db_session
 
