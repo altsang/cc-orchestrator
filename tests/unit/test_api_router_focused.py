@@ -499,12 +499,12 @@ class TestInstanceDeleteEndpoint:
 
         # Override methods for this test
         mock_crud.get_instance = AsyncMock(return_value=mock_instance)
-        
+
         def delete_side_effect(instance_id):
             nonlocal delete_called
             delete_called = True
             return True
-            
+
         mock_crud.delete_instance = AsyncMock(side_effect=delete_side_effect)
 
         response = client.delete("/api/v1/instances/1", headers=auth_headers)
