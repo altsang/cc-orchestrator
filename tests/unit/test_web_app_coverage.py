@@ -29,8 +29,12 @@ class TestLifespan:
         mock_app.state.db_manager = mock_db_manager_instance
 
         # Mock the rate limiter both in source and app modules to ensure we catch the import
-        with patch("cc_orchestrator.web.middlewares.rate_limiter.rate_limiter") as mock_rate_limiter_source, \
-             patch("cc_orchestrator.web.app.rate_limiter") as mock_rate_limiter_app:
+        with (
+            patch(
+                "cc_orchestrator.web.middlewares.rate_limiter.rate_limiter"
+            ) as mock_rate_limiter_source,
+            patch("cc_orchestrator.web.app.rate_limiter") as mock_rate_limiter_app,
+        ):
             # Set up both mock objects with the same async methods
             for mock_rate_limiter in [mock_rate_limiter_source, mock_rate_limiter_app]:
                 mock_rate_limiter.initialize = AsyncMock()
