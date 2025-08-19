@@ -390,7 +390,7 @@ class TestDataExfiltrationProtection:
 
     def test_export_sensitive_data_protection(self):
         """Test that exported data is sanitized."""
-        # Use patch to ensure complete isolation during test execution
+        # Use both direct manipulation and patching for complete isolation
         from unittest.mock import patch
         
         # Create isolated log storage for this test
@@ -407,8 +407,14 @@ class TestDataExfiltrationProtection:
         )
         test_log_storage.append(sensitive_entry)
 
-        # Patch the log_storage to use our isolated storage during the API call
-        with patch("cc_orchestrator.web.routers.v1.logs.log_storage", test_log_storage):
+        # Save the original log storage and replace it temporarily
+        import src.cc_orchestrator.web.routers.v1.logs as logs_module
+        original_log_storage = logs_module.log_storage
+        
+        try:
+            # Directly replace the global variable
+            logs_module.log_storage = test_log_storage
+            
             response = self.client.post(
                 "/api/v1/logs/export",
                 json={"search": {"limit": 100}, "format": "json"},
@@ -422,6 +428,9 @@ class TestDataExfiltrationProtection:
             assert "secret123" not in content
             assert "sensitive_key_456" not in content
             assert "[REDACTED]" in content
+        finally:
+            # Restore the original log storage
+            logs_module.log_storage = original_log_storage
 
     def test_search_sensitive_data_protection(self):
         """Test that search results are sanitized."""
@@ -443,7 +452,7 @@ class TestDataExfiltrationProtection:
         test_log_storage.append(sensitive_entry)
 
         # Patch the log_storage to use our isolated storage during the API call
-        with patch("cc_orchestrator.web.routers.v1.logs.log_storage", test_log_storage):
+        with patch("src.cc_orchestrator.web.routers.v1.logs.log_storage", test_log_storage):
             response = self.client.get(
                 "/api/v1/logs/search", headers={"X-Dev-Token": "development-token"}
             )
@@ -508,8 +517,8 @@ class TestIntegrationSecurity:
             test_log_storage.append(entry)
 
         # Patch both log storage and audit storage to use isolated versions
-        with patch("cc_orchestrator.web.routers.v1.logs.log_storage", test_log_storage), \
-             patch("cc_orchestrator.web.routers.v1.logs.audit_log_storage", test_audit_log_storage):
+        with patch("src.cc_orchestrator.web.routers.v1.logs.log_storage", test_log_storage), \
+             patch("src.cc_orchestrator.web.routers.v1.logs.audit_log_storage", test_audit_log_storage):
             
             # 1. Test search with audit logging
             search_response = self.client.get(
