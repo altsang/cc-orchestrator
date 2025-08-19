@@ -25,9 +25,10 @@ def reset_global_state():
     # Reset rate limiter state at the start
     try:
         from cc_orchestrator.web.middlewares.rate_limiter import rate_limiter
-        if hasattr(rate_limiter, 'ip_buckets'):
+
+        if hasattr(rate_limiter, "ip_buckets"):
             rate_limiter.ip_buckets.clear()
-        if hasattr(rate_limiter, 'websocket_ip_buckets'):
+        if hasattr(rate_limiter, "websocket_ip_buckets"):
             rate_limiter.websocket_ip_buckets.clear()
     except (ImportError, AttributeError):
         pass
@@ -38,12 +39,15 @@ def reset_global_state():
         from datetime import datetime
 
         from cc_orchestrator.web.routers.v1.logs import stream_stats
-        stream_stats.update({
-            "active_streams": 0,
-            "total_entries_streamed": 0,
-            "stream_start_time": datetime.now(),
-            "buffer_usage": {},
-        })
+
+        stream_stats.update(
+            {
+                "active_streams": 0,
+                "total_entries_streamed": 0,
+                "stream_start_time": datetime.now(),
+                "buffer_usage": {},
+            }
+        )
     except (ImportError, AttributeError):
         pass
 
