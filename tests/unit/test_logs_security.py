@@ -391,11 +391,10 @@ class TestDataExfiltrationProtection:
     def test_export_sensitive_data_protection(self):
         """Test that exported data is sanitized."""
         # Use both direct manipulation and patching for complete isolation
-        from unittest.mock import patch
-        
+
         # Create isolated log storage for this test
         test_log_storage = []
-        
+
         # Add log entry with sensitive data
         sensitive_entry = LogEntry(
             id="sensitive_1",
@@ -409,12 +408,13 @@ class TestDataExfiltrationProtection:
 
         # Save the original log storage and replace it temporarily
         import src.cc_orchestrator.web.routers.v1.logs as logs_module
+
         original_log_storage = logs_module.log_storage
-        
+
         try:
             # Directly replace the global variable
             logs_module.log_storage = test_log_storage
-            
+
             response = self.client.post(
                 "/api/v1/logs/export",
                 json={"search": {"limit": 100}, "format": "json"},
@@ -436,10 +436,10 @@ class TestDataExfiltrationProtection:
         """Test that search results are sanitized."""
         # Use patch to ensure complete isolation during test execution
         from unittest.mock import patch
-        
+
         # Create isolated log storage for this test
         test_log_storage = []
-        
+
         # Add log entry with sensitive data
         sensitive_entry = LogEntry(
             id="sensitive_1",
@@ -452,7 +452,9 @@ class TestDataExfiltrationProtection:
         test_log_storage.append(sensitive_entry)
 
         # Patch the log_storage to use our isolated storage during the API call
-        with patch("src.cc_orchestrator.web.routers.v1.logs.log_storage", test_log_storage):
+        with patch(
+            "src.cc_orchestrator.web.routers.v1.logs.log_storage", test_log_storage
+        ):
             response = self.client.get(
                 "/api/v1/logs/search", headers={"X-Dev-Token": "development-token"}
             )
@@ -488,11 +490,11 @@ class TestIntegrationSecurity:
         """Test complete security workflow from search to export."""
         # Use patch to ensure complete isolation during test execution
         from unittest.mock import patch
-        
+
         # Create isolated log storage for this test
         test_log_storage = []
         test_audit_log_storage = []
-        
+
         # Add log entries with mixed sensitive and normal data
         entries = [
             LogEntry(
@@ -517,9 +519,16 @@ class TestIntegrationSecurity:
             test_log_storage.append(entry)
 
         # Patch both log storage and audit storage to use isolated versions
-        with patch("src.cc_orchestrator.web.routers.v1.logs.log_storage", test_log_storage), \
-             patch("src.cc_orchestrator.web.routers.v1.logs.audit_log_storage", test_audit_log_storage):
-            
+        with (
+            patch(
+                "src.cc_orchestrator.web.routers.v1.logs.log_storage", test_log_storage
+            ),
+            patch(
+                "src.cc_orchestrator.web.routers.v1.logs.audit_log_storage",
+                test_audit_log_storage,
+            ),
+        ):
+
             # 1. Test search with audit logging
             search_response = self.client.get(
                 "/api/v1/logs/search?query=login",
@@ -549,4 +558,6 @@ class TestIntegrationSecurity:
             assert len(test_audit_log_storage) == 2  # Search + Export
             assert test_audit_log_storage[0]["action"] == "search"
             assert test_audit_log_storage[1]["action"] == "export"
-            assert all(entry["user_id"] == "dev_user" for entry in test_audit_log_storage)
+            assert all(
+                entry["user_id"] == "dev_user" for entry in test_audit_log_storage
+            )
