@@ -24,7 +24,7 @@ def reset_global_state():
     """Reset global state between tests to avoid interference."""
     # Reset rate limiter state at the start
     try:
-        from cc_orchestrator.web.middlewares.rate_limiter import rate_limiter
+        from src.cc_orchestrator.web.middlewares.rate_limiter import rate_limiter
 
         if hasattr(rate_limiter, "ip_buckets"):
             rate_limiter.ip_buckets.clear()
@@ -38,7 +38,7 @@ def reset_global_state():
     try:
         from datetime import datetime
 
-        from cc_orchestrator.web.routers.v1.logs import stream_stats
+        from src.cc_orchestrator.web.routers.v1.logs import stream_stats
 
         stream_stats.update(
             {
