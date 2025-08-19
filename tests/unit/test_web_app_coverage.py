@@ -34,17 +34,13 @@ class TestLifespan:
             mock_rate_limiter.cleanup = AsyncMock()
 
             # Test that lifespan completes without error and doesn't raise an exception
-            try:
-                async with lifespan(mock_app):
-                    # Lifespan should complete without error
-                    assert hasattr(mock_app.state, "db_manager")
+            async with lifespan(mock_app):
+                # Lifespan should complete without error
+                assert hasattr(mock_app.state, "db_manager")
 
-                # Verify cleanup was called
-                mock_db_manager_instance.close.assert_called_once()
-                mock_rate_limiter.cleanup.assert_called_once()
-
-            except Exception as e:
-                pytest.fail(f"Lifespan context manager failed: {e}")
+            # Verify cleanup was called after lifespan exits
+            mock_db_manager_instance.close.assert_called_once()
+            mock_rate_limiter.cleanup.assert_called_once()
 
             # The main goal is that lifespan completes successfully
 

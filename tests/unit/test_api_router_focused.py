@@ -138,10 +138,8 @@ def client(mock_db_session, mock_crud):
             "TESTING": "true",  # Skip rate limiting during tests
         },
     ):
-        # Mock the rate limiter with proper async methods
-        with patch(
-            "cc_orchestrator.web.middlewares.rate_limiter.rate_limiter"
-        ) as mock_rate_limiter:
+        # Mock the rate limiter module at the app level to avoid lifespan issues
+        with patch("cc_orchestrator.web.app.rate_limiter") as mock_rate_limiter:
             # Set up async methods on the rate limiter
             mock_rate_limiter.initialize = AsyncMock()
             mock_rate_limiter.cleanup = AsyncMock()
@@ -154,10 +152,7 @@ def client(mock_db_session, mock_crud):
                 mock_db_manager = Mock()
 
                 # Make close() return a simple coroutine that can be awaited
-                async def mock_close():
-                    return None
-
-                mock_db_manager.close = mock_close
+                mock_db_manager.close = AsyncMock()
                 mock_db_manager.create_tables = Mock()
                 mock_db_manager_class.return_value = mock_db_manager
 

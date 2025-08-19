@@ -52,8 +52,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Close database connections
     if hasattr(app.state, "db_manager") and app.state.db_manager:
-        await app.state.db_manager.close()
-        api_logger.info("Database connections closed")
+        try:
+            await app.state.db_manager.close()
+            api_logger.info("Database connections closed")
+        except Exception as e:
+            api_logger.error("Failed to close database connections", error=str(e))
 
     # Clean up rate limiter
     try:
