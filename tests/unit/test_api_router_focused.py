@@ -301,7 +301,9 @@ class TestInstanceCreateEndpoint:
         )
 
         # Override the methods to return specific values for this test
-        mock_crud.get_instance_by_issue_id = AsyncMock(return_value=None)  # No existing instance
+        mock_crud.get_instance_by_issue_id = AsyncMock(
+            return_value=None
+        )  # No existing instance
         mock_crud.create_instance = AsyncMock(return_value=created_instance)
 
         data = {
@@ -740,7 +742,9 @@ class TestErrorHandling:
         """Test database error handling."""
 
         # Override method to raise exception
-        mock_crud.list_instances = AsyncMock(side_effect=Exception("Database connection error"))
+        mock_crud.list_instances = AsyncMock(
+            side_effect=Exception("Database connection error")
+        )
 
         response = client.get("/api/v1/instances/", headers=auth_headers)
         # The V1 API has error handling decorators that catch exceptions
