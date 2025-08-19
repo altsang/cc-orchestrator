@@ -21,7 +21,7 @@ def setup_test_environment():
 @pytest.fixture(scope="function", autouse=True) 
 def reset_global_state():
     """Reset global state between tests to avoid interference."""
-    # Reset rate limiter state
+    # Reset rate limiter state at the start
     try:
         from cc_orchestrator.web.middlewares.rate_limiter import rate_limiter
         if hasattr(rate_limiter, 'ip_buckets'):
@@ -31,11 +31,10 @@ def reset_global_state():
     except (ImportError, AttributeError):
         pass
     
-    # Reset log storage
+    # Don't reset log storage automatically - let tests manage their own state
+    # This prevents interference with tests that need to set up and use log storage
     try:
-        from cc_orchestrator.web.routers.v1.logs import log_storage, audit_log_storage, stream_stats
-        log_storage.clear()
-        audit_log_storage.clear()
+        from cc_orchestrator.web.routers.v1.logs import stream_stats
         from datetime import datetime
         stream_stats.update({
             "active_streams": 0,

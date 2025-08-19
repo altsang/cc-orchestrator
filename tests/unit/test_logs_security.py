@@ -390,6 +390,12 @@ class TestDataExfiltrationProtection:
 
     def test_export_sensitive_data_protection(self):
         """Test that exported data is sanitized."""
+        # Use patch to ensure complete isolation during test execution
+        from unittest.mock import patch
+        
+        # Create isolated log storage for this test
+        test_log_storage = []
+        
         # Add log entry with sensitive data
         sensitive_entry = LogEntry(
             id="sensitive_1",
@@ -399,24 +405,32 @@ class TestDataExfiltrationProtection:
             message="User login with password=secret123",
             metadata={"api_key": "sensitive_key_456"},
         )
-        log_storage.append(sensitive_entry)
+        test_log_storage.append(sensitive_entry)
 
-        response = self.client.post(
-            "/api/v1/logs/export",
-            json={"search": {"limit": 100}, "format": "json"},
-            headers={"X-Dev-Token": "development-token"},
-        )
+        # Patch the log_storage to use our isolated storage during the API call
+        with patch("cc_orchestrator.web.routers.v1.logs.log_storage", test_log_storage):
+            response = self.client.post(
+                "/api/v1/logs/export",
+                json={"search": {"limit": 100}, "format": "json"},
+                headers={"X-Dev-Token": "development-token"},
+            )
 
-        assert response.status_code == 200
-        content = response.content.decode()
+            assert response.status_code == 200
+            content = response.content.decode()
 
-        # Sensitive data should be redacted
-        assert "secret123" not in content
-        assert "sensitive_key_456" not in content
-        assert "[REDACTED]" in content
+            # Sensitive data should be redacted
+            assert "secret123" not in content
+            assert "sensitive_key_456" not in content
+            assert "[REDACTED]" in content
 
     def test_search_sensitive_data_protection(self):
         """Test that search results are sanitized."""
+        # Use patch to ensure complete isolation during test execution
+        from unittest.mock import patch
+        
+        # Create isolated log storage for this test
+        test_log_storage = []
+        
         # Add log entry with sensitive data
         sensitive_entry = LogEntry(
             id="sensitive_1",
@@ -426,20 +440,22 @@ class TestDataExfiltrationProtection:
             message="API call with token=bearer_abc123",
             metadata={},
         )
-        log_storage.append(sensitive_entry)
+        test_log_storage.append(sensitive_entry)
 
-        response = self.client.get(
-            "/api/v1/logs/search", headers={"X-Dev-Token": "development-token"}
-        )
-        assert response.status_code == 200
+        # Patch the log_storage to use our isolated storage during the API call
+        with patch("cc_orchestrator.web.routers.v1.logs.log_storage", test_log_storage):
+            response = self.client.get(
+                "/api/v1/logs/search", headers={"X-Dev-Token": "development-token"}
+            )
+            assert response.status_code == 200
 
-        data = response.json()
-        entries = data["entries"]
+            data = response.json()
+            entries = data["entries"]
 
-        # Sensitive data should be redacted in search results
-        assert len(entries) == 1
-        assert "bearer_abc123" not in entries[0]["message"]
-        assert "[REDACTED]" in entries[0]["message"]
+            # Sensitive data should be redacted in search results
+            assert len(entries) == 1
+            assert "bearer_abc123" not in entries[0]["message"]
+            assert "[REDACTED]" in entries[0]["message"]
 
 
 class TestIntegrationSecurity:
@@ -461,6 +477,13 @@ class TestIntegrationSecurity:
 
     def test_complete_security_workflow(self):
         """Test complete security workflow from search to export."""
+        # Use patch to ensure complete isolation during test execution
+        from unittest.mock import patch
+        
+        # Create isolated log storage for this test
+        test_log_storage = []
+        test_audit_log_storage = []
+        
         # Add log entries with mixed sensitive and normal data
         entries = [
             LogEntry(
@@ -482,35 +505,39 @@ class TestIntegrationSecurity:
         ]
 
         for entry in entries:
-            log_storage.append(entry)
+            test_log_storage.append(entry)
 
-        # 1. Test search with audit logging
-        search_response = self.client.get(
-            "/api/v1/logs/search?query=login",
-            headers={"X-Dev-Token": "development-token"},
-        )
-        assert search_response.status_code == 200
+        # Patch both log storage and audit storage to use isolated versions
+        with patch("cc_orchestrator.web.routers.v1.logs.log_storage", test_log_storage), \
+             patch("cc_orchestrator.web.routers.v1.logs.audit_log_storage", test_audit_log_storage):
+            
+            # 1. Test search with audit logging
+            search_response = self.client.get(
+                "/api/v1/logs/search?query=login",
+                headers={"X-Dev-Token": "development-token"},
+            )
+            assert search_response.status_code == 200
 
-        search_data = search_response.json()
-        assert len(search_data["entries"]) == 1
-        assert "secret123" not in str(search_data["entries"])
-        assert "[REDACTED]" in search_data["entries"][0]["message"]
+            search_data = search_response.json()
+            assert len(search_data["entries"]) == 1
+            assert "secret123" not in str(search_data["entries"])
+            assert "[REDACTED]" in search_data["entries"][0]["message"]
 
-        # 2. Test export with audit logging
-        export_response = self.client.post(
-            "/api/v1/logs/export",
-            json={"search": {"query": "login", "limit": 100}, "format": "json"},
-            headers={"X-Dev-Token": "development-token"},
-        )
-        assert export_response.status_code == 200
+            # 2. Test export with audit logging
+            export_response = self.client.post(
+                "/api/v1/logs/export",
+                json={"search": {"query": "login", "limit": 100}, "format": "json"},
+                headers={"X-Dev-Token": "development-token"},
+            )
+            assert export_response.status_code == 200
 
-        export_content = export_response.content.decode()
-        assert "secret123" not in export_content
-        assert "token_abc456" not in export_content
-        assert "[REDACTED]" in export_content
+            export_content = export_response.content.decode()
+            assert "secret123" not in export_content
+            assert "token_abc456" not in export_content
+            assert "[REDACTED]" in export_content
 
-        # 3. Verify audit logging occurred
-        assert len(audit_log_storage) == 2  # Search + Export
-        assert audit_log_storage[0]["action"] == "search"
-        assert audit_log_storage[1]["action"] == "export"
-        assert all(entry["user_id"] == "dev_user" for entry in audit_log_storage)
+            # 3. Verify audit logging occurred
+            assert len(test_audit_log_storage) == 2  # Search + Export
+            assert test_audit_log_storage[0]["action"] == "search"
+            assert test_audit_log_storage[1]["action"] == "export"
+            assert all(entry["user_id"] == "dev_user" for entry in test_audit_log_storage)
