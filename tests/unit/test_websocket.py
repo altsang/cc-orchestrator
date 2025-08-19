@@ -51,7 +51,7 @@ class TestWebSocketAuthentication:
         mock_manager.connect = AsyncMock(return_value="test-connection-id")
         mock_manager.handle_message = AsyncMock()
         mock_manager.disconnect = AsyncMock()
-        
+
         # Setup websocket to receive one message then disconnect
         mock_websocket.receive_text.side_effect = [
             '{"type": "ping"}',
@@ -112,7 +112,7 @@ class TestWebSocketAuthentication:
         mock_manager.connect = AsyncMock(return_value="test-connection-id")
         mock_manager.handle_message = AsyncMock(side_effect=Exception("Invalid message type"))
         mock_manager.disconnect = AsyncMock()
-        
+
         # Setup websocket to receive one invalid message
         mock_websocket.receive_text.side_effect = ['{"type": "invalid_type"}']
 
@@ -141,7 +141,7 @@ class TestWebSocketMessaging:
         mock_manager.connect = AsyncMock(return_value="test-connection-id")
         mock_manager.handle_message = AsyncMock()
         mock_manager.disconnect = AsyncMock()
-        
+
         # Setup websocket to receive ping message then disconnect
         ping_message = {"type": "ping", "data": {"test": "value"}}
         mock_websocket.receive_text.side_effect = [
@@ -169,7 +169,7 @@ class TestWebSocketMessaging:
         mock_manager.connect = AsyncMock(return_value="test-connection-id")
         mock_manager.handle_message = AsyncMock()
         mock_manager.disconnect = AsyncMock()
-        
+
         # Setup websocket to receive subscription message then disconnect
         sub_message = {"type": "subscribe", "topic": "instance_status"}
         mock_websocket.receive_text.side_effect = [
@@ -197,7 +197,7 @@ class TestWebSocketMessaging:
         mock_manager.connect = AsyncMock(return_value="test-connection-id")
         mock_manager.handle_message = AsyncMock()
         mock_manager.disconnect = AsyncMock()
-        
+
         # Setup websocket to receive unsubscription message then disconnect
         unsub_message = {"type": "unsubscribe", "topic": "instance_status"}
         mock_websocket.receive_text.side_effect = [
@@ -225,7 +225,7 @@ class TestWebSocketMessaging:
         mock_manager.connect = AsyncMock(return_value="test-connection-id")
         mock_manager.handle_message = AsyncMock()
         mock_manager.disconnect = AsyncMock()
-        
+
         # Setup websocket to receive unknown message then disconnect
         unknown_message = {"type": "unknown_type"}
         mock_websocket.receive_text.side_effect = [
@@ -253,7 +253,7 @@ class TestWebSocketMessaging:
         mock_manager.connect = AsyncMock(return_value="test-connection-id")
         mock_manager.handle_message = AsyncMock()
         mock_manager.disconnect = AsyncMock()
-        
+
         # Setup websocket to receive invalid JSON then disconnect
         mock_websocket.receive_text.side_effect = [
             "invalid json content",
@@ -297,10 +297,10 @@ class TestWebSocketManager:
 
         # Test subscription structure
         assert isinstance(connection_manager.subscriptions, dict)
-        
+
         # Test that we can add to subscriptions manually for testing
         connection_manager.subscriptions[topic] = {connection_id}
-        
+
         assert connection_id in connection_manager.subscriptions[topic]
 
     def test_broadcast_functionality(self, connection_manager):
