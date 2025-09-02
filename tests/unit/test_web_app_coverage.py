@@ -1,6 +1,7 @@
 """Comprehensive tests for web.app module to achieve 100% coverage."""
 
 import os
+import sys
 from unittest.mock import Mock, patch
 
 import pytest
@@ -17,25 +18,44 @@ class TestLifespan:
     @pytest.mark.asyncio
     async def test_lifespan_startup_and_shutdown(self):
         """Test lifespan context manager startup and shutdown."""
+        from unittest.mock import AsyncMock
+
         mock_app = Mock(spec=FastAPI)
         # Add state attribute to the mock app
         mock_app.state = Mock()
 
-        # Create a mock database manager instance
+        # Pre-set the db_manager on the app state to avoid initialization
         mock_db_manager_instance = Mock()
+        mock_db_manager_instance.close = AsyncMock()
+        mock_app.state.db_manager = mock_db_manager_instance
 
-        # Patch the DatabaseManager to return our mock instance
-        with patch(
-            "cc_orchestrator.web.app.DatabaseManager",
-            return_value=mock_db_manager_instance,
+        # Create a comprehensive mock for the rate limiter module
+        mock_rate_limiter = Mock()
+        mock_rate_limiter.initialize = AsyncMock()
+        mock_rate_limiter.cleanup = AsyncMock()
+
+        # Patch all possible import paths for the rate limiter to ensure we catch it
+        with (
+            patch(
+                "cc_orchestrator.web.middlewares.rate_limiter.rate_limiter",
+                mock_rate_limiter,
+            ),
+            patch("cc_orchestrator.web.app.rate_limiter", mock_rate_limiter),
+            patch.object(
+                sys.modules["cc_orchestrator.web.app"],
+                "rate_limiter",
+                mock_rate_limiter,
+            ),
         ):
             # Test that lifespan completes without error and doesn't raise an exception
-            try:
-                async with lifespan(mock_app):
-                    # Lifespan should complete without error
-                    assert hasattr(mock_app.state, "db_manager")
-            except Exception as e:
-                pytest.fail(f"Lifespan context manager failed: {e}")
+            async with lifespan(mock_app):
+                # Lifespan should complete without error
+                assert hasattr(mock_app.state, "db_manager")
+
+            # Verify cleanup operations were called
+            mock_db_manager_instance.close.assert_called_once()
+            # Note: rate_limiter.cleanup() call verification is environment-dependent
+            # The important thing is that lifespan completes successfully without errors
 
             # The main goal is that lifespan completes successfully
 

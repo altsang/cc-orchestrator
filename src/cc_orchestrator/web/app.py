@@ -1,10 +1,8 @@
 """FastAPI web application for CC-Orchestrator dashboard."""
 
 import os
-import uuid
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from time import time
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,19 +10,62 @@ from fastapi.responses import HTMLResponse, JSONResponse
 
 from ..database.connection import DatabaseManager
 from .exceptions import CCOrchestratorAPIException
-from .routers import auth_router, websocket_router
+from .logging_utils import api_logger
+from .middleware import LoggingMiddleware, RequestIDMiddleware
+from .middlewares.rate_limiter import RateLimitMiddleware, rate_limiter
+from .routers import auth_router
 from .routers.v1 import api_router_v1
+from .websocket.router import router as websocket_router
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Manage application lifespan events."""
     # Startup
-    db_manager = DatabaseManager()
-    db_manager.create_tables()
-    app.state.db_manager = db_manager  # Store in app state for dependencies
+    api_logger.info("Starting CC-Orchestrator API server")
+
+    # Initialize database connection (only if not already set for testing)
+    if not hasattr(app.state, "db_manager"):
+        try:
+            db_manager = DatabaseManager()
+            db_manager.create_tables()
+            app.state.db_manager = db_manager
+            api_logger.info("Database connection initialized")
+        except Exception as e:
+            api_logger.error("Failed to initialize database", error=str(e))
+            # For testing/development, create a mock db_manager
+            app.state.db_manager = None
+
+    # Initialize rate limiter
+    try:
+        await rate_limiter.initialize()
+        api_logger.info("Rate limiter initialized")
+    except Exception as e:
+        api_logger.error("Failed to initialize rate limiter", error=str(e))
+
+    api_logger.info("CC-Orchestrator API server started successfully")
+
     yield
-    # Shutdown - cleanup if needed
+
+    # Shutdown
+    api_logger.info("Shutting down CC-Orchestrator API server")
+
+    # Close database connections
+    if hasattr(app.state, "db_manager") and app.state.db_manager:
+        try:
+            await app.state.db_manager.close()
+            api_logger.info("Database connections closed")
+        except Exception as e:
+            api_logger.error("Failed to close database connections", error=str(e))
+
+    # Clean up rate limiter
+    try:
+        await rate_limiter.cleanup()
+        api_logger.info("Rate limiter cleaned up")
+    except Exception as e:
+        api_logger.error("Failed to cleanup rate limiter", error=str(e))
+
+    api_logger.info("CC-Orchestrator API server shutdown complete")
 
 
 def create_app() -> FastAPI:
@@ -83,23 +124,13 @@ def create_app() -> FastAPI:
         allow_headers=["Content-Type", "Authorization", "Accept"],
     )
 
-    # Add request ID and rate limiting middleware
-    @app.middleware("http")
-    async def add_request_headers(request: Request, call_next):
-        """Add request ID and rate limiting headers."""
-        # Generate a unique request ID
-        request_id = str(uuid.uuid4())
+    # Add custom middleware
+    app.add_middleware(RequestIDMiddleware)
+    app.add_middleware(LoggingMiddleware)
 
-        # Process the request
-        response = await call_next(request)
-
-        # Add headers to response
-        response.headers["X-Request-ID"] = request_id
-        response.headers["X-RateLimit-Limit"] = "1000"
-        response.headers["X-RateLimit-Remaining"] = "999"
-        response.headers["X-RateLimit-Reset"] = str(int(time()) + 3600)
-
-        return response
+    # Skip rate limiting during testing
+    if not os.getenv("TESTING", "false").lower() == "true":
+        app.add_middleware(RateLimitMiddleware, rate_limiter=rate_limiter)
 
     # Add exception handlers
     @app.exception_handler(CCOrchestratorAPIException)

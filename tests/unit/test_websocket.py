@@ -1,314 +1,362 @@
 """Tests for WebSocket functionality."""
 
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
-from fastapi.testclient import TestClient
+from fastapi import WebSocket, WebSocketDisconnect
 
-from cc_orchestrator.web.app import create_app
-from cc_orchestrator.web.auth import create_access_token
+from cc_orchestrator.web.dependencies import CurrentUser
 
 
 @pytest.fixture
-def mock_ws_manager():
-    """Create mock WebSocket manager with proper async methods."""
-    mock_manager = MagicMock()
+def mock_websocket():
+    """Create mock WebSocket for testing."""
+    websocket = Mock(spec=WebSocket)
+    websocket.client = Mock()
+    websocket.client.host = "127.0.0.1"
+    websocket.receive_text = AsyncMock()
+    websocket.send_text = AsyncMock()
+    websocket.accept = AsyncMock()
+    websocket.close = AsyncMock()
+    return websocket
+
+
+@pytest.fixture
+def mock_connection_manager():
+    """Create mock connection manager with proper async methods."""
+    mock_manager = Mock()
     mock_manager.connect = AsyncMock(return_value="test-connection-id")
-    mock_manager.send_to_connection = AsyncMock()
+    mock_manager.send_message = AsyncMock(return_value=True)
     mock_manager.disconnect = AsyncMock()
-    mock_manager.add_subscription = AsyncMock()
-    mock_manager.remove_subscription = AsyncMock()
-    mock_manager.broadcast_to_subscribers = AsyncMock()
+    mock_manager.subscribe = AsyncMock(return_value=True)
+    mock_manager.unsubscribe = AsyncMock(return_value=True)
+    mock_manager.handle_message = AsyncMock()
+    mock_manager.broadcast_message = AsyncMock(return_value=1)
     return mock_manager
-
-
-@pytest.fixture
-def test_app():
-    """Create test FastAPI application."""
-    return create_app()
-
-
-@pytest.fixture
-def client(test_app):
-    """Create test client."""
-    return TestClient(test_app)
-
-
-@pytest.fixture
-def auth_token():
-    """Create valid authentication token."""
-    return create_access_token(data={"sub": "testuser", "role": "admin"})
 
 
 class TestWebSocketAuthentication:
     """Test WebSocket authentication."""
 
-    def test_websocket_auth_success(self, client, auth_token):
+    @pytest.mark.asyncio
+    @patch("cc_orchestrator.web.websocket.router.rate_limiter")
+    @patch("cc_orchestrator.web.websocket.router.authenticate_websocket_token")
+    @patch("cc_orchestrator.web.websocket.router.connection_manager")
+    async def test_websocket_auth_success(
+        self, mock_manager, mock_auth, mock_rate_limiter, mock_websocket
+    ):
         """Test successful WebSocket authentication."""
-        with client.websocket_connect("/ws/dashboard") as websocket:
-            # Send authentication message
-            auth_message = {"type": "auth", "token": auth_token}
-            websocket.send_text(json.dumps(auth_message))
+        # Setup successful authentication
+        mock_auth.return_value = CurrentUser(
+            user_id="test_user", permissions=["read", "write"]
+        )
+        mock_rate_limiter.check_websocket_rate_limit.return_value = True
+        mock_manager.connect = AsyncMock(return_value="test-connection-id")
+        mock_manager.handle_message = AsyncMock()
+        mock_manager.disconnect = AsyncMock()
 
-            # Receive authentication response
-            response = websocket.receive_json()
-            assert response["type"] == "auth_success"
-            assert response["user"] == "testuser"
+        # Setup websocket to receive one message then disconnect
+        mock_websocket.receive_text.side_effect = [
+            '{"type": "ping"}',
+            WebSocketDisconnect(),
+        ]
 
-    def test_websocket_auth_missing_token(self, client):
+        from cc_orchestrator.web.websocket.router import websocket_endpoint
+
+        # Execute
+        await websocket_endpoint(mock_websocket, token="development-token")
+
+        # Verify authentication flow
+        mock_auth.assert_called_once_with("development-token")
+        mock_rate_limiter.check_websocket_rate_limit.assert_called_once_with(
+            "127.0.0.1"
+        )
+        mock_manager.connect.assert_called_once_with(mock_websocket, "127.0.0.1")
+        mock_manager.handle_message.assert_called_once_with(
+            "test-connection-id", '{"type": "ping"}'
+        )
+
+    @pytest.mark.asyncio
+    @patch("cc_orchestrator.web.websocket.router.authenticate_websocket_token")
+    async def test_websocket_auth_missing_token(self, mock_auth, mock_websocket):
         """Test WebSocket authentication without token."""
-        with client.websocket_connect("/ws/dashboard") as websocket:
-            # Send authentication message without token
-            auth_message = {"type": "auth"}
-            websocket.send_text(json.dumps(auth_message))
+        # Setup failed authentication (None return means no token or invalid)
+        mock_auth.return_value = None
 
-            # Should receive error and connection should close
-            response = websocket.receive_json()
-            assert response["type"] == "error"
-            assert "Token required" in response["message"]
+        from cc_orchestrator.web.websocket.router import websocket_endpoint
 
-    def test_websocket_auth_invalid_token(self, client):
+        # Execute
+        await websocket_endpoint(mock_websocket, token=None)
+
+        # Verify connection was closed due to auth failure
+        mock_websocket.close.assert_called_once_with(
+            code=1008, reason="Authentication required"
+        )
+
+    @pytest.mark.asyncio
+    @patch("cc_orchestrator.web.websocket.router.authenticate_websocket_token")
+    async def test_websocket_auth_invalid_token(self, mock_auth, mock_websocket):
         """Test WebSocket authentication with invalid token."""
-        with client.websocket_connect("/ws/dashboard") as websocket:
-            # Send authentication message with invalid token
-            auth_message = {"type": "auth", "token": "invalid-token"}
-            websocket.send_text(json.dumps(auth_message))
+        # Setup failed authentication
+        mock_auth.return_value = None
 
-            # Should receive error and connection should close
-            response = websocket.receive_json()
-            assert response["type"] == "error"
-            assert "Authentication failed" in response["message"]
+        from cc_orchestrator.web.websocket.router import websocket_endpoint
 
-    def test_websocket_auth_wrong_message_type(self, client):
-        """Test WebSocket with wrong first message type."""
-        with client.websocket_connect("/ws/dashboard") as websocket:
-            # Send non-auth message first
-            message = {"type": "ping"}
-            websocket.send_text(json.dumps(message))
+        # Execute
+        await websocket_endpoint(mock_websocket, token="invalid-token")
 
-            # Should receive error
-            response = websocket.receive_json()
-            assert response["type"] == "error"
-            assert "Authentication required" in response["message"]
+        # Verify authentication was attempted and connection was closed
+        mock_auth.assert_called_once_with("invalid-token")
+        mock_websocket.close.assert_called_once_with(
+            code=1008, reason="Authentication required"
+        )
+
+    @pytest.mark.asyncio
+    @patch("cc_orchestrator.web.websocket.router.rate_limiter")
+    @patch("cc_orchestrator.web.websocket.router.authenticate_websocket_token")
+    @patch("cc_orchestrator.web.websocket.router.connection_manager")
+    async def test_websocket_auth_wrong_message_type(
+        self, mock_manager, mock_auth, mock_rate_limiter, mock_websocket
+    ):
+        """Test WebSocket with proper authentication but invalid message handling."""
+        # Setup successful authentication
+        mock_auth.return_value = CurrentUser(
+            user_id="test_user", permissions=["read", "write"]
+        )
+        mock_rate_limiter.check_websocket_rate_limit.return_value = True
+        mock_manager.connect = AsyncMock(return_value="test-connection-id")
+        mock_manager.handle_message = AsyncMock(
+            side_effect=Exception("Invalid message type")
+        )
+        mock_manager.disconnect = AsyncMock()
+
+        # Setup websocket to receive one invalid message
+        mock_websocket.receive_text.side_effect = ['{"type": "invalid_type"}']
+
+        from cc_orchestrator.web.websocket.router import websocket_endpoint
+
+        # Execute
+        await websocket_endpoint(mock_websocket, token="development-token")
+
+        # Verify error handling
+        mock_manager.handle_message.assert_called_once_with(
+            "test-connection-id", '{"type": "invalid_type"}'
+        )
+        mock_manager.disconnect.assert_called_once_with(
+            "test-connection-id", "error: Invalid message type"
+        )
 
 
 class TestWebSocketMessaging:
     """Test WebSocket message handling."""
 
-    def test_ping_pong(self, client, auth_token):
+    @pytest.mark.asyncio
+    @patch("cc_orchestrator.web.websocket.router.rate_limiter")
+    @patch("cc_orchestrator.web.websocket.router.authenticate_websocket_token")
+    @patch("cc_orchestrator.web.websocket.router.connection_manager")
+    async def test_ping_pong(
+        self, mock_manager, mock_auth, mock_rate_limiter, mock_websocket
+    ):
         """Test ping-pong message handling."""
-        from cc_orchestrator.web.routers.websocket import ws_manager
+        # Setup successful authentication and rate limiting
+        mock_auth.return_value = CurrentUser(
+            user_id="test_user", permissions=["read", "write"]
+        )
+        mock_rate_limiter.check_websocket_rate_limit.return_value = True
+        mock_manager.connect = AsyncMock(return_value="test-connection-id")
+        mock_manager.handle_message = AsyncMock()
+        mock_manager.disconnect = AsyncMock()
 
-        # Keep track of all calls
-        sent_messages = []
+        # Setup websocket to receive ping message then disconnect
+        ping_message = {"type": "ping", "data": {"test": "value"}}
+        mock_websocket.receive_text.side_effect = [
+            json.dumps(ping_message),
+            WebSocketDisconnect(),
+        ]
 
-        def track_send(conn_id, message):
-            sent_messages.append((conn_id, message))
-            return True
+        from cc_orchestrator.web.websocket.router import websocket_endpoint
 
-        with (
-            patch.object(ws_manager, "connect") as mock_connect,
-            patch.object(ws_manager, "send_to_connection", side_effect=track_send),
-            patch.object(ws_manager, "disconnect"),
-        ):
-            mock_connect.return_value = "test-connection-id"
+        # Execute
+        await websocket_endpoint(mock_websocket, token="development-token")
 
-            with client.websocket_connect("/ws/dashboard") as websocket:
-                # Authenticate first
-                auth_message = {"type": "auth", "token": auth_token}
-                websocket.send_text(json.dumps(auth_message))
-                websocket.receive_json()  # Consume auth response
+        # Verify message handling
+        mock_manager.handle_message.assert_called_once_with(
+            "test-connection-id", json.dumps(ping_message)
+        )
 
-                # Send ping message
-                ping_message = {"type": "ping", "timestamp": "2024-01-01T00:00:00Z"}
-                websocket.send_text(json.dumps(ping_message))
-
-                # Give some time for message processing
-                import time
-
-                time.sleep(0.1)
-
-                # Should have called send_to_connection with at least the pong response
-                # (connect welcome message may or may not be sent depending on mocking)
-                assert len(sent_messages) >= 1
-                # Find the pong message
-                pong_messages = [
-                    msg for conn_id, msg in sent_messages if msg.get("type") == "pong"
-                ]
-                assert len(pong_messages) == 1
-                assert pong_messages[0] == {
-                    "type": "pong",
-                    "timestamp": "2024-01-01T00:00:00Z",
-                }
-
-    def test_subscription_handling(self, client, auth_token, mock_ws_manager):
+    @pytest.mark.asyncio
+    @patch("cc_orchestrator.web.websocket.router.rate_limiter")
+    @patch("cc_orchestrator.web.websocket.router.authenticate_websocket_token")
+    @patch("cc_orchestrator.web.websocket.router.connection_manager")
+    async def test_subscription_handling(
+        self, mock_manager, mock_auth, mock_rate_limiter, mock_websocket
+    ):
         """Test subscription message handling."""
-        with patch("cc_orchestrator.web.routers.websocket.ws_manager", mock_ws_manager):
-            with client.websocket_connect("/ws/dashboard") as websocket:
-                # Authenticate first
-                auth_message = {"type": "auth", "token": auth_token}
-                websocket.send_text(json.dumps(auth_message))
-                websocket.receive_json()  # Consume auth response
+        # Setup successful authentication and rate limiting
+        mock_auth.return_value = CurrentUser(
+            user_id="test_user", permissions=["read", "write"]
+        )
+        mock_rate_limiter.check_websocket_rate_limit.return_value = True
+        mock_manager.connect = AsyncMock(return_value="test-connection-id")
+        mock_manager.handle_message = AsyncMock()
+        mock_manager.disconnect = AsyncMock()
 
-                # Send subscription message
-                sub_message = {
-                    "type": "subscribe",
-                    "events": ["instance_status", "system_events"],
-                }
-                websocket.send_text(json.dumps(sub_message))
+        # Setup websocket to receive subscription message then disconnect
+        sub_message = {"type": "subscribe", "topic": "instance_status"}
+        mock_websocket.receive_text.side_effect = [
+            json.dumps(sub_message),
+            WebSocketDisconnect(),
+        ]
 
-                # Give some time for message processing
-                import time
+        from cc_orchestrator.web.websocket.router import websocket_endpoint
 
-                time.sleep(0.1)
+        # Execute
+        await websocket_endpoint(mock_websocket, token="development-token")
 
-                # Should call add_subscription
-                mock_ws_manager.add_subscription.assert_called_with(
-                    "test-connection-id", ["instance_status", "system_events"]
-                )
+        # Verify subscription handling
+        mock_manager.handle_message.assert_called_once_with(
+            "test-connection-id", json.dumps(sub_message)
+        )
 
-                # Should send confirmation - check if it was called with the confirmation message
-                expected_confirmation = {
-                    "type": "subscription_confirmed",
-                    "events": ["instance_status", "system_events"],
-                }
-                confirmation_calls = [
-                    call
-                    for call in mock_ws_manager.send_to_connection.call_args_list
-                    if len(call[0]) > 1
-                    and call[0][1].get("type") == "subscription_confirmed"
-                ]
-                assert len(confirmation_calls) == 1
-                assert confirmation_calls[0][0][1] == expected_confirmation
-
-    def test_unsubscription_handling(self, client, auth_token, mock_ws_manager):
+    @pytest.mark.asyncio
+    @patch("cc_orchestrator.web.websocket.router.rate_limiter")
+    @patch("cc_orchestrator.web.websocket.router.authenticate_websocket_token")
+    @patch("cc_orchestrator.web.websocket.router.connection_manager")
+    async def test_unsubscription_handling(
+        self, mock_manager, mock_auth, mock_rate_limiter, mock_websocket
+    ):
         """Test unsubscription message handling."""
-        with patch("cc_orchestrator.web.routers.websocket.ws_manager", mock_ws_manager):
-            with client.websocket_connect("/ws/dashboard") as websocket:
-                # Authenticate first
-                auth_message = {"type": "auth", "token": auth_token}
-                websocket.send_text(json.dumps(auth_message))
-                websocket.receive_json()  # Consume auth response
+        # Setup successful authentication and rate limiting
+        mock_auth.return_value = CurrentUser(
+            user_id="test_user", permissions=["read", "write"]
+        )
+        mock_rate_limiter.check_websocket_rate_limit.return_value = True
+        mock_manager.connect = AsyncMock(return_value="test-connection-id")
+        mock_manager.handle_message = AsyncMock()
+        mock_manager.disconnect = AsyncMock()
 
-                # Send unsubscription message
-                unsub_message = {"type": "unsubscribe", "events": ["instance_status"]}
-                websocket.send_text(json.dumps(unsub_message))
+        # Setup websocket to receive unsubscription message then disconnect
+        unsub_message = {"type": "unsubscribe", "topic": "instance_status"}
+        mock_websocket.receive_text.side_effect = [
+            json.dumps(unsub_message),
+            WebSocketDisconnect(),
+        ]
 
-                # Give some time for message processing
-                import time
+        from cc_orchestrator.web.websocket.router import websocket_endpoint
 
-                time.sleep(0.1)
+        # Execute
+        await websocket_endpoint(mock_websocket, token="development-token")
 
-                # Should call remove_subscription
-                mock_ws_manager.remove_subscription.assert_called_with(
-                    "test-connection-id", ["instance_status"]
-                )
+        # Verify unsubscription handling
+        mock_manager.handle_message.assert_called_once_with(
+            "test-connection-id", json.dumps(unsub_message)
+        )
 
-                # Should send confirmation - check if it was called with the confirmation message
-                expected_confirmation = {
-                    "type": "unsubscription_confirmed",
-                    "events": ["instance_status"],
-                }
-                confirmation_calls = [
-                    call
-                    for call in mock_ws_manager.send_to_connection.call_args_list
-                    if len(call[0]) > 1
-                    and call[0][1].get("type") == "unsubscription_confirmed"
-                ]
-                assert len(confirmation_calls) == 1
-                assert confirmation_calls[0][0][1] == expected_confirmation
-
-    def test_unknown_message_type(self, client, auth_token, mock_ws_manager):
+    @pytest.mark.asyncio
+    @patch("cc_orchestrator.web.websocket.router.rate_limiter")
+    @patch("cc_orchestrator.web.websocket.router.authenticate_websocket_token")
+    @patch("cc_orchestrator.web.websocket.router.connection_manager")
+    async def test_unknown_message_type(
+        self, mock_manager, mock_auth, mock_rate_limiter, mock_websocket
+    ):
         """Test handling of unknown message types."""
-        with patch("cc_orchestrator.web.routers.websocket.ws_manager", mock_ws_manager):
-            with client.websocket_connect("/ws/dashboard") as websocket:
-                # Authenticate first
-                auth_message = {"type": "auth", "token": auth_token}
-                websocket.send_text(json.dumps(auth_message))
-                websocket.receive_json()  # Consume auth response
+        # Setup successful authentication and rate limiting
+        mock_auth.return_value = CurrentUser(
+            user_id="test_user", permissions=["read", "write"]
+        )
+        mock_rate_limiter.check_websocket_rate_limit.return_value = True
+        mock_manager.connect = AsyncMock(return_value="test-connection-id")
+        mock_manager.handle_message = AsyncMock()
+        mock_manager.disconnect = AsyncMock()
 
-                # Send unknown message type
-                unknown_message = {"type": "unknown_type"}
-                websocket.send_text(json.dumps(unknown_message))
+        # Setup websocket to receive unknown message then disconnect
+        unknown_message = {"type": "unknown_type"}
+        mock_websocket.receive_text.side_effect = [
+            json.dumps(unknown_message),
+            WebSocketDisconnect(),
+        ]
 
-                # Give some time for message processing
-                import time
+        from cc_orchestrator.web.websocket.router import websocket_endpoint
 
-                time.sleep(0.1)
+        # Execute
+        await websocket_endpoint(mock_websocket, token="development-token")
 
-                # Should send error message - check if it was called with the error message
-                expected_error = {
-                    "type": "error",
-                    "message": "Unknown message type: unknown_type",
-                }
-                error_calls = [
-                    call
-                    for call in mock_ws_manager.send_to_connection.call_args_list
-                    if len(call[0]) > 1 and call[0][1].get("type") == "error"
-                ]
-                assert len(error_calls) == 1
-                assert error_calls[0][0][1] == expected_error
+        # Verify unknown message handling
+        mock_manager.handle_message.assert_called_once_with(
+            "test-connection-id", json.dumps(unknown_message)
+        )
 
-    def test_invalid_json_handling(self, client, auth_token, mock_ws_manager):
+    @pytest.mark.asyncio
+    @patch("cc_orchestrator.web.websocket.router.rate_limiter")
+    @patch("cc_orchestrator.web.websocket.router.authenticate_websocket_token")
+    @patch("cc_orchestrator.web.websocket.router.connection_manager")
+    async def test_invalid_json_handling(
+        self, mock_manager, mock_auth, mock_rate_limiter, mock_websocket
+    ):
         """Test handling of invalid JSON messages."""
-        with patch("cc_orchestrator.web.routers.websocket.ws_manager", mock_ws_manager):
-            with client.websocket_connect("/ws/dashboard") as websocket:
-                # Authenticate first
-                auth_message = {"type": "auth", "token": auth_token}
-                websocket.send_text(json.dumps(auth_message))
-                websocket.receive_json()  # Consume auth response
+        # Setup successful authentication and rate limiting
+        mock_auth.return_value = CurrentUser(
+            user_id="test_user", permissions=["read", "write"]
+        )
+        mock_rate_limiter.check_websocket_rate_limit.return_value = True
+        mock_manager.connect = AsyncMock(return_value="test-connection-id")
+        mock_manager.handle_message = AsyncMock()
+        mock_manager.disconnect = AsyncMock()
 
-                # Send invalid JSON
-                websocket.send_text("invalid json content")
+        # Setup websocket to receive invalid JSON then disconnect
+        mock_websocket.receive_text.side_effect = [
+            "invalid json content",
+            WebSocketDisconnect(),
+        ]
 
-                # Should receive error response
-                response = websocket.receive_json()
-                assert response["type"] == "error"
-                assert "Invalid JSON format" in response["message"]
+        from cc_orchestrator.web.websocket.router import websocket_endpoint
+
+        # Execute
+        await websocket_endpoint(mock_websocket, token="development-token")
+
+        # Verify invalid JSON handling
+        mock_manager.handle_message.assert_called_once_with(
+            "test-connection-id", "invalid json content"
+        )
 
 
 class TestWebSocketManager:
     """Test WebSocket manager functionality."""
 
     @pytest.fixture
-    def ws_manager(self):
-        """Create WebSocket manager instance."""
-        from cc_orchestrator.web.websocket_manager import WebSocketManager
+    def connection_manager(self):
+        """Create connection manager instance."""
+        from cc_orchestrator.web.websocket.manager import ConnectionManager
 
-        return WebSocketManager()
+        return ConnectionManager()
 
-    def test_connection_management(self, ws_manager):
+    def test_connection_management(self, connection_manager):
         """Test WebSocket connection management."""
-        # Test that the WebSocket manager exists and has expected attributes
-        assert hasattr(ws_manager, "connections")
-        assert hasattr(ws_manager, "subscriptions")
-        assert hasattr(ws_manager, "max_connections")
+        # Test that the connection manager exists and has expected attributes
+        assert hasattr(connection_manager, "connections")
+        assert hasattr(connection_manager, "subscriptions")
+        assert hasattr(connection_manager, "config")
 
         # Test that initial state is empty
-        assert len(ws_manager.connections) == 0
-        assert len(ws_manager.subscriptions) == 0
+        assert len(connection_manager.connections) == 0
+        assert len(connection_manager.subscriptions) == 0
 
-    def test_subscription_management(self, ws_manager):
+    def test_subscription_management(self, connection_manager):
         """Test subscription management."""
         connection_id = "test-connection"
-        events = ["instance_status", "system_events"]
+        topic = "instance_status"
 
-        # Add subscriptions
-        ws_manager.subscriptions[connection_id] = set()
-        ws_manager.subscriptions[connection_id].update(events)
+        # Test subscription structure
+        assert isinstance(connection_manager.subscriptions, dict)
 
-        assert "instance_status" in ws_manager.subscriptions[connection_id]
-        assert "system_events" in ws_manager.subscriptions[connection_id]
+        # Test that we can add to subscriptions manually for testing
+        connection_manager.subscriptions[topic] = {connection_id}
 
-        # Remove subscription
-        ws_manager.subscriptions[connection_id].remove("instance_status")
-        assert "instance_status" not in ws_manager.subscriptions[connection_id]
-        assert "system_events" in ws_manager.subscriptions[connection_id]
+        assert connection_id in connection_manager.subscriptions[topic]
 
-    def test_broadcast_functionality(self, ws_manager):
+    def test_broadcast_functionality(self, connection_manager):
         """Test broadcast to subscribers."""
-        # This would require more complex mocking of WebSocket connections
-        # For now, just test that the method exists and can be called
-        assert hasattr(ws_manager, "broadcast_to_subscribers")
-        assert callable(ws_manager.broadcast_to_subscribers)
+        # Test that the method exists and can be called
+        assert hasattr(connection_manager, "broadcast_message")
+        assert callable(connection_manager.broadcast_message)

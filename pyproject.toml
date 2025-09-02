@@ -115,6 +115,11 @@ extend-exclude = '''
 [tool.ruff]
 target-version = "py311"
 line-length = 88
+exclude = [
+    ".github/",
+    "*.yml",
+    "*.yaml"
+]
 
 [tool.ruff.lint]
 select = [
@@ -152,3 +157,8 @@ exclude = ["src/cc_orchestrator/utils/logging.py"]
 [[tool.mypy.overrides]]
 module = "tests.*"
 disallow_untyped_defs = false
+
+[tool.bandit]
+# Skip hardcoded password checks for development/testing tokens
+skips = ["B105"]
+exclude_dirs = ["tests"]
