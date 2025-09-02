@@ -1,7 +1,7 @@
 """Focused tests for V1 API router to improve coverage."""
 
 import os
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -135,27 +135,44 @@ def client(mock_db_session, mock_crud):
             "JWT_SECRET_KEY": "test-secret-key-for-testing",
             "ENABLE_DEMO_USERS": "true",
             "DEBUG": "true",
+            "TESTING": "true",  # Skip rate limiting during tests
         },
     ):
-        # Mock database manager to avoid SQLite table creation issues
-        with patch("cc_orchestrator.database.connection.DatabaseManager"):
-            from cc_orchestrator.web.app import create_app
-            from cc_orchestrator.web.dependencies import get_crud, get_db_session
+        # Mock the rate limiter module at the app level to avoid lifespan issues
+        with patch("cc_orchestrator.web.app.rate_limiter") as mock_rate_limiter:
+            # Set up async methods on the rate limiter
+            mock_rate_limiter.initialize = AsyncMock()
+            mock_rate_limiter.cleanup = AsyncMock()
 
-            app = create_app()
+            # Mock database manager to avoid SQLite table creation issues
+            with patch(
+                "cc_orchestrator.database.connection.DatabaseManager"
+            ) as mock_db_manager_class:
+                # Create a mock database manager instance
+                mock_db_manager = Mock()
 
-            # Override FastAPI dependencies at the app level - this is the correct way!
-            async def override_get_crud():
-                return mock_crud
+                # Make close() return a simple coroutine that can be awaited
+                mock_db_manager.close = AsyncMock()
+                mock_db_manager.create_tables = Mock()
+                mock_db_manager_class.return_value = mock_db_manager
 
-            async def override_get_db_session():
-                yield mock_db_session
+                from cc_orchestrator.web.app import create_app
+                from cc_orchestrator.web.dependencies import get_crud, get_db_session
 
-            app.dependency_overrides[get_crud] = override_get_crud
-            app.dependency_overrides[get_db_session] = override_get_db_session
+                app = create_app()
 
-            with TestClient(app) as client:
-                yield client
+                # Override FastAPI dependencies at the app level - this is the correct way!
+                async def override_get_crud():
+                    return mock_crud
+
+                async def override_get_db_session():
+                    yield mock_db_session
+
+                app.dependency_overrides[get_crud] = override_get_crud
+                app.dependency_overrides[get_db_session] = override_get_db_session
+
+                with TestClient(app) as client:
+                    yield client
 
 
 @pytest.fixture
@@ -189,11 +206,8 @@ class TestInstanceListEndpoint:
     ):
         """Test successful instances retrieval."""
 
-        # Override method for this test
-        async def list_instances_override(offset=0, limit=20, filters=None):
-            return ([], 0)
-
-        mock_crud.list_instances = list_instances_override
+        # Override method for this test - use AsyncMock for proper async handling
+        mock_crud.list_instances = AsyncMock(return_value=([], 0))
 
         response = client.get("/api/v1/instances/", headers=auth_headers)
         assert response.status_code == 200
@@ -216,11 +230,8 @@ class TestInstanceListEndpoint:
     ):
         """Test instances retrieval with status filter."""
 
-        # Override method for this test
-        async def list_instances_override(offset=0, limit=20, filters=None):
-            return ([], 0)
-
-        mock_crud.list_instances = list_instances_override
+        # Override method for this test - use AsyncMock for proper async handling
+        mock_crud.list_instances = AsyncMock(return_value=([], 0))
 
         response = client.get("/api/v1/instances/?status=running", headers=auth_headers)
         assert response.status_code == 200
@@ -244,10 +255,7 @@ class TestInstanceListEndpoint:
         """Test instances retrieval with pagination."""
 
         # Override method for this test to match the expected pagination values
-        async def list_instances_override(offset=0, limit=20, filters=None):
-            return ([], 0)
-
-        mock_crud.list_instances = list_instances_override
+        mock_crud.list_instances = AsyncMock(return_value=([], 0))
 
         # The dependency override is already set up in the client fixture
         # We need to modify the mock pagination directly
@@ -288,14 +296,10 @@ class TestInstanceCreateEndpoint:
         )
 
         # Override the methods to return specific values for this test
-        async def get_instance_by_issue_id_override(issue_id):
-            return None  # No existing instance
-
-        async def create_instance_override(instance_data):
-            return created_instance
-
-        mock_crud.get_instance_by_issue_id = get_instance_by_issue_id_override
-        mock_crud.create_instance = create_instance_override
+        mock_crud.get_instance_by_issue_id = AsyncMock(
+            return_value=None
+        )  # No existing instance
+        mock_crud.create_instance = AsyncMock(return_value=created_instance)
 
         data = {
             "issue_id": "456",
@@ -328,10 +332,7 @@ class TestInstanceCreateEndpoint:
         )
 
         # Override method to return existing instance
-        async def get_instance_by_issue_id_override(issue_id):
-            return existing_instance
-
-        mock_crud.get_instance_by_issue_id = get_instance_by_issue_id_override
+        mock_crud.get_instance_by_issue_id = AsyncMock(return_value=existing_instance)
 
         data = {
             "issue_id": "123",
@@ -361,10 +362,7 @@ class TestInstanceDetailEndpoint:
         )
 
         # Directly override the method to return our instance
-        async def get_instance_override(instance_id):
-            return mock_instance
-
-        mock_crud.get_instance = get_instance_override
+        mock_crud.get_instance = AsyncMock(return_value=mock_instance)
 
         response = client.get("/api/v1/instances/1", headers=auth_headers)
         assert response.status_code == 200
@@ -386,10 +384,7 @@ class TestInstanceDetailEndpoint:
         """Test instance retrieval when not found."""
 
         # Override to return None (not found)
-        async def get_instance_override(instance_id):
-            return None
-
-        mock_crud.get_instance = get_instance_override
+        mock_crud.get_instance = AsyncMock(return_value=None)
 
         response = client.get("/api/v1/instances/999", headers=auth_headers)
         assert response.status_code == 404
@@ -406,10 +401,7 @@ class TestInstanceDetailEndpoint:
         """Test instance retrieval with database error."""
 
         # Override to raise exception
-        async def get_instance_override(instance_id):
-            raise Exception("Database error")
-
-        mock_crud.get_instance = get_instance_override
+        mock_crud.get_instance = AsyncMock(side_effect=Exception("Database error"))
 
         response = client.get("/api/v1/instances/1", headers=auth_headers)
         assert response.status_code == 404  # V1 API converts exceptions to 404
@@ -441,14 +433,8 @@ class TestInstanceUpdateEndpoint:
         )
 
         # Override methods for this test
-        async def get_instance_override(instance_id):
-            return mock_existing
-
-        async def update_instance_override(instance_id, update_data):
-            return mock_updated
-
-        mock_crud.get_instance = get_instance_override
-        mock_crud.update_instance = update_instance_override
+        mock_crud.get_instance = AsyncMock(return_value=mock_existing)
+        mock_crud.update_instance = AsyncMock(return_value=mock_updated)
 
         data = {"status": "stopped"}
         response = client.put("/api/v1/instances/1", json=data, headers=auth_headers)
@@ -470,10 +456,7 @@ class TestInstanceUpdateEndpoint:
         """Test instance update when not found."""
 
         # Override to return None (not found)
-        async def get_instance_override(instance_id):
-            return None
-
-        mock_crud.get_instance = get_instance_override
+        mock_crud.get_instance = AsyncMock(return_value=None)
 
         data = {"status": "stopped"}
         response = client.put("/api/v1/instances/999", json=data, headers=auth_headers)
@@ -512,16 +495,14 @@ class TestInstanceDeleteEndpoint:
         delete_called = False
 
         # Override methods for this test
-        async def get_instance_override(instance_id):
-            return mock_instance
+        mock_crud.get_instance = AsyncMock(return_value=mock_instance)
 
-        async def delete_instance_override(instance_id):
+        def delete_side_effect(instance_id):
             nonlocal delete_called
             delete_called = True
             return True
 
-        mock_crud.get_instance = get_instance_override
-        mock_crud.delete_instance = delete_instance_override
+        mock_crud.delete_instance = AsyncMock(side_effect=delete_side_effect)
 
         response = client.delete("/api/v1/instances/1", headers=auth_headers)
         assert response.status_code == 200  # V1 returns 200 with success message
@@ -544,10 +525,7 @@ class TestInstanceDeleteEndpoint:
         """Test instance deletion when not found."""
 
         # Override to return None (not found)
-        async def get_instance_override(instance_id):
-            return None
-
-        mock_crud.get_instance = get_instance_override
+        mock_crud.get_instance = AsyncMock(return_value=None)
 
         response = client.delete("/api/v1/instances/999", headers=auth_headers)
         assert response.status_code == 404
@@ -577,14 +555,8 @@ class TestInstanceActionEndpoints:
         )
 
         # Override methods for this test
-        async def get_instance_override(instance_id):
-            return mock_instance
-
-        async def update_instance_override(instance_id, update_data):
-            return mock_updated
-
-        mock_crud.get_instance = get_instance_override
-        mock_crud.update_instance = update_instance_override
+        mock_crud.get_instance = AsyncMock(return_value=mock_instance)
+        mock_crud.update_instance = AsyncMock(return_value=mock_updated)
 
         response = client.post("/api/v1/instances/1/start", headers=auth_headers)
         assert response.status_code == 200
@@ -614,14 +586,8 @@ class TestInstanceActionEndpoints:
         )
 
         # Override methods for this test
-        async def get_instance_override(instance_id):
-            return mock_instance
-
-        async def update_instance_override(instance_id, update_data):
-            return mock_updated
-
-        mock_crud.get_instance = get_instance_override
-        mock_crud.update_instance = update_instance_override
+        mock_crud.get_instance = AsyncMock(return_value=mock_instance)
+        mock_crud.update_instance = AsyncMock(return_value=mock_updated)
 
         response = client.post("/api/v1/instances/1/stop", headers=auth_headers)
         assert response.status_code == 200
@@ -648,10 +614,7 @@ class TestInstanceActionEndpoints:
         mock_instance.status = InstanceStatus.RUNNING
 
         # Override method for this test
-        async def get_instance_override(instance_id):
-            return mock_instance
-
-        mock_crud.get_instance = get_instance_override
+        mock_crud.get_instance = AsyncMock(return_value=mock_instance)
 
         response = client.post("/api/v1/instances/1/start", headers=auth_headers)
         assert response.status_code == 400  # Bad request - already running
@@ -674,10 +637,7 @@ class TestInstanceActionEndpoints:
         mock_instance.status = InstanceStatus.STOPPED
 
         # Override method for this test
-        async def get_instance_override(instance_id):
-            return mock_instance
-
-        mock_crud.get_instance = get_instance_override
+        mock_crud.get_instance = AsyncMock(return_value=mock_instance)
 
         response = client.post("/api/v1/instances/1/stop", headers=auth_headers)
         assert response.status_code == 400  # Bad request - already stopped
@@ -708,10 +668,7 @@ class TestInstanceStatusEndpoint:
         )
 
         # Override method for this test
-        async def get_instance_override(instance_id):
-            return mock_instance
-
-        mock_crud.get_instance = get_instance_override
+        mock_crud.get_instance = AsyncMock(return_value=mock_instance)
 
         response = client.get("/api/v1/instances/1/status", headers=auth_headers)
         assert response.status_code == 200
@@ -735,14 +692,8 @@ class TestInstanceStatusEndpoint:
         mock_instance = mock_crud._create_mock_instance(id=1)
 
         # Override methods for this test
-        async def get_instance_override(instance_id):
-            return mock_instance
-
-        async def list_tasks_override(offset=0, limit=20, filters=None):
-            return ([], 0)
-
-        mock_crud.get_instance = get_instance_override
-        mock_crud.list_tasks = list_tasks_override
+        mock_crud.get_instance = AsyncMock(return_value=mock_instance)
+        mock_crud.list_tasks = AsyncMock(return_value=([], 0))
 
         response = client.get("/api/v1/instances/1/tasks", headers=auth_headers)
         assert response.status_code == 200
@@ -765,10 +716,7 @@ class TestInstanceStatusEndpoint:
         """Test instance tasks when instance not found."""
 
         # Override to return None (not found)
-        async def get_instance_override(instance_id):
-            return None
-
-        mock_crud.get_instance = get_instance_override
+        mock_crud.get_instance = AsyncMock(return_value=None)
 
         response = client.get("/api/v1/instances/999/tasks", headers=auth_headers)
         assert response.status_code == 404
@@ -789,10 +737,9 @@ class TestErrorHandling:
         """Test database error handling."""
 
         # Override method to raise exception
-        async def list_instances_override(offset=0, limit=20, filters=None):
-            raise Exception("Database connection error")
-
-        mock_crud.list_instances = list_instances_override
+        mock_crud.list_instances = AsyncMock(
+            side_effect=Exception("Database connection error")
+        )
 
         response = client.get("/api/v1/instances/", headers=auth_headers)
         # The V1 API has error handling decorators that catch exceptions
@@ -822,11 +769,8 @@ class TestErrorHandling:
     ):
         """Test that endpoints work under normal load."""
 
-        # Override method for this test
-        async def list_instances_override(offset=0, limit=20, filters=None):
-            return ([], 0)
-
-        mock_crud.list_instances = list_instances_override
+        # Override method for this test - use AsyncMock for proper async handling
+        mock_crud.list_instances = AsyncMock(return_value=([], 0))
 
         # Make several requests
         for _ in range(3):

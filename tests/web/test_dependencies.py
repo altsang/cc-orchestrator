@@ -400,16 +400,48 @@ class TestAuthenticationDependencies:
         assert user.permissions == ["read", "write", "admin"]
 
     @pytest.mark.asyncio
-    async def test_get_current_user(self):
-        """Test get_current_user dependency."""
+    async def test_get_current_user_with_dev_token(self):
+        """Test get_current_user dependency with development token."""
         mock_request = Mock(spec=Request)
+        mock_request.headers = {"X-Dev-Token": "development-token"}
+        mock_request.client = Mock()
+        mock_request.client.host = "127.0.0.1"
 
         user = await get_current_user(mock_request)
 
         assert isinstance(user, CurrentUser)
-        assert user.user_id == "default"
+        assert user.user_id == "dev_user"
         assert "read" in user.permissions
         assert "write" in user.permissions
+
+    @pytest.mark.asyncio
+    async def test_get_current_user_with_bearer_token(self):
+        """Test get_current_user dependency with Bearer token."""
+        mock_request = Mock(spec=Request)
+        mock_request.headers = {"Authorization": "Bearer valid-jwt-token"}
+        mock_request.client = Mock()
+        mock_request.client.host = "127.0.0.1"
+
+        user = await get_current_user(mock_request)
+
+        assert isinstance(user, CurrentUser)
+        assert user.user_id == "authenticated_user"
+        assert "read" in user.permissions
+        assert "write" in user.permissions
+
+    @pytest.mark.asyncio
+    async def test_get_current_user_no_auth(self):
+        """Test get_current_user dependency without authentication."""
+        mock_request = Mock(spec=Request)
+        mock_request.headers = {}
+        mock_request.client = Mock()
+        mock_request.client.host = "127.0.0.1"
+
+        with pytest.raises(HTTPException) as exc_info:
+            await get_current_user(mock_request)
+
+        assert exc_info.value.status_code == 401
+        assert "Authentication required" in exc_info.value.detail
 
     @pytest.mark.asyncio
     async def test_require_permission_success(self):

@@ -130,6 +130,24 @@ def start(
                 else:
                     # Instance exists but not running, start it
                     success = await existing_instance.start()
+
+                    # Sync instance state to database
+                    try:
+                        await orchestrator.sync_instance_state(issue_id)
+                        logger.info(
+                            "Existing instance state synced to database",
+                            instance_id=issue_id,
+                        )
+                    except Exception as e:
+                        logger.error(
+                            "Failed to sync existing instance state to database",
+                            instance_id=issue_id,
+                            error=str(e),
+                        )
+                        click.echo(
+                            "Failed to sync instance state to database", err=True
+                        )
+
                     if success:
                         info = existing_instance.get_info()
                         if output_json:
@@ -169,6 +187,25 @@ def start(
             # Start the instance
             success = await instance.start()
 
+            # Sync instance state to database
+            try:
+                await orchestrator.sync_instance_state(issue_id)
+                logger.info("Instance state synced to database", instance_id=issue_id)
+            except Exception as e:
+                logger.error(
+                    "Failed to sync instance state to database",
+                    instance_id=issue_id,
+                    error=str(e),
+                )
+                click.echo("Failed to sync instance state to database", err=True)
+                click.echo(
+                    "ERROR: Instance started but will NOT survive system restart!",
+                    err=True,
+                )
+                click.echo(
+                    "This is a critical issue - contact system administrator", err=True
+                )
+
             if success:
                 info = instance.get_info()
                 if output_json:
@@ -181,6 +218,21 @@ def start(
                     click.echo(f"  Workspace: {info['workspace_path']}")
                     click.echo(f"  Branch: {info['branch_name']}")
                     click.echo(f"  Tmux Session: {info['tmux_session']}")
+
+                # TODO: Register instance with health monitor
+                try:
+                    # Health monitor registration would go here
+                    pass
+                except Exception as e:
+                    logger.error(
+                        "Failed to register instance with health monitor",
+                        instance_id=issue_id,
+                        error=str(e),
+                    )
+                    click.echo(
+                        "Failed to register instance with health monitor", err=True
+                    )
+
             else:
                 message = f"Failed to start instance for issue {issue_id}"
                 if output_json:
@@ -241,6 +293,19 @@ def stop(issue_id: str, force: bool, timeout: int, output_json: bool) -> None:
             # Stop the instance
             success = await instance.stop()
 
+            # Sync instance state to database
+            try:
+                await orchestrator.sync_instance_state(issue_id)
+                logger.info(
+                    "Instance stop state synced to database", instance_id=issue_id
+                )
+            except Exception as e:
+                logger.error(
+                    "Failed to sync instance stop state to database",
+                    instance_id=issue_id,
+                    error=str(e),
+                )
+
             if success:
                 if output_json:
                     click.echo(json.dumps({"status": "stopped", "issue_id": issue_id}))
@@ -277,11 +342,14 @@ def list(output_json: bool, running_only: bool) -> None:
             await orchestrator.initialize()
 
             instances = orchestrator.list_instances()
+            logger.info("Retrieved instances from orchestrator", count=len(instances))
 
             if running_only:
                 instances = [i for i in instances if i.is_running()]
+                logger.info("Filtered for running instances", count=len(instances))
 
             if not instances:
+                logger.info("No instances to display")
                 if output_json:
                     click.echo(json.dumps({"instances": [], "total": 0}))
                 else:

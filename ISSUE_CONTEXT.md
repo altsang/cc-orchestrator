@@ -180,3 +180,108 @@ Focus: Implement hierarchical configuration management with validation, file gen
 - Fast queries for instance status and task assignment
 - Efficient filtering and sorting for dashboard views
 - Proper indexing for commonly accessed data
+
+# Issue #59: Fix Instance Persistence - Complete Integration Implementation (REOPENED)
+See: https://github.com/altsang/cc-orchestrator/issues/59
+
+Focus: 🚨 CRITICAL REGRESSION - Database persistence is completely broken despite previous "completion". Instance management fails with database sync errors.
+
+## Current Status
+- **Issue**: #59 - Fix Instance Persistence - Complete Integration Implementation
+- **Status**: 🚨 **REOPENED** (Critical regression - database persistence still broken)
+- **Branch**: feature/issue-59-database-persistence-fix
+- **Worktree**: ~/workspace/cc-orchestrator-issue-59-fix
+- **Priority**: CRITICAL (Phase 2 completely blocked)
+- **Labels**: feature, phase-2, priority-critical, integration-debt, regression
+
+## 🚨 CRITICAL PROBLEM DISCOVERED IN TESTING
+
+### **Actual Error Output**
+```bash
+cc-orchestrator instances start 100
+# Output:
+Failed to sync instance state to database
+ERROR: Instance started but will NOT survive system restart!
+This is a critical issue - contact system administrator
+Successfully started Claude instance for issue 100
+Failed to register instance with health monitor
+Process no longer exists for database instance, marking as stopped
+```
+
+### **Persistence Test Failure**
+```bash
+cc-orchestrator instances list
+# Output: No active instances found.
+```
+
+### **Root Cause Analysis**
+Despite Issue #59 being marked "completed" and PR #61 being merged, the database integration was never properly implemented. The Orchestrator class is still failing to:
+1. Sync instance state to database
+2. Register instances with health monitor
+3. Persist instances across CLI command invocations
+
+## Technical Requirements (Issue #59 - CRITICAL FIX)
+
+### **CRITICAL FIXES REQUIRED**
+1. **Database Connection Implementation** (CRITICAL)
+   - Fix Orchestrator.initialize() to properly connect to database
+   - Implement proper database session management
+   - Replace memory-only storage with database persistence
+
+2. **Instance State Synchronization** (CRITICAL)
+   - Fix "Failed to sync instance state to database" error
+   - Implement proper InstanceCRUD integration in Orchestrator
+   - Ensure instances are saved to database on creation
+
+3. **Health Monitor Integration** (HIGH PRIORITY)
+   - Fix "Failed to register instance with health monitor" error
+   - Implement proper process tracking in database
+   - Ensure health status is properly maintained
+
+4. **Cross-Session Persistence** (CRITICAL)
+   - Ensure instances persist across separate CLI command invocations
+   - Load existing instances from database on Orchestrator initialization
+   - Test complete lifecycle: start → list → stop → list
+
+## Acceptance Criteria (Issue #59) - CRITICAL TESTS
+- [ ] `cc-orchestrator instances start 999` succeeds without database errors
+- [ ] `cc-orchestrator instances list` shows created instances (NOT "No active instances found")
+- [ ] Instances persist across separate CLI command invocations
+- [ ] Health monitor registration works without errors
+- [ ] Instance stop/start lifecycle works correctly
+
+## MANDATORY Testing Requirements
+```bash
+# CRITICAL TEST - Must work after fix:
+cc-orchestrator instances start 999
+cc-orchestrator instances list    # Must show instance 999
+cc-orchestrator instances stop 999
+cc-orchestrator instances list    # Must show no instances
+
+# Cross-session persistence test:
+cc-orchestrator instances start 888
+cc-orchestrator instances start 777
+cc-orchestrator instances list    # Must show both instances
+# Exit and restart CLI
+cc-orchestrator instances list    # Must still show both instances
+```
+
+## Current State (Issue #59)
+🚨 **CRITICAL REGRESSION** - Ready for immediate remediation:
+- Git worktree created at ~/workspace/cc-orchestrator-issue-59-fix
+- Tmux session ready: cc-orchestrator-issue-59-fix
+- Critical database persistence failure confirmed during testing
+- Previous "completion" was invalid - core functionality is broken
+
+## Key Files Requiring Implementation
+- `src/cc_orchestrator/core/orchestrator.py` - Database integration missing
+- `src/cc_orchestrator/cli/instances.py` - Instance persistence broken
+- Database connection and session management code
+- Health monitoring integration
+
+## Worker 1 Assignment
+**Priority**: CRITICAL - This blocks all Phase 2 functionality
+**Task**: Implement the database persistence that was supposed to be completed previously
+**Environment**: Ready for immediate development work
+
+This issue represents a **critical regression** where supposedly completed functionality is completely broken and unusable.
