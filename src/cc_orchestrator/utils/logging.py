@@ -46,6 +46,7 @@ class LogContext(str, Enum):
     INTEGRATION = "integration"
     DATABASE = "database"
     PROCESS = "process"
+    HEALTH = "health"
 
 
 class CCOrchestratorException(Exception):

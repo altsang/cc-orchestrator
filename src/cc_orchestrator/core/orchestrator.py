@@ -4,6 +4,7 @@ from typing import Any
 
 from ..utils.logging import LogContext, get_logger
 from ..utils.process import cleanup_process_manager
+from .health_monitor import cleanup_health_monitor, get_health_monitor
 from .instance import ClaudeInstance
 
 logger = get_logger(__name__, LogContext.ORCHESTRATOR)
@@ -21,12 +22,18 @@ class Orchestrator:
         self.config_path = config_path
         self.instances: dict[str, ClaudeInstance] = {}
         self._initialized = False
+        self.health_monitor = get_health_monitor()
 
     async def initialize(self) -> None:
         """Initialize the orchestrator and load configuration."""
         # TODO: Load configuration
         # TODO: Initialize database connection
         # TODO: Set up logging
+
+        # Start health monitoring
+        logger.info("Starting health monitoring")
+        await self.health_monitor.start()
+
         self._initialized = True
 
     def get_instance(self, issue_id: str) -> ClaudeInstance | None:
@@ -85,12 +92,16 @@ class Orchestrator:
         """Clean up all instances and resources."""
         logger.info("Cleaning up orchestrator", instance_count=len(self.instances))
 
+        # Stop health monitoring first
+        await self.health_monitor.stop()
+
         # Clean up all instances
         for instance in self.instances.values():
             await instance.cleanup()
         self.instances.clear()
 
-        # Clean up the global process manager
+        # Clean up global managers
         await cleanup_process_manager()
+        await cleanup_health_monitor()
 
         logger.info("Orchestrator cleanup completed")
