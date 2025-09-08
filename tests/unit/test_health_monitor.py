@@ -1,7 +1,7 @@
 """Tests for health monitoring functionality."""
 
 import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -158,26 +158,22 @@ class TestHealthMonitor:
         assert health_monitor.monitoring_task.done()
 
     @pytest.mark.asyncio
-    async def test_check_instance_health_no_instance(self, health_monitor):
-        """Test health check for non-existent instance."""
-        with patch("src.cc_orchestrator.core.health_monitor.get_crud") as mock_get_crud:
-            mock_crud = AsyncMock()
-            mock_crud.get_instance_by_issue_id.return_value = None
-            mock_get_crud.return_value = mock_crud
+    async def test_check_instance_health_no_process(self, health_monitor):
+        """Test health check for instance with no running process."""
+        with patch.object(
+            health_monitor.process_manager, "get_process_info"
+        ) as mock_get_process:
+            mock_get_process.return_value = None  # No process running
 
             result = await health_monitor.check_instance_health("nonexistent")
 
             assert result["overall_status"] == HealthStatus.CRITICAL
-            assert "not found" in result["error"]
+            assert result["checks"]["process_running"] is False
+            assert result["checks"]["process_status"] == "not_found"
 
     @pytest.mark.asyncio
     async def test_check_instance_health_running_process(self, health_monitor):
         """Test health check for instance with running process."""
-        # Mock instance
-        mock_instance = MagicMock()
-        mock_instance.tmux_session = "test-session"
-        mock_instance.workspace_path = "/test/path"
-
         # Mock process info
         mock_process_info = ProcessInfo(
             pid=1234,
@@ -190,40 +186,24 @@ class TestHealthMonitor:
             memory_mb=512.0,
         )
 
-        with patch("src.cc_orchestrator.core.health_monitor.get_crud") as mock_get_crud:
-            mock_crud = AsyncMock()
-            mock_crud.get_instance_by_issue_id.return_value = mock_instance
-            mock_get_crud.return_value = mock_crud
+        with patch.object(
+            health_monitor.process_manager, "get_process_info"
+        ) as mock_get_process:
+            mock_get_process.return_value = mock_process_info
 
-            with patch.object(
-                health_monitor.process_manager, "get_process_info"
-            ) as mock_get_process:
-                mock_get_process.return_value = mock_process_info
+            result = await health_monitor.check_instance_health("test-instance")
 
-                with patch.object(health_monitor, "_check_tmux_session") as mock_tmux:
-                    mock_tmux.return_value = True
-
-                    with patch.object(
-                        health_monitor, "_check_workspace_accessible"
-                    ) as mock_workspace:
-                        mock_workspace.return_value = True
-
-                        result = await health_monitor.check_instance_health(
-                            "test-instance"
-                        )
-
-                        assert result["overall_status"] == HealthStatus.HEALTHY
-                        assert result["checks"]["process_running"] is True
-                        assert result["checks"]["cpu_healthy"] is True
-                        assert result["checks"]["memory_healthy"] is True
+            assert result["overall_status"] == HealthStatus.HEALTHY
+            assert result["checks"]["process_running"] is True
+            assert result["checks"]["cpu_healthy"] is True
+            assert result["checks"]["memory_healthy"] is True
+            # Tmux and workspace checks should be None since they're skipped in current implementation
+            assert result["checks"]["tmux_session_active"] is None
+            assert result["checks"]["workspace_accessible"] is None
 
     @pytest.mark.asyncio
     async def test_check_instance_health_high_cpu(self, health_monitor):
         """Test health check for instance with high CPU usage."""
-        mock_instance = MagicMock()
-        mock_instance.tmux_session = None
-        mock_instance.workspace_path = None
-
         # Mock process info with high CPU
         mock_process_info = ProcessInfo(
             pid=1234,
@@ -236,51 +216,40 @@ class TestHealthMonitor:
             memory_mb=512.0,
         )
 
-        with patch("src.cc_orchestrator.core.health_monitor.get_crud") as mock_get_crud:
-            mock_crud = AsyncMock()
-            mock_crud.get_instance_by_issue_id.return_value = mock_instance
-            mock_get_crud.return_value = mock_crud
+        with patch.object(
+            health_monitor.process_manager, "get_process_info"
+        ) as mock_get_process:
+            mock_get_process.return_value = mock_process_info
 
-            with patch.object(
-                health_monitor.process_manager, "get_process_info"
-            ) as mock_get_process:
-                mock_get_process.return_value = mock_process_info
+            result = await health_monitor.check_instance_health("test-instance")
 
-                result = await health_monitor.check_instance_health("test-instance")
-
-                assert result["overall_status"] == HealthStatus.CRITICAL
-                assert result["checks"]["cpu_healthy"] is False
+            assert result["overall_status"] == HealthStatus.CRITICAL
+            assert result["checks"]["cpu_healthy"] is False
 
     @pytest.mark.asyncio
     async def test_check_instance_health_not_running(self, health_monitor):
         """Test health check for instance with stopped process."""
-        mock_instance = MagicMock()
-        mock_instance.tmux_session = None
-        mock_instance.workspace_path = None
+        with patch.object(
+            health_monitor.process_manager, "get_process_info"
+        ) as mock_get_process:
+            mock_get_process.return_value = None  # No process info = not running
 
-        with patch("src.cc_orchestrator.core.health_monitor.get_crud") as mock_get_crud:
-            mock_crud = AsyncMock()
-            mock_crud.get_instance_by_issue_id.return_value = mock_instance
-            mock_get_crud.return_value = mock_crud
+            result = await health_monitor.check_instance_health("test-instance")
 
-            with patch.object(
-                health_monitor.process_manager, "get_process_info"
-            ) as mock_get_process:
-                mock_get_process.return_value = None  # No process info = not running
-
-                result = await health_monitor.check_instance_health("test-instance")
-
-                assert result["overall_status"] == HealthStatus.CRITICAL
-                assert result["checks"]["process_running"] is False
+            assert result["overall_status"] == HealthStatus.CRITICAL
+            assert result["checks"]["process_running"] is False
 
     @pytest.mark.asyncio
     async def test_perform_recovery_max_attempts_exceeded(self, health_monitor):
         """Test recovery when max attempts are exceeded."""
+        import time
+
+        current_time = time.time()
         health_monitor.restart_manager.restart_attempts["test-instance"] = [
-            1,
-            2,
-            3,
-        ]  # Max attempts
+            current_time - 60,  # 1 minute ago
+            current_time - 30,  # 30 seconds ago
+            current_time - 10,  # 10 seconds ago
+        ]  # Max attempts reached
 
         result = await health_monitor.perform_recovery(
             "test-instance", {"overall_status": HealthStatus.CRITICAL}
@@ -293,25 +262,18 @@ class TestHealthMonitor:
         """Test successful recovery attempt."""
         health_result = {"overall_status": HealthStatus.CRITICAL}
 
-        with patch("src.cc_orchestrator.core.health_monitor.get_crud") as mock_get_crud:
-            mock_crud = AsyncMock()
-            mock_instance = MagicMock()
-            mock_instance.recovery_attempt_count = 0
-            mock_crud.get_instance_by_issue_id.return_value = mock_instance
-            mock_get_crud.return_value = mock_crud
+        with patch.object(
+            health_monitor.process_manager, "terminate_process"
+        ) as mock_terminate:
+            mock_terminate.return_value = True
 
-            with patch.object(
-                health_monitor.process_manager, "terminate_process"
-            ) as mock_terminate:
-                mock_terminate.return_value = True
+            with patch("asyncio.sleep"):  # Speed up test
+                result = await health_monitor.perform_recovery(
+                    "test-instance", health_result
+                )
 
-                with patch("asyncio.sleep"):  # Speed up test
-                    result = await health_monitor.perform_recovery(
-                        "test-instance", health_result
-                    )
-
-                    assert result is True
-                    mock_terminate.assert_called_once_with("test-instance")
+                assert result is True
+                mock_terminate.assert_called_once_with("test-instance")
 
     @pytest.mark.asyncio
     async def test_check_tmux_session(self, health_monitor):

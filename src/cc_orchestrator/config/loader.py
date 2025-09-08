@@ -53,6 +53,31 @@ class OrchestratorConfig(BaseModel):
         default="human", description="Default output format"
     )
 
+    # Health monitoring configuration
+    health_check_interval: float = Field(
+        default=30.0, description="Health check interval in seconds"
+    )
+    health_cpu_threshold: float = Field(
+        default=90.0, description="CPU usage threshold percentage for health checks"
+    )
+    health_memory_threshold_mb: int = Field(
+        default=2048, description="Memory usage threshold in MB for health checks"
+    )
+    health_response_timeout: float = Field(
+        default=10.0, description="Health check response timeout in seconds"
+    )
+
+    # Restart management configuration
+    restart_max_attempts: int = Field(
+        default=3, description="Maximum restart attempts per instance"
+    )
+    restart_base_delay: float = Field(
+        default=30.0, description="Base delay between restart attempts in seconds"
+    )
+    restart_max_delay: float = Field(
+        default=300.0, description="Maximum delay between restart attempts in seconds"
+    )
+
     # Performance settings (for testing float and Union types)
     cpu_threshold: float = Field(
         default=80.0, description="CPU usage threshold percentage"
@@ -115,15 +140,41 @@ def load_env_vars() -> dict[str, Any]:
         f"{prefix}LOG_LEVEL": "log_level",
         f"{prefix}LOG_FILE": "log_file",
         f"{prefix}DEFAULT_OUTPUT_FORMAT": "default_output_format",
+        # Health monitoring
+        f"{prefix}HEALTH_CHECK_INTERVAL": "health_check_interval",
+        f"{prefix}HEALTH_CPU_THRESHOLD": "health_cpu_threshold",
+        f"{prefix}HEALTH_MEMORY_THRESHOLD_MB": "health_memory_threshold_mb",
+        f"{prefix}HEALTH_RESPONSE_TIMEOUT": "health_response_timeout",
+        # Restart management
+        f"{prefix}RESTART_MAX_ATTEMPTS": "restart_max_attempts",
+        f"{prefix}RESTART_BASE_DELAY": "restart_base_delay",
+        f"{prefix}RESTART_MAX_DELAY": "restart_max_delay",
     }
 
     for env_var, config_key in env_mappings.items():
         if env_var in os.environ:
             env_value = os.environ[env_var]
             # Convert to appropriate types
-            if config_key in ["max_instances", "instance_timeout", "web_port"]:
+            if config_key in [
+                "max_instances",
+                "instance_timeout",
+                "web_port",
+                "health_memory_threshold_mb",
+                "restart_max_attempts",
+            ]:
                 try:
                     config[config_key] = int(env_value)
+                except ValueError:
+                    continue
+            elif config_key in [
+                "health_check_interval",
+                "health_cpu_threshold",
+                "health_response_timeout",
+                "restart_base_delay",
+                "restart_max_delay",
+            ]:
+                try:
+                    config[config_key] = float(env_value)
                 except ValueError:
                     continue
             elif config_key == "auto_cleanup":

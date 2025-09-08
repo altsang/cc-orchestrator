@@ -10,6 +10,7 @@ import time
 from datetime import datetime
 from typing import Any
 
+from ..config.loader import OrchestratorConfig, load_config
 from ..database.models import HealthStatus
 from ..utils.logging import LogContext, get_logger
 from ..utils.process import ProcessStatus, get_process_manager
@@ -44,20 +45,26 @@ class AlertSystem:
 
         alert_data = {
             "timestamp": datetime.now().isoformat(),
-            "level": level,
-            "message": message,
             "instance_id": instance_id,
             "details": details or {},
         }
 
         # Log the alert (could be extended to send to external systems)
-        log_method = getattr(logger, level.lower(), logger.info)
-        log_method(
-            f"Health alert: {message}",
-            instance_id=instance_id,
-            alert_level=level,
-            **alert_data,
-        )
+        try:
+            log_method = getattr(logger, level.lower(), logger.info)
+            log_method(
+                f"Health alert: {message}",
+                alert_level=level,
+                **alert_data,
+            )
+        except Exception as e:
+            # Fallback to error logging if alert logging fails
+            logger.error(
+                f"Failed to log health alert: {message}",
+                alert_level=level,
+                error=str(e),
+                **alert_data,
+            )
 
         # TODO: Add webhook/email/slack notification support based on configuration
 
@@ -65,12 +72,15 @@ class AlertSystem:
 class RestartManager:
     """Manages automatic restart attempts with exponential backoff."""
 
-    def __init__(self) -> None:
+    def __init__(self, config: OrchestratorConfig | None = None) -> None:
         """Initialize the restart manager."""
+        if config is None:
+            config = load_config()
+
         self.restart_attempts: dict[str, list[float]] = {}
-        self.max_attempts = 3
-        self.base_delay = 30.0  # 30 seconds
-        self.max_delay = 300.0  # 5 minutes
+        self.max_attempts = config.restart_max_attempts
+        self.base_delay = config.restart_base_delay
+        self.max_delay = config.restart_max_delay
 
     def can_restart(self, instance_id: str) -> bool:
         """Check if an instance can be restarted.
@@ -100,9 +110,18 @@ class RestartManager:
             Delay in seconds
         """
         attempts = self.restart_attempts.get(instance_id, [])
+
+        # Remove attempts older than 1 hour to prevent memory leaks
+        one_hour_ago = time.time() - 3600
+        attempts = [t for t in attempts if t > one_hour_ago]
+        self.restart_attempts[instance_id] = attempts
+
         attempt_count = len(attempts)
 
+        # Exponential backoff: 2^attempt_count * base_delay
+        # 0 attempts: 30s, 1 attempt: 60s, 2 attempts: 120s, etc.
         delay = self.base_delay * (2**attempt_count)
+
         return min(delay, self.max_delay)
 
     def record_restart_attempt(self, instance_id: str) -> None:
@@ -128,24 +147,32 @@ class RestartManager:
 class HealthMonitor:
     """Health monitoring service for Claude Code instances."""
 
-    def __init__(self) -> None:
+    def __init__(self, config: OrchestratorConfig | None = None) -> None:
         """Initialize the health monitor."""
+        if config is None:
+            config = load_config()
+
         self.process_manager = get_process_manager()
         self.alert_system = AlertSystem()
-        self.restart_manager = RestartManager()
+        self.restart_manager = RestartManager(config)
         self.monitoring_task: asyncio.Task | None = None
         self.shutdown_event = asyncio.Event()
 
-        # Configuration
-        self.check_interval = 30.0  # 30 seconds
+        # Configuration from config file/environment
+        self.check_interval = config.health_check_interval
         self.enabled = True
 
-        # Health check thresholds
-        self.cpu_threshold = 90.0  # 90% CPU
-        self.memory_threshold_mb = 2048  # 2GB memory
-        self.response_timeout = 10.0  # 10 seconds
+        # Health check thresholds from config
+        self.cpu_threshold = config.health_cpu_threshold
+        self.memory_threshold_mb = config.health_memory_threshold_mb
+        self.response_timeout = config.health_response_timeout
 
-        logger.info("Health monitor initialized")
+        logger.info(
+            "Health monitor initialized",
+            check_interval=self.check_interval,
+            cpu_threshold=self.cpu_threshold,
+            memory_threshold_mb=self.memory_threshold_mb,
+        )
 
     async def start(self) -> None:
         """Start the health monitoring daemon."""
@@ -405,14 +432,27 @@ class HealthMonitor:
             )
 
             # Check if recovery is needed
-            if health_result["overall_status"] in [
-                HealthStatus.CRITICAL,
-                HealthStatus.UNHEALTHY,
-            ]:
+            status = health_result["overall_status"]
+            if status in [HealthStatus.CRITICAL, HealthStatus.UNHEALTHY]:
                 await self.perform_recovery(instance_id, health_result)
-            elif health_result["overall_status"] == HealthStatus.HEALTHY:
+            elif status == HealthStatus.DEGRADED:
+                # For degraded status, send alert but don't restart
+                await self.alert_system.send_alert(
+                    level="warning",
+                    message=f"Instance {instance_id} is in degraded state",
+                    instance_id=instance_id,
+                    details=health_result,
+                )
+            elif status == HealthStatus.HEALTHY:
                 # Clear restart attempts on successful health check
                 self.restart_manager.clear_attempts(instance_id)
+            else:
+                # Handle unexpected status (UNKNOWN, etc.)
+                logger.warning(
+                    f"Unexpected health status: {status.value}",
+                    instance_id=instance_id,
+                    status=status.value,
+                )
 
         except Exception as e:
             logger.error(
@@ -431,7 +471,15 @@ class HealthMonitor:
             True if session is active, False otherwise
         """
         try:
+            import re
             import subprocess
+
+            # Input validation: only allow alphanumeric characters, hyphens, and underscores
+            if not re.match(r"^[a-zA-Z0-9_-]+$", session_name):
+                logger.warning(
+                    "Invalid tmux session name format", session_name=session_name
+                )
+                return False
 
             result = subprocess.run(
                 ["tmux", "list-sessions", "-f", f"#{session_name}"],
@@ -497,15 +545,18 @@ class HealthMonitor:
 _health_monitor: HealthMonitor | None = None
 
 
-def get_health_monitor() -> HealthMonitor:
+def get_health_monitor(config: OrchestratorConfig | None = None) -> HealthMonitor:
     """Get the global health monitor instance.
+
+    Args:
+        config: Optional configuration to use for initialization
 
     Returns:
         HealthMonitor instance
     """
     global _health_monitor
     if _health_monitor is None:
-        _health_monitor = HealthMonitor()
+        _health_monitor = HealthMonitor(config)
     return _health_monitor
 
 

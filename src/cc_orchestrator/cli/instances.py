@@ -420,13 +420,14 @@ def check(issue_id: str, output_json: bool) -> None:
 
 @health.command()
 @click.option("--json", "output_json", is_flag=True, help="Output in JSON format")
-@click.option(
-    "--status",
-    type=click.Choice([s.value for s in HealthStatus]),
-    help="Filter by health status",
-)
-def health_status(output_json: bool, status: str | None) -> None:
-    """Show health status of all instances."""
+# TODO: Implement status filtering when database integration is complete
+# @click.option(
+#     "--status",
+#     type=click.Choice([s.value for s in HealthStatus]),
+#     help="Filter by health status",
+# )
+def summary(output_json: bool) -> None:
+    """Show health summary of all instances."""
 
     async def _health_status() -> None:
         try:
@@ -443,9 +444,6 @@ def health_status(output_json: bool, status: str | None) -> None:
 
             instance_health = []
             for instance_id, _process_info in processes.items():
-                # Skip if filtering by status (would need database for full filtering)
-                if status:
-                    continue  # Skip filtering for now
 
                 # Perform quick health check
                 health_result = await health_monitor.check_instance_health(instance_id)
