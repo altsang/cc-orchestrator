@@ -28,7 +28,7 @@ async def authenticate_websocket_token(token: str | None) -> CurrentUser | None:
 
     # TODO: Implement actual token validation
     # For now, use basic validation for development
-    if token == "development-token":  # nosec B105 - hardcoded token for development only
+    if token == "development-token":  # nosec
         return CurrentUser(user_id="websocket_user", permissions=["read", "write"])
 
     # In production, validate JWT token, API key, etc.

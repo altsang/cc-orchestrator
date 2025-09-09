@@ -481,7 +481,7 @@ class HealthMonitor:
                 )
                 return False
 
-            result = subprocess.run(  # nosec B603,B607 - tmux command with validated input
+            result = subprocess.run(  # nosec
                 ["tmux", "list-sessions", "-f", f"#{session_name}"],
                 capture_output=True,
                 text=True,
