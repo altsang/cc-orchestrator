@@ -130,21 +130,43 @@ class TestOrchestrator:
     @pytest.mark.asyncio
     async def test_cleanup(self):
         """Test orchestrator cleanup."""
-        orchestrator = Orchestrator()
-        mock_instance1 = AsyncMock()
-        mock_instance2 = AsyncMock()
+        # Create mock health monitor first
+        mock_health_monitor = Mock()
+        mock_health_monitor.stop = AsyncMock()
+
+        with patch(
+            "cc_orchestrator.core.orchestrator.get_health_monitor",
+            return_value=mock_health_monitor,
+        ):
+            orchestrator = Orchestrator()
+
+        # Create mock instances with AsyncMock cleanup methods
+        mock_instance1 = Mock()
+        mock_instance1.cleanup = AsyncMock()
+        mock_instance2 = Mock()
+        mock_instance2.cleanup = AsyncMock()
+
         orchestrator.instances = {
             "issue-1": mock_instance1,
             "issue-2": mock_instance2,
         }
 
-        # Mock cleanup_process_manager to avoid affecting global state
-        with patch(
-            "cc_orchestrator.core.orchestrator.cleanup_process_manager"
-        ) as mock_cleanup:
+        # Mock cleanup functions to avoid affecting global state and return AsyncMocks
+        with (
+            patch(
+                "cc_orchestrator.core.orchestrator.cleanup_process_manager",
+                new_callable=AsyncMock,
+            ) as mock_cleanup_process,
+            patch(
+                "cc_orchestrator.core.orchestrator.cleanup_health_monitor",
+                new_callable=AsyncMock,
+            ) as mock_cleanup_health,
+        ):
             await orchestrator.cleanup()
 
         assert orchestrator.instances == {}
+        mock_health_monitor.stop.assert_called_once()
         mock_instance1.cleanup.assert_called_once()
         mock_instance2.cleanup.assert_called_once()
-        mock_cleanup.assert_called_once()
+        mock_cleanup_process.assert_called_once()
+        mock_cleanup_health.assert_called_once()

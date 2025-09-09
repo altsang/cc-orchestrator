@@ -21,7 +21,7 @@ Comprehensive test suite for the CC-Orchestrator logging and error handling syst
 - Tests logging configuration, JSON output formatting, context management
 - Validates log levels, handlers, and logger creation
 
-#### Custom Exceptions (`test_exceptions.py`) 
+#### Custom Exceptions (`test_exceptions.py`)
 - **24 tests** covering all 7 exception classes and usage patterns
 - Tests exception inheritance, context preservation, serialization
 - Validates error chaining and context accumulation
@@ -51,7 +51,7 @@ Comprehensive test suite for the CC-Orchestrator logging and error handling syst
 testpaths = ["tests"]
 addopts = [
     "--cov=src/cc_orchestrator",
-    "--cov-report=html", 
+    "--cov-report=html",
     "--cov-report=term-missing",
     "--cov-fail-under=80",
     "--strict-markers",
@@ -61,7 +61,7 @@ addopts = [
 
 ### Test Fixtures (`conftest.py`)
 - **reset_logging**: Automatic logging state cleanup between tests
-- **temp_log_file**: Temporary log files for file-based tests  
+- **temp_log_file**: Temporary log files for file-based tests
 - **temp_log_dir**: Temporary directories for testing
 - **sample_log_record**: Pre-configured log records for testing
 - **sample_exception_context**: Test exception context data
@@ -97,7 +97,7 @@ python -m pytest tests/ --cov=src/cc_orchestrator --cov-report=html
 # Unit tests only
 python -m pytest tests/unit/ -v
 
-# Integration tests only  
+# Integration tests only
 python -m pytest tests/integration/ -v
 
 # Specific test file
@@ -121,7 +121,7 @@ python -m pytest tests/ -v --no-cov
 
 ### Test Categories Covered
 - **Unit Tests**: Individual function and class testing
-- **Integration Tests**: Component interaction testing  
+- **Integration Tests**: Component interaction testing
 - **Error Handling**: Exception and recovery testing
 - **Performance**: Timing and resource usage testing
 - **Context Management**: Instance/task correlation testing
@@ -142,7 +142,7 @@ python -m pytest tests/ -v --no-cov
 
 ### Test Infrastructure
 - **CI/CD Integration**: Automated testing on commits
-- **Test Parallelization**: Faster execution for larger test suites  
+- **Test Parallelization**: Faster execution for larger test suites
 - **Test Data Management**: Fixtures for complex scenarios
 - **Regression Testing**: Automated validation of bug fixes
 

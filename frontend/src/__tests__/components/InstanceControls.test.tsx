@@ -33,7 +33,7 @@ const TestWrapper = ({ children }: { children: React.ReactNode }) => {
       mutations: { retry: false },
     },
   })
-  
+
   return (
     <QueryClientProvider client={queryClient}>
       {children}
@@ -52,20 +52,20 @@ describe('InstanceControls', () => {
         <InstanceControls instance={mockInstance} />
       </TestWrapper>
     )
-    
+
     expect(screen.getByText('Start')).toBeInTheDocument()
     expect(screen.queryByText('Stop')).not.toBeInTheDocument()
   })
 
   it('renders stop and restart buttons when instance is running', () => {
     const runningInstance = { ...mockInstance, status: InstanceStatus.RUNNING }
-    
+
     render(
       <TestWrapper>
         <InstanceControls instance={runningInstance} />
       </TestWrapper>
     )
-    
+
     expect(screen.getByText('Stop')).toBeInTheDocument()
     expect(screen.getByText('Restart')).toBeInTheDocument()
     expect(screen.queryByText('Start')).not.toBeInTheDocument()
@@ -73,13 +73,13 @@ describe('InstanceControls', () => {
 
   it('shows all buttons disabled when instance is initializing', () => {
     const initializingInstance = { ...mockInstance, status: InstanceStatus.INITIALIZING }
-    
+
     render(
       <TestWrapper>
         <InstanceControls instance={initializingInstance} />
       </TestWrapper>
     )
-    
+
     const buttons = screen.getAllByRole('button')
     buttons.forEach(button => {
       expect(button).toBeDisabled()
@@ -88,13 +88,13 @@ describe('InstanceControls', () => {
 
   it('shows start button for error status', () => {
     const errorInstance = { ...mockInstance, status: InstanceStatus.ERROR }
-    
+
     render(
       <TestWrapper>
         <InstanceControls instance={errorInstance} />
       </TestWrapper>
     )
-    
+
     expect(screen.getByText('Start')).toBeInTheDocument()
     expect(screen.getByText('Start')).not.toBeDisabled()
   })
@@ -105,15 +105,15 @@ describe('InstanceControls', () => {
       message: 'Instance start requested',
       instance_id: '1'
     })
-    
+
     render(
       <TestWrapper>
         <InstanceControls instance={mockInstance} />
       </TestWrapper>
     )
-    
+
     fireEvent.click(screen.getByText('Start'))
-    
+
     await waitFor(() => {
       expect(startSpy).toHaveBeenCalledWith(1)
     })
@@ -126,15 +126,15 @@ describe('InstanceControls', () => {
       message: 'Instance stop requested',
       instance_id: '1'
     })
-    
+
     render(
       <TestWrapper>
         <InstanceControls instance={runningInstance} />
       </TestWrapper>
     )
-    
+
     fireEvent.click(screen.getByText('Stop'))
-    
+
     await waitFor(() => {
       expect(stopSpy).toHaveBeenCalledWith(1)
     })
@@ -147,15 +147,15 @@ describe('InstanceControls', () => {
       message: 'Instance restart requested',
       instance_id: '1'
     })
-    
+
     render(
       <TestWrapper>
         <InstanceControls instance={runningInstance} />
       </TestWrapper>
     )
-    
+
     fireEvent.click(screen.getByText('Restart'))
-    
+
     await waitFor(() => {
       expect(restartSpy).toHaveBeenCalledWith(1)
     })

@@ -55,7 +55,7 @@ describe('ErrorBoundary', () => {
 
   it('renders custom fallback when provided', () => {
     const customFallback = <div>Custom error message</div>;
-    
+
     render(
       <ErrorBoundary fallback={customFallback}>
         <ThrowError />
@@ -67,7 +67,7 @@ describe('ErrorBoundary', () => {
 
   it('calls onError callback when error occurs', () => {
     const mockOnError = jest.fn();
-    
+
     render(
       <ErrorBoundary onError={mockOnError}>
         <ThrowError />

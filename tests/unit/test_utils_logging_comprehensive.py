@@ -98,7 +98,7 @@ class TestLogContext:
     def test_log_contexts_count(self):
         """Test all expected log contexts are present."""
         contexts = list(LogContext)
-        assert len(contexts) == 10
+        assert len(contexts) == 11
 
 
 class TestCCOrchestratorException:

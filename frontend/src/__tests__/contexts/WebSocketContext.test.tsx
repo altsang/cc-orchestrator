@@ -11,13 +11,13 @@ class MockWebSocket {
   static OPEN = 1
   static CLOSING = 2
   static CLOSED = 3
-  
+
   readyState = MockWebSocket.CONNECTING
   onopen: ((event: Event) => void) | null = null
   onclose: ((event: CloseEvent) => void) | null = null
   onmessage: ((event: MessageEvent) => void) | null = null
   onerror: ((event: Event) => void) | null = null
-  
+
   constructor(public url: string) {
     // Simulate connection opening
     setTimeout(() => {
@@ -25,7 +25,7 @@ class MockWebSocket {
       this.onopen?.(new Event('open'))
     }, 10)
   }
-  
+
   send = vi.fn((data: string) => {
     // Echo back for testing
     setTimeout(() => {
@@ -35,7 +35,7 @@ class MockWebSocket {
       }
     }, 5)
   })
-  
+
   close = vi.fn(() => {
     this.readyState = MockWebSocket.CLOSED
     this.onclose?.(new CloseEvent('close'))
@@ -62,7 +62,7 @@ describe('WebSocketContext', () => {
     const { result } = renderHook(() => useWebSocket(), {
       wrapper: TestWrapper,
     })
-    
+
     expect(result.current).toBeDefined()
     expect(result.current.isConnected).toBeDefined()
     expect(result.current.sendMessage).toBeDefined()
@@ -73,9 +73,9 @@ describe('WebSocketContext', () => {
     const { result } = renderHook(() => useWebSocket(), {
       wrapper: TestWrapper,
     })
-    
+
     expect(result.current.isConnected).toBe(false)
-    
+
     // Should eventually connect
     await waitFor(() => {
       expect(result.current.isConnected).toBe(true)
@@ -86,11 +86,11 @@ describe('WebSocketContext', () => {
     const { result } = renderHook(() => useWebSocket(), {
       wrapper: TestWrapper,
     })
-    
+
     await waitFor(() => {
       expect(result.current.isConnected).toBe(true)
     })
-    
+
     // Mock WebSocket should have received auth message
     // This would depend on implementation details
   })
@@ -99,15 +99,15 @@ describe('WebSocketContext', () => {
     const { result } = renderHook(() => useWebSocket(), {
       wrapper: TestWrapper,
     })
-    
+
     await waitFor(() => {
       expect(result.current.isConnected).toBe(true)
     })
-    
+
     act(() => {
       result.current.sendMessage({ type: 'test', data: 'hello' })
     })
-    
+
     // Should call WebSocket.send
     expect(MockWebSocket.prototype.send).toHaveBeenCalled()
   })
@@ -116,17 +116,17 @@ describe('WebSocketContext', () => {
     const { result } = renderHook(() => useWebSocket(), {
       wrapper: TestWrapper,
     })
-    
+
     await waitFor(() => {
       expect(result.current.isConnected).toBe(true)
     })
-    
+
     const mockCallback = vi.fn()
-    
+
     act(() => {
       result.current.subscribe('instance_status', mockCallback)
     })
-    
+
     // Should send subscription message
     expect(MockWebSocket.prototype.send).toHaveBeenCalled()
   })
@@ -143,17 +143,17 @@ describe('WebSocketContext', () => {
         }, 5)
       }
     }
-    
+
     vi.stubGlobal('WebSocket', FailingWebSocket)
-    
+
     const { result } = renderHook(() => useWebSocket(), {
       wrapper: TestWrapper,
     })
-    
+
     await waitFor(() => {
       expect(result.current.isConnected).toBe(false)
     })
-    
+
     // Should attempt to reconnect
     // Implementation would depend on reconnection logic
   })
@@ -162,9 +162,9 @@ describe('WebSocketContext', () => {
     const { unmount } = renderHook(() => useWebSocket(), {
       wrapper: TestWrapper,
     })
-    
+
     unmount()
-    
+
     expect(MockWebSocket.prototype.close).toHaveBeenCalled()
   })
 
@@ -172,17 +172,17 @@ describe('WebSocketContext', () => {
     const { result } = renderHook(() => useWebSocket(), {
       wrapper: TestWrapper,
     })
-    
+
     await waitFor(() => {
       expect(result.current.isConnected).toBe(true)
     })
-    
+
     const mockCallback = vi.fn()
-    
+
     act(() => {
       result.current.subscribe('test_event', mockCallback)
     })
-    
+
     // Simulate receiving a message
     const ws = new MockWebSocket('test')
     act(() => {
@@ -193,7 +193,7 @@ describe('WebSocketContext', () => {
         })
       }))
     })
-    
+
     // Callback should be called
     await waitFor(() => {
       expect(mockCallback).toHaveBeenCalledWith({ message: 'test' })
@@ -204,22 +204,22 @@ describe('WebSocketContext', () => {
     const { result } = renderHook(() => useWebSocket(), {
       wrapper: TestWrapper,
     })
-    
+
     // Should start disconnected
     expect(result.current.isConnected).toBe(false)
-    
+
     // Should connect
     await waitFor(() => {
       expect(result.current.isConnected).toBe(true)
     })
-    
+
     // Simulate disconnection
     const ws = new MockWebSocket('test')
     act(() => {
       ws.readyState = MockWebSocket.CLOSED
       ws.onclose?.(new CloseEvent('close'))
     })
-    
+
     await waitFor(() => {
       expect(result.current.isConnected).toBe(false)
     })
@@ -229,7 +229,7 @@ describe('WebSocketContext', () => {
     renderHook(() => useWebSocket(), {
       wrapper: TestWrapper,
     })
-    
+
     // Should use localhost in development
     expect(MockWebSocket).toHaveBeenCalledWith(
       expect.stringContaining('localhost')
@@ -240,19 +240,19 @@ describe('WebSocketContext', () => {
     const { result } = renderHook(() => useWebSocket(), {
       wrapper: TestWrapper,
     })
-    
+
     await waitFor(() => {
       expect(result.current.isConnected).toBe(true)
     })
-    
+
     const callback1 = vi.fn()
     const callback2 = vi.fn()
-    
+
     act(() => {
       result.current.subscribe('instance_status', callback1)
       result.current.subscribe('instance_status', callback2)
     })
-    
+
     // Both callbacks should be registered
     // Implementation details would verify this
   })

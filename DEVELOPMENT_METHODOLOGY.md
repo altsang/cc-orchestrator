@@ -524,7 +524,7 @@ gh project item-edit --id <EPIC_ITEM_ID> --project-id PVT_kwHOACKAcc4A-64R --fie
 
 #### **Why Epic Closure is Critical:**
 - **Project Tracking**: Ensures accurate phase completion status
-- **Documentation Sync**: Keeps GitHub project board aligned with actual progress  
+- **Documentation Sync**: Keeps GitHub project board aligned with actual progress
 - **Milestone Management**: Properly closes phase milestones for reporting
 - **Workflow Integrity**: Maintains consistent issue lifecycle management
 
@@ -569,13 +569,13 @@ Start fresh Claude sessions for each issue to maintain separate conversation thr
 # Control Tower (coordination and setup)
 claude
 
-# Worker 1 (Issue #17 example)  
+# Worker 1 (Issue #17 example)
 claude --dangerously-skip-permissions
 
 # Worker 2 (Issue #16 example)
 claude --dangerously-skip-permissions
 
-# Reviewer (code review and quality checks)  
+# Reviewer (code review and quality checks)
 claude
 ```
 
