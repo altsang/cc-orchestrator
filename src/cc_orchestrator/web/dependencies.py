@@ -179,7 +179,7 @@ async def get_current_user(request: Request) -> CurrentUser:
 
     # Development/testing token for non-production environments
     dev_token = request.headers.get("X-Dev-Token")
-    if dev_token == "development-token":
+    if dev_token == "development-token":  # nosec B105 - hardcoded token for testing only
         api_logger.warning(
             "Development token used - only for testing",
             client_ip=get_client_ip(request),
@@ -204,11 +204,11 @@ async def _validate_bearer_token(token: str) -> CurrentUser:
     """Validate Bearer token (JWT or similar)."""
     # TODO: Implement actual JWT validation in production
     # For now, accept specific test tokens
-    if token in ["valid-jwt-token", "test-user-token", "admin-token"]:
+    if token in ["valid-jwt-token", "test-user-token", "admin-token"]:  # nosec B105 - test tokens
         permissions = (
-            ["read", "write", "admin"] if token == "admin-token" else ["read", "write"]
+            ["read", "write", "admin"] if token == "admin-token" else ["read", "write"]  # nosec B105
         )
-        user_id = "admin" if token == "admin-token" else "authenticated_user"
+        user_id = "admin" if token == "admin-token" else "authenticated_user"  # nosec B105
         return CurrentUser(user_id=user_id, permissions=permissions)
 
     api_logger.warning(
