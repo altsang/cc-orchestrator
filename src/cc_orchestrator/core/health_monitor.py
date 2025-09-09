@@ -472,7 +472,7 @@ class HealthMonitor:
         """
         try:
             import re
-            import subprocess
+            import subprocess  # nosec B404 - subprocess usage is safe with input validation
 
             # Input validation: only allow alphanumeric characters, hyphens, and underscores
             if not re.match(r"^[a-zA-Z0-9_-]+$", session_name):
@@ -481,7 +481,7 @@ class HealthMonitor:
                 )
                 return False
 
-            result = subprocess.run(
+            result = subprocess.run(  # nosec B603,B607 - tmux command with validated input
                 ["tmux", "list-sessions", "-f", f"#{session_name}"],
                 capture_output=True,
                 text=True,
