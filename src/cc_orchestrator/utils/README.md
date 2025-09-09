@@ -14,7 +14,7 @@ This comprehensive logging and error handling framework provides structured logg
 
 ### ✅ Custom Exception Classes
 - `InstanceError`: Claude instance management errors
-- `WorktreeError`: Git worktree operation errors  
+- `WorktreeError`: Git worktree operation errors
 - `TaskError`: Task management and coordination errors
 - `ConfigurationError`: Configuration and setup errors
 - `IntegrationError`: External integration errors (GitHub, Jira)
@@ -66,7 +66,7 @@ logger.set_instance_id("claude-001")
 logger.set_task_id("TASK-123")
 
 # Log with automatic context injection
-logger.info("Starting task execution", 
+logger.info("Starting task execution",
             task_title="Implement feature X",
             priority="high")
 ```
@@ -84,7 +84,7 @@ def recovery_strategy(error, *args, **kwargs):
 def start_instance(instance_id: str):
     # Instance startup logic that might fail
     if not check_port_available():
-        raise InstanceError("Port already in use", 
+        raise InstanceError("Port already in use",
                           context={"instance_id": instance_id})
 ```
 
@@ -109,15 +109,15 @@ from cc_orchestrator.core.logging_utils import (
 )
 
 # Instance operations
-log_instance_lifecycle("claude-001", "create", "success", 
+log_instance_lifecycle("claude-001", "create", "success",
                       {"worktree": "/tmp/worktree-001"})
 
-# Task operations  
+# Task operations
 task_details = {"title": "Fix bug", "priority": "high", "source": "github"}
 log_task_assignment("TASK-456", "claude-001", task_details)
 
 # Resource monitoring
-log_resource_usage("claude-001", cpu_percent=45.2, 
+log_resource_usage("claude-001", cpu_percent=45.2,
                   memory_mb=256.7, disk_usage_mb=1024.0)
 ```
 
@@ -143,7 +143,7 @@ log_resource_usage("claude-001", cpu_percent=45.2,
 ```json
 {
   "timestamp": "2025-07-27T07:49:00.118000",
-  "level": "ERROR", 
+  "level": "ERROR",
   "logger": "cc_orchestrator.core.instance_manager",
   "message": "Instance startup failed",
   "context": "instance",
@@ -160,7 +160,7 @@ log_resource_usage("claude-001", cpu_percent=45.2,
 
 ### Core Orchestrator
 - Instance lifecycle management
-- Task coordination and assignment  
+- Task coordination and assignment
 - Database operations and queries
 - Resource usage monitoring
 
@@ -170,7 +170,7 @@ log_resource_usage("claude-001", cpu_percent=45.2,
 - Orphaned session detection
 - Multi-user session handling
 
-### Web Interface  
+### Web Interface
 - API request/response logging
 - WebSocket connection management
 - Authentication and authorization
@@ -186,7 +186,7 @@ log_resource_usage("claude-001", cpu_percent=45.2,
 
 ### Log Levels
 - `DEBUG`: Detailed debugging information
-- `INFO`: General operational information  
+- `INFO`: General operational information
 - `WARNING`: Warning conditions
 - `ERROR`: Error conditions
 - `CRITICAL`: Critical error conditions
@@ -244,7 +244,7 @@ examples/
 
 This logging system is ready for integration with:
 1. **CLI Framework** - Add command-level logging
-2. **Web Interface** - API and WebSocket logging  
+2. **Web Interface** - API and WebSocket logging
 3. **Instance Management** - Detailed lifecycle tracking
 4. **Task Coordination** - Assignment and status logging
 5. **External Integrations** - GitHub/Jira API logging

@@ -35,24 +35,24 @@ describe('App', () => {
 
   it('wraps Dashboard with error boundaries', () => {
     render(<App />);
-    
+
     const errorBoundary = screen.getByTestId('error-boundary');
     const dashboardErrorBoundary = screen.getByTestId('dashboard-error-boundary');
     const dashboard = screen.getByTestId('dashboard');
-    
+
     expect(errorBoundary).toContainElement(dashboardErrorBoundary);
     expect(dashboardErrorBoundary).toContainElement(dashboard);
   });
 
   it('includes Toaster component for notifications', () => {
     render(<App />);
-    
+
     expect(screen.getByTestId('toaster')).toBeInTheDocument();
   });
 
   it('has correct app structure', () => {
     render(<App />);
-    
+
     const appDiv = screen.getByTestId('error-boundary').firstChild as HTMLElement;
     expect(appDiv).toHaveClass('App');
   });

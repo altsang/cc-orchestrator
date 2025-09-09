@@ -32,11 +32,11 @@ class Logger {
   private formatMessage(level: LogLevel, message: string, data?: any): string {
     const timestamp = new Date().toISOString();
     const levelStr = LogLevel[level];
-    
+
     if (data) {
       return `[${timestamp}] ${levelStr}: ${message} ${JSON.stringify(data)}`;
     }
-    
+
     return `[${timestamp}] ${levelStr}: ${message}`;
   }
 
@@ -80,7 +80,7 @@ class Logger {
   private sendToLoggingService(logEntry: LogEntry): void {
     // Placeholder for production logging service integration
     // Examples: Sentry, LogRocket, DataDog, CloudWatch, etc.
-    
+
     // For now, we'll store critical errors for debugging
     try {
       const errorLog = {
@@ -100,7 +100,7 @@ class Logger {
       const existingLogs = JSON.parse(localStorage.getItem('cc_error_logs') || '[]');
       const newLogs = [errorLog, ...existingLogs.slice(0, 9)]; // Keep last 10 errors
       localStorage.setItem('cc_error_logs', JSON.stringify(newLogs));
-      
+
     } catch (storageError) {
       // Fallback if localStorage fails
       console.error('Failed to store error log:', storageError);

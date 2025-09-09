@@ -23,7 +23,7 @@ describe('Layout', () => {
         </Layout>
       </TestWrapper>
     )
-    
+
     expect(screen.getByText('Test Content')).toBeInTheDocument()
   })
 
@@ -35,7 +35,7 @@ describe('Layout', () => {
         </Layout>
       </TestWrapper>
     )
-    
+
     expect(screen.getByText('CC-Orchestrator Dashboard')).toBeInTheDocument()
   })
 
@@ -47,7 +47,7 @@ describe('Layout', () => {
         </Layout>
       </TestWrapper>
     )
-    
+
     // Should have navigation links
     expect(screen.getByText('Dashboard')).toBeInTheDocument()
     expect(screen.getByText('Instances')).toBeInTheDocument()
@@ -61,7 +61,7 @@ describe('Layout', () => {
         </Layout>
       </TestWrapper>
     )
-    
+
     // Should have responsive utility classes
     const layoutElements = container.querySelectorAll('[class*="sm:"], [class*="md:"], [class*="lg:"]')
     expect(layoutElements.length).toBeGreaterThan(0)
@@ -75,7 +75,7 @@ describe('Layout', () => {
         </Layout>
       </TestWrapper>
     )
-    
+
     // Should have some footer content
     const footer = screen.getByRole('contentinfo') || screen.getByText(/CC-Orchestrator/i)
     expect(footer).toBeInTheDocument()
@@ -89,7 +89,7 @@ describe('Layout', () => {
         </Layout>
       </TestWrapper>
     )
-    
+
     // Should have proper semantic elements
     expect(screen.getByRole('banner')).toBeInTheDocument() // header
     expect(screen.getByRole('main')).toBeInTheDocument() // main content area
@@ -97,7 +97,7 @@ describe('Layout', () => {
 
   it('children are rendered in the main content area', () => {
     const testContent = 'Unique Test Content 12345'
-    
+
     render(
       <TestWrapper>
         <Layout>
@@ -105,9 +105,9 @@ describe('Layout', () => {
         </Layout>
       </TestWrapper>
     )
-    
+
     expect(screen.getByText(testContent)).toBeInTheDocument()
-    
+
     // Should be within main element
     const mainElement = screen.getByRole('main')
     expect(mainElement).toContainElement(screen.getByText(testContent))

@@ -50,7 +50,7 @@ const TestWrapper = ({ children }: { children: React.ReactNode }) => {
       mutations: { retry: false },
     },
   })
-  
+
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
@@ -68,13 +68,13 @@ describe('InstanceGrid', () => {
   it('renders loading state initially', () => {
     const apiClient = require('../../services/api').default
     apiClient.getInstances.mockImplementation(() => new Promise(() => {})) // Never resolves
-    
+
     render(
       <TestWrapper>
         <InstanceGrid />
       </TestWrapper>
     )
-    
+
     expect(screen.getByText('Loading instances...')).toBeInTheDocument()
   })
 
@@ -84,13 +84,13 @@ describe('InstanceGrid', () => {
       instances: mockInstances,
       total: mockInstances.length
     })
-    
+
     render(
       <TestWrapper>
         <InstanceGrid />
       </TestWrapper>
     )
-    
+
     await waitFor(() => {
       expect(screen.getByText('Issue #123')).toBeInTheDocument()
       expect(screen.getByText('Issue #456')).toBeInTheDocument()
@@ -104,13 +104,13 @@ describe('InstanceGrid', () => {
       instances: mockInstances,
       total: mockInstances.length
     })
-    
+
     render(
       <TestWrapper>
         <InstanceGrid />
       </TestWrapper>
     )
-    
+
     await waitFor(() => {
       expect(screen.getByText('Running')).toBeInTheDocument()
       expect(screen.getByText('Stopped')).toBeInTheDocument()
@@ -121,13 +121,13 @@ describe('InstanceGrid', () => {
   it('renders error state when API call fails', async () => {
     const apiClient = require('../../services/api').default
     apiClient.getInstances.mockRejectedValue(new Error('API Error'))
-    
+
     render(
       <TestWrapper>
         <InstanceGrid />
       </TestWrapper>
     )
-    
+
     await waitFor(() => {
       expect(screen.getByText('Error loading instances')).toBeInTheDocument()
     })
@@ -139,13 +139,13 @@ describe('InstanceGrid', () => {
       instances: [],
       total: 0
     })
-    
+
     render(
       <TestWrapper>
         <InstanceGrid />
       </TestWrapper>
     )
-    
+
     await waitFor(() => {
       expect(screen.getByText('No instances found')).toBeInTheDocument()
     })
@@ -157,13 +157,13 @@ describe('InstanceGrid', () => {
       instances: mockInstances,
       total: mockInstances.length
     })
-    
+
     render(
       <TestWrapper>
         <InstanceGrid />
       </TestWrapper>
     )
-    
+
     await waitFor(() => {
       // Should display relative dates
       expect(screen.getByText(/Created/)).toBeInTheDocument()
@@ -176,13 +176,13 @@ describe('InstanceGrid', () => {
       instances: mockInstances,
       total: mockInstances.length
     })
-    
+
     render(
       <TestWrapper>
         <InstanceGrid />
       </TestWrapper>
     )
-    
+
     await waitFor(() => {
       const instanceCard = screen.getByText('Issue #123').closest('div')
       expect(instanceCard).toBeInTheDocument()
@@ -196,17 +196,17 @@ describe('InstanceGrid', () => {
       instances: mockInstances,
       total: mockInstances.length
     })
-    
+
     render(
       <TestWrapper>
         <InstanceGrid />
       </TestWrapper>
     )
-    
+
     await waitFor(() => {
       expect(apiClient.getInstances).toHaveBeenCalledTimes(1)
     })
-    
+
     // Should be called again after refetch interval
     // Note: In a real test we might mock timers, but this tests the setup
   })
@@ -217,18 +217,18 @@ describe('InstanceGrid', () => {
       instances: mockInstances,
       total: mockInstances.length
     })
-    
+
     render(
       <TestWrapper>
         <InstanceGrid />
       </TestWrapper>
     )
-    
+
     await waitFor(() => {
       // Should have control buttons for running instance (Stop, Restart)
       expect(screen.getByText('Stop')).toBeInTheDocument()
       expect(screen.getByText('Restart')).toBeInTheDocument()
-      
+
       // Should have start button for stopped instance
       expect(screen.getByText('Start')).toBeInTheDocument()
     })
@@ -240,15 +240,15 @@ describe('InstanceGrid', () => {
       instances: mockInstances,
       total: mockInstances.length
     })
-    
+
     render(
       <TestWrapper>
         <InstanceGrid />
       </TestWrapper>
     )
-    
+
     await waitFor(() => {
-      const gridContainer = screen.getByText('Issue #123').closest('.grid') || 
+      const gridContainer = screen.getByText('Issue #123').closest('.grid') ||
                            screen.getByText('Issue #123').closest('[class*="grid"]')
       expect(gridContainer).toBeInTheDocument()
     })

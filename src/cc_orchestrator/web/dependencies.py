@@ -207,8 +207,8 @@ async def _validate_bearer_token(token: str) -> CurrentUser:
     if token in ["valid-jwt-token", "test-user-token", "admin-token"]:  # nosec
         permissions = (
             ["read", "write", "admin"]
-            if token == "admin-token"
-            else ["read", "write"]  # nosec
+            if token == "admin-token"  # nosec
+            else ["read", "write"]
         )
         user_id = "admin" if token == "admin-token" else "authenticated_user"  # nosec
         return CurrentUser(user_id=user_id, permissions=permissions)
