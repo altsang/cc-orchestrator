@@ -618,18 +618,19 @@ class TestTmuxServiceComprehensive:
         assert "new_template" not in new_templates
 
     @pytest.mark.asyncio
-    async def test_apply_layout_template_kill_default_window(
+    async def test_apply_layout_template_reuse_default_window(
         self, tmux_service, mock_logging
     ):
-        """Test _apply_layout_template kills default window when template has windows."""
+        """Test _apply_layout_template reuses default window instead of killing it."""
         mock_session = MagicMock()
         mock_session.name = "test-session"
 
         # Mock default window
         mock_default_window = MagicMock()
+        mock_default_window.panes = [MagicMock()]  # Add panes to default window
         mock_session.windows = [mock_default_window]
 
-        # Mock new window creation
+        # Mock new window creation (not used for first window now)
         mock_new_window = MagicMock()
         mock_session.new_window.return_value = mock_new_window
         mock_new_window.panes = [MagicMock()]
@@ -648,8 +649,9 @@ class TestTmuxServiceComprehensive:
 
         await tmux_service._apply_layout_template(mock_session, template)
 
-        # Default window should be killed
-        mock_default_window.kill.assert_called_once()
+        # Default window should be reused (renamed), NOT killed
+        mock_default_window.kill.assert_not_called()
+        mock_default_window.rename_window.assert_called_once_with("new-window")
 
     @pytest.mark.asyncio
     async def test_apply_layout_template_no_default_window_kill(
@@ -676,15 +678,16 @@ class TestTmuxServiceComprehensive:
     async def test_apply_layout_template_first_window_existing_session(
         self, tmux_service, mock_logging
     ):
-        """Test _apply_layout_template handles first window with existing session windows."""
+        """Test _apply_layout_template reuses first window with existing session windows."""
         mock_session = MagicMock()
         mock_session.name = "test-session"
 
-        # Mock existing window
+        # Mock existing window with panes
         mock_existing_window = MagicMock()
+        mock_existing_window.panes = [MagicMock()]
         mock_session.windows = [mock_existing_window]
 
-        # Mock new window creation for first window
+        # Mock new window creation for additional windows
         mock_new_window = MagicMock()
         mock_session.new_window.return_value = mock_new_window
         mock_new_window.panes = [MagicMock()]
@@ -703,9 +706,11 @@ class TestTmuxServiceComprehensive:
 
         await tmux_service._apply_layout_template(mock_session, template)
 
-        # Should kill existing window and create new one
-        mock_existing_window.kill.assert_called_once()
-        mock_session.new_window.assert_called_once()
+        # Should reuse existing window (rename), NOT kill it
+        mock_existing_window.kill.assert_not_called()
+        mock_existing_window.rename_window.assert_called_once_with("first-window")
+        # Should NOT create new window since we're reusing the first one
+        mock_session.new_window.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_apply_layout_template_first_window_no_existing_session(
@@ -780,8 +785,8 @@ class TestTmuxServiceComprehensive:
 
         await tmux_service._apply_layout_template(mock_session, template)
 
-        # First pane should send keys
-        mock_first_pane.send_keys.assert_called_with("bash")
+        # First pane should NOT send keys for "bash" as it's the default
+        mock_first_pane.send_keys.assert_not_called()
 
         # Should create two split windows
         assert mock_window.split_window.call_count == 2
@@ -1261,17 +1266,19 @@ class TestEdgeCasesAndErrorConditions:
     async def test_apply_layout_template_pane_send_keys_exception(
         self, tmux_service, mock_logging
     ):
-        """Test _apply_layout_template handles pane send_keys exceptions."""
+        """Test _apply_layout_template gracefully handles pane send_keys exceptions."""
         mock_session = MagicMock()
         mock_session.name = "test-session"
-        mock_session.windows = []
 
+        # Mock existing window with pane that will fail send_keys
         mock_window = MagicMock()
-        mock_session.new_window.return_value = mock_window
-
         mock_pane = MagicMock()
         mock_pane.send_keys.side_effect = Exception("Send keys failed")
         mock_window.panes = [mock_pane]
+        mock_session.windows = [mock_window]
+
+        # Mock new_window for additional windows (not used in this test)
+        mock_session.new_window.return_value = mock_window
 
         template = LayoutTemplate(
             name="test",
@@ -1279,14 +1286,17 @@ class TestEdgeCasesAndErrorConditions:
             windows=[
                 {
                     "name": "test-window",
-                    "command": "bash",
-                    "panes": [{"command": "bash"}],
+                    "command": "custom-command",  # Use non-default command to trigger send_keys
+                    "panes": [{"command": "custom-command"}],
                 }
             ],
         )
 
-        with pytest.raises(TmuxError):
-            await tmux_service._apply_layout_template(mock_session, template)
+        # Should not raise an exception - graceful degradation
+        await tmux_service._apply_layout_template(mock_session, template)
+
+        # Should still attempt to send keys but handle the exception
+        mock_pane.send_keys.assert_called_once_with("custom-command")
 
     @pytest.mark.asyncio
     async def test_list_sessions_orphaned_detection_failure(
