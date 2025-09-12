@@ -751,7 +751,10 @@ class TestTmuxService:
         mock_session = MagicMock()
         mock_session.name = "test-session"
         mock_session.windows = []
-        mock_session.new_window.side_effect = Exception("Window creation failed")
+        # Make session.name fail to trigger an exception at the top level
+        type(mock_session).name = PropertyMock(
+            side_effect=Exception("Session name access failed")
+        )
 
         template = LayoutTemplate(
             name="test-template",
