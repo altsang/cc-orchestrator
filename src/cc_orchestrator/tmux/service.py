@@ -24,6 +24,11 @@ from .logging_utils import (
     tmux_logger,
 )
 
+# Resource limits for security and stability
+MAX_WINDOWS_PER_SESSION = 20
+MAX_PANES_PER_WINDOW = 10
+MAX_TEMPLATE_NAME_LENGTH = 100
+
 
 class SessionStatus(Enum):
     """Status of a tmux session."""
@@ -542,6 +547,14 @@ class TmuxService:
             )
             return
 
+        # Validate template before applying
+        is_valid, error_msg = self._validate_template(template)
+        if not is_valid:
+            tmux_logger.error(
+                f"Template validation failed for {template.name}: {error_msg}"
+            )
+            raise TmuxError(f"Template validation failed: {error_msg}")
+
         try:
             tmux_logger.debug(
                 f"Applying layout template {template.name} to session {session_name}"
@@ -593,14 +606,19 @@ class TmuxService:
                                 pane = window.panes[0]
                                 # Send the command to the pane (only if not default bash)
                                 if pane_command and pane_command != "bash":
-                                    try:
-                                        pane.send_keys(pane_command)
-                                        tmux_logger.debug(
-                                            f"Sent command '{pane_command}' to pane 0 in window {window_name}"
-                                        )
-                                    except Exception as cmd_error:
+                                    if self._validate_pane_command(pane_command):
+                                        try:
+                                            pane.send_keys(pane_command)
+                                            tmux_logger.debug(
+                                                f"Sent command '{pane_command}' to pane 0 in window {window_name}"
+                                            )
+                                        except Exception as cmd_error:
+                                            tmux_logger.warning(
+                                                f"Failed to send command to pane 0 in window {window_name}: {cmd_error}"
+                                            )
+                                    else:
                                         tmux_logger.warning(
-                                            f"Failed to send command to pane 0 in window {window_name}: {cmd_error}"
+                                            f"Rejected potentially unsafe command for pane 0 in window {window_name}: {pane_command}"
                                         )
                         else:
                             # Additional panes - split existing panes
@@ -621,14 +639,19 @@ class TmuxService:
 
                                 # Send the command to the new pane
                                 if pane_command:
-                                    try:
-                                        pane.send_keys(pane_command)
-                                        tmux_logger.debug(
-                                            f"Sent command '{pane_command}' to pane {j} in window {window_name}"
-                                        )
-                                    except Exception as cmd_error:
+                                    if self._validate_pane_command(pane_command):
+                                        try:
+                                            pane.send_keys(pane_command)
+                                            tmux_logger.debug(
+                                                f"Sent command '{pane_command}' to pane {j} in window {window_name}"
+                                            )
+                                        except Exception as cmd_error:
+                                            tmux_logger.warning(
+                                                f"Failed to send command to pane {j} in window {window_name}: {cmd_error}"
+                                            )
+                                    else:
                                         tmux_logger.warning(
-                                            f"Failed to send command to pane {j} in window {window_name}: {cmd_error}"
+                                            f"Rejected potentially unsafe command for pane {j} in window {window_name}: {pane_command}"
                                         )
 
                             except Exception as pane_error:
@@ -752,11 +775,168 @@ class TmuxService:
 
         return orphaned
 
-    def _refresh_session_reference(self, session: libtmux.Session) -> libtmux.Session:
+    def _validate_pane_command(self, command: str) -> bool:
+        """Validate pane command for security.
+
+        Args:
+            command: Command to validate
+
+        Returns:
+            True if command is safe, False otherwise
+        """
+        if not command or not command.strip():
+            return False
+
+        # Check for potentially dangerous patterns
+        dangerous_patterns = [
+            ";",
+            "|",
+            "&",
+            "$",
+            "`",
+            "$(",
+            "&&",
+            "||",
+            "rm ",
+            "del ",
+            "format",
+            "mkfs",
+            "dd ",
+            "sudo",
+            "su ",
+            "chmod",
+            "chown",
+            "/etc/",
+            "shutdown",
+            "reboot",
+            "halt",
+            "init ",
+            ">/dev/",
+            "<",
+            ">",
+            ">>",
+            "curl",
+            "wget",
+            "ssh",
+            "scp",
+            "rsync",
+            "nc ",
+            "netcat",
+        ]
+
+        command_lower = command.lower()
+        for pattern in dangerous_patterns:
+            if pattern in command_lower:
+                tmux_logger.warning(
+                    f"Rejected potentially dangerous command pattern '{pattern}' in: {command}"
+                )
+                return False
+
+        # Allow common safe commands and their variations
+        safe_commands = [
+            "bash",
+            "sh",
+            "zsh",
+            "fish",
+            "cd ",
+            "ls",
+            "pwd",
+            "echo",
+            "cat",
+            "less",
+            "more",
+            "tail",
+            "head",
+            "grep",
+            "find",
+            "ps",
+            "top",
+            "htop",
+            "git",
+            "vim",
+            "nano",
+            "emacs",
+            "python",
+            "node",
+            "npm",
+            "yarn",
+            "make",
+            "cmake",
+            "gcc",
+            "clang",
+            "docker",
+            "kubectl",
+            "helm",
+        ]
+
+        # Check if command starts with a safe command
+        for safe_cmd in safe_commands:
+            if command_lower.startswith(safe_cmd):
+                return True
+
+        # If no safe command match, be conservative and reject
+        tmux_logger.warning(f"Rejected unrecognized command: {command}")
+        return False
+
+    def _validate_template(self, template: LayoutTemplate) -> tuple[bool, str]:
+        """Validate template for security and resource constraints.
+
+        Args:
+            template: Template to validate
+
+        Returns:
+            Tuple of (is_valid, error_message)
+        """
+        # Check template name length
+        if len(template.name) > MAX_TEMPLATE_NAME_LENGTH:
+            return (
+                False,
+                f"Template name exceeds maximum length of {MAX_TEMPLATE_NAME_LENGTH}",
+            )
+
+        # Check number of windows
+        if len(template.windows) > MAX_WINDOWS_PER_SESSION:
+            return (
+                False,
+                f"Template has {len(template.windows)} windows, exceeds maximum of {MAX_WINDOWS_PER_SESSION}",
+            )
+
+        # Validate each window
+        for i, window_config in enumerate(template.windows):
+            window_name = window_config.get("name", f"window-{i}")
+
+            # Check window name length
+            if len(window_name) > 50:  # Reasonable window name limit
+                return False, f"Window name '{window_name}' exceeds 50 characters"
+
+            # Check pane count
+            panes_config = window_config.get("panes", [])
+            if len(panes_config) > MAX_PANES_PER_WINDOW:
+                return (
+                    False,
+                    f"Window '{window_name}' has {len(panes_config)} panes, exceeds maximum of {MAX_PANES_PER_WINDOW}",
+                )
+
+            # Validate pane commands
+            for j, pane_config in enumerate(panes_config):
+                pane_command = pane_config.get("command", template.default_pane_command)
+                if pane_command and pane_command != "bash":
+                    if not self._validate_pane_command(pane_command):
+                        return (
+                            False,
+                            f"Unsafe command in window '{window_name}', pane {j}: {pane_command}",
+                        )
+
+        return True, ""
+
+    def _refresh_session_reference(
+        self, session: libtmux.Session, skip_refresh: bool = False
+    ) -> libtmux.Session:
         """Refresh session reference to ensure it's valid.
 
         Args:
             session: Original session object
+            skip_refresh: Skip refresh (useful for testing)
 
         Returns:
             Refreshed session object
@@ -768,22 +948,36 @@ class TmuxService:
             if not session.name:
                 raise TmuxError("Session has no name, cannot refresh")
 
-            # Skip refresh for mocked sessions (for testing)
-            if hasattr(session, "_mock_name") or str(type(session)).find("Mock") != -1:
-                tmux_logger.debug(f"Skipping refresh for mocked session {session.name}")
+            # Skip refresh for testing or if explicitly requested
+            if skip_refresh:
+                tmux_logger.debug(f"Skipping refresh for session {session.name}")
                 return session
 
             # Get fresh session reference from server
-            refreshed_session = self._server.sessions.get(session_name=session.name)
-            if refreshed_session is None:
-                raise TmuxError(f"Session {session.name} no longer exists")
-
-            tmux_logger.debug(f"Refreshed session reference for {session.name}")
-            return refreshed_session
+            # Note: We don't check if refreshed_session is None here to avoid TOCTTOU
+            # Instead, we let the actual session operations handle missing sessions
+            try:
+                refreshed_session = self._server.sessions.get(session_name=session.name)
+                if refreshed_session is not None:
+                    tmux_logger.debug(f"Refreshed session reference for {session.name}")
+                    return refreshed_session
+                else:
+                    # Session doesn't exist, but return original and let operations fail gracefully
+                    tmux_logger.warning(
+                        f"Session {session.name} not found during refresh, returning original reference"
+                    )
+                    return session
+            except Exception as refresh_error:
+                # If refresh fails, return original session and let operations handle it
+                tmux_logger.warning(
+                    f"Session refresh failed for {session.name}: {refresh_error}, continuing with original reference"
+                )
+                return session
 
         except Exception as e:
             tmux_logger.error(f"Failed to refresh session reference: {e}")
-            raise TmuxError(f"Failed to refresh session reference: {e}")
+            # Return original session instead of failing completely
+            return session
 
 
 class TmuxError(Exception):

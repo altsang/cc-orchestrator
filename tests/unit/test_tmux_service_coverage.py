@@ -1286,8 +1286,8 @@ class TestEdgeCasesAndErrorConditions:
             windows=[
                 {
                     "name": "test-window",
-                    "command": "custom-command",  # Use non-default command to trigger send_keys
-                    "panes": [{"command": "custom-command"}],
+                    "command": "python script.py",  # Use safe command that will pass validation
+                    "panes": [{"command": "python script.py"}],
                 }
             ],
         )
@@ -1295,8 +1295,8 @@ class TestEdgeCasesAndErrorConditions:
         # Should not raise an exception - graceful degradation
         await tmux_service._apply_layout_template(mock_session, template)
 
-        # Should still attempt to send keys but handle the exception
-        mock_pane.send_keys.assert_called_once_with("custom-command")
+        # Should still attempt to send keys but handle the exception from send_keys, not validation
+        mock_pane.send_keys.assert_called_once_with("python script.py")
 
     @pytest.mark.asyncio
     async def test_list_sessions_orphaned_detection_failure(
