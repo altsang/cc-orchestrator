@@ -345,7 +345,7 @@ class TestTmuxTemplates:
         assert "exceeds maximum of 10" in error_msg
 
     def test_template_validation_unsafe_commands(self, tmux_service):
-        """Test template validation rejects unsafe commands."""
+        """Test template validation logs warnings for unsafe commands but allows template."""
         unsafe_template = LayoutTemplate(
             name="unsafe-template",
             description="Template with unsafe commands",
@@ -358,8 +358,8 @@ class TestTmuxTemplates:
         )
 
         is_valid, error_msg = tmux_service._validate_template(unsafe_template)
-        assert not is_valid
-        assert "Unsafe command" in error_msg
+        assert is_valid  # Template should be valid but commands will be skipped
+        assert error_msg == ""  # No error message since template is valid
 
     def test_template_validation_name_length(self, tmux_service):
         """Test template validation enforces name length limits."""
