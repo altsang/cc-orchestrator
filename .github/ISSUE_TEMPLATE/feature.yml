@@ -7,8 +7,19 @@ body:
   - type: markdown
     attributes:
       value: |
-        ## Feature Template
+        ## Feature Template - Integration-First Development
         Use this template for implementing new features or components.
+
+        **🔗 MANDATORY READING Before Starting:**
+        - [Development Methodology](../../../DEVELOPMENT_METHODOLOGY.md) - Integration-First approach required
+        - [Issue Context](../../../ISSUE_CONTEXT.md) - Project context and standards
+        - [Contributing Guidelines](../../../CONTRIBUTING.md) - Code quality and review standards
+
+        **⚠️ Integration Requirements:**
+        - Features MUST work end-to-end across all system boundaries
+        - State MUST persist across separate CLI/API invocations
+        - Integration tests MUST verify complete user workflows
+        - NO TODOs in critical integration paths (database, state management)
 
   - type: dropdown
     id: phase
@@ -93,14 +104,58 @@ body:
         - Requirement 3
 
   - type: textarea
+    id: user_journey
+    attributes:
+      label: Complete User Journey
+      description: Map the full end-to-end workflow this feature enables
+      placeholder: |
+        Example: "User creates instance → Lists instances → Stops instance → Verifies stopped"
+
+        Step 1: [User action]
+        Step 2: [System response]
+        Step 3: [User verification]
+        Step 4: [Final outcome]
+    validations:
+      required: true
+
+  - type: textarea
+    id: integration_points
+    attributes:
+      label: Integration Points
+      description: List all components, layers, and boundaries this feature touches
+      placeholder: |
+        - CLI commands
+        - Core Orchestrator
+        - Database persistence
+        - Process management
+        - Web API endpoints
+        - Configuration system
+    validations:
+      required: true
+
+  - type: textarea
     id: acceptance_criteria
     attributes:
-      label: Acceptance Criteria
-      description: How will we know this feature is complete?
+      label: Integration-First Acceptance Criteria
+      description: Focus on user outcomes and cross-component integration
       placeholder: |
-        - [ ] Criteria 1
-        - [ ] Criteria 2
-        - [ ] Criteria 3
+        ## Integration Requirements (MANDATORY):
+        - [ ] Complete user workflow executable end-to-end
+        - [ ] State persists across separate CLI/API invocations
+        - [ ] Integration tests verify component connections
+        - [ ] No TODOs in critical integration paths
+        - [ ] All layers properly connected (CLI → Core → Database)
+
+        ## Functional Requirements:
+        - [ ] Functional criteria 1
+        - [ ] Functional criteria 2
+        - [ ] Functional criteria 3
+
+        ## Testing Requirements:
+        - [ ] Integration tests implemented
+        - [ ] Cross-process state persistence tested
+        - [ ] Unit test coverage ≥90%
+        - [ ] Manual end-to-end workflow verified
     validations:
       required: true
 

@@ -7,8 +7,18 @@ body:
   - type: markdown
     attributes:
       value: |
-        ## Epic Template
+        ## Epic Template - Integration-First Planning
         Use this template for major project phases or milestones that contain multiple features.
+
+        **🔗 MANDATORY READING Before Creating Epic:**
+        - [Development Methodology](../../../DEVELOPMENT_METHODOLOGY.md) - Integration-First approach for all sub-issues
+        - [Project Plan](../../../planning/PROJECT_PLAN.md) - Phase context and dependencies
+        - [Issue Context](../../../ISSUE_CONTEXT.md) - Project context and standards
+
+        **⚠️ Epic Integration Requirements:**
+        - All sub-issues MUST follow Integration-First development
+        - Epic completion requires end-to-end user workflow verification
+        - Phase MUST deliver complete, integrated functionality
 
   - type: input
     id: phase
@@ -29,14 +39,61 @@ body:
       required: true
 
   - type: textarea
+    id: user_workflows
+    attributes:
+      label: End-to-End User Workflows
+      description: What complete user workflows will this epic enable?
+      placeholder: |
+        Epic must enable these complete user journeys:
+
+        Workflow 1: [User starts] → [System actions] → [User verifies] → [Complete outcome]
+        Workflow 2: [User starts] → [System actions] → [User verifies] → [Complete outcome]
+        Workflow 3: [User starts] → [System actions] → [User verifies] → [Complete outcome]
+    validations:
+      required: true
+
+  - type: textarea
+    id: integration_architecture
+    attributes:
+      label: Integration Architecture
+      description: How will components integrate to deliver the user workflows?
+      placeholder: |
+        Integration flow for this epic:
+        - CLI Layer: [Commands and interfaces]
+        - Core Layer: [Business logic and orchestration]
+        - Database Layer: [Data persistence and state management]
+        - Process Layer: [External process management]
+        - Web Layer: [API endpoints and UI interfaces]
+
+        Key integration points:
+        - [Component A] ↔ [Component B]: [How they connect]
+        - [Component B] ↔ [Component C]: [How they connect]
+    validations:
+      required: true
+
+  - type: textarea
     id: success_criteria
     attributes:
-      label: Success Criteria
-      description: What defines completion of this epic?
+      label: Integration-First Success Criteria
+      description: Epic is complete only when all integration requirements are met
       placeholder: |
-        - [ ] Criterion 1
-        - [ ] Criterion 2
-        - [ ] Criterion 3
+        ## Integration Requirements (MANDATORY):
+        - [ ] All user workflows executable end-to-end
+        - [ ] State persists across CLI/API invocations
+        - [ ] Cross-component integration verified
+        - [ ] All sub-issues demonstrate complete integration
+        - [ ] Manual workflow verification completed
+
+        ## Functional Requirements:
+        - [ ] All sub-issues completed and closed
+        - [ ] Integration tests passing for all workflows
+        - [ ] Cross-process state persistence verified
+        - [ ] Component boundaries well-defined
+
+        ## Quality Requirements:
+        - [ ] Code review completed for all integration points
+        - [ ] Documentation updated with integration patterns
+        - [ ] Performance acceptable for complete workflows
     validations:
       required: true
 

@@ -7,8 +7,16 @@ body:
   - type: markdown
     attributes:
       value: |
-        ## Bug Report Template
+        ## Bug Report Template - Integration Analysis Required
         Use this template to report bugs, issues, or unexpected behavior.
+
+        **🔗 MANDATORY READING Before Reporting:**
+        - [Development Methodology](../../../DEVELOPMENT_METHODOLOGY.md) - Integration-First debugging approach
+        - [Issue Context](../../../ISSUE_CONTEXT.md) - Project context and troubleshooting guides
+
+        **⚠️ Integration Analysis:**
+        Consider if this bug affects multiple components or breaks user workflows.
+        Integration bugs often manifest as state inconsistencies across CLI/Web interfaces.
 
   - type: dropdown
     id: severity
@@ -55,15 +63,47 @@ body:
       required: true
 
   - type: textarea
+    id: affected_workflow
+    attributes:
+      label: Affected User Workflow
+      description: Which end-to-end user workflow is broken?
+      placeholder: |
+        Example: "Create instance → List instances → Stop instance → Verify stopped"
+
+        At which step does the workflow fail?
+        - [ ] Step 1: [User action]
+        - [ ] Step 2: [System response]
+        - [ ] Step 3: [User verification]
+        - [ ] Step 4: [Final outcome]
+    validations:
+      required: true
+
+  - type: textarea
+    id: integration_impact
+    attributes:
+      label: Integration Impact Analysis
+      description: Does this bug affect multiple components or break cross-component functionality?
+      placeholder: |
+        - [ ] Affects CLI only
+        - [ ] Affects Web API only
+        - [ ] Affects state persistence (data loss across invocations)
+        - [ ] Breaks CLI ↔ Database integration
+        - [ ] Breaks Web API ↔ Database integration
+        - [ ] Breaks CLI ↔ Web API consistency
+        - [ ] Affects process management integration
+        - [ ] Other integration issue: [describe]
+
+  - type: textarea
     id: steps_to_reproduce
     attributes:
-      label: Steps to Reproduce
-      description: Steps to reproduce the behavior
+      label: Steps to Reproduce (Integration-Focused)
+      description: Include steps that test cross-component functionality
       placeholder: |
-        1. Go to '...'
-        2. Click on '....'
-        3. Scroll down to '....'
-        4. See error
+        1. [Action via CLI/Web]
+        2. [Check state via different interface]
+        3. [Perform related action]
+        4. [Verify expected outcome]
+        5. Observe error/inconsistency
     validations:
       required: true
 
