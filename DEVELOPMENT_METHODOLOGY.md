@@ -8,25 +8,36 @@ This document establishes the mandatory development methodology to ensure all co
 
 ## 🎯 **Core Principles**
 
-### 1. **Zero Technical Debt Policy**
-- No code merges with known type errors, linting issues, or test failures
-- All components must meet production standards before PR approval
+### 1. **Zero Integration Debt Policy**
+- **No features exist in isolation** - every feature must be integrated end-to-end before merge
+- **No technical debt** - components must meet production standards before PR approval
+- **No placeholder implementations** - all TODOs in critical paths must be completed
 - Technical debt is addressed immediately, not deferred
 
-### 2. **Quality Gates**
+### 2. **Integration-First Development**
+- **User journey drives development** - start with complete user workflow, not individual components
+- **End-to-end testing mandatory** - features must work across all system boundaries
+- **State persistence verified** - data must survive process restarts and separate invocations
+- **Cross-component integration proven** - CLI/Web/Database layers must be connected
+
+### 3. **Quality Gates**
 Every component must pass ALL quality gates:
 - ✅ **Type Safety**: mypy passes with zero errors
 - ✅ **Code Quality**: ruff/black formatting and linting clean
 - ✅ **Test Coverage**: Minimum 90% coverage for new code
+- ✅ **Integration Testing**: Full user workflows tested end-to-end
+- ✅ **State Persistence**: Data survives across separate process invocations
 - ✅ **Functionality**: All tests pass, manual verification complete
 - ✅ **Documentation**: Code is self-documenting with proper docstrings
 
-### 3. **Defense in Depth**
+### 4. **Defense in Depth**
 Multiple layers of quality assurance:
 - Pre-commit hooks (automated)
-- CI/CD pipeline validation
+- Integration testing (mandatory)
+- End-to-end workflow validation
+- Cross-process state verification
 - Manual code review
-- Integration testing
+- CI/CD pipeline validation
 
 ---
 
@@ -86,19 +97,73 @@ gh project item-list 1 --owner altsang --format json | jq '.items[] | select(.co
 
 **NEVER** rely solely on documentation for current status - always verify with actual repository state first.
 
-### Phase 1: Planning & Design
+### Phase 1: Integration-First Planning & Design
+
 ```markdown
-## Before Writing Code:
-1. [ ] Define acceptance criteria clearly
-2. [ ] Plan type-safe interfaces and data structures
-3. [ ] Design error handling and edge cases
-4. [ ] Plan test scenarios (unit, integration, edge cases)
-5. [ ] Consider backwards compatibility and migration needs
+## Before Writing Code - Integration-First Approach:
+1. [ ] **Define complete user journey** - map full workflow from user action to final outcome
+2. [ ] **Identify all integration points** - list every component, layer, and boundary the feature touches
+3. [ ] **Plan integration skeleton** - design minimal end-to-end flow that connects all components
+4. [ ] **Define acceptance criteria clearly** - focus on user outcomes, not individual component behavior
+5. [ ] **Plan cross-process state verification** - how will data persist across separate CLI invocations?
+6. [ ] **Design integration testing strategy** - plan tests that verify complete user workflows
+7. [ ] **Plan type-safe interfaces and data structures** - ensure data flows correctly across boundaries
+8. [ ] **Design error handling and edge cases** - consider failures across the entire integrated system
+9. [ ] **Consider backwards compatibility and migration needs** - impact on existing integrations
 ```
 
-### Phase 2: Implementation Standards
+**Example: Issue #14 Integration-First Planning**
+```markdown
+User Journey: "Create instance → List instances → Stop instance → Verify stopped"
+Integration Points: CLI → Orchestrator → Database → Process Manager
+Integration Skeleton:
+  1. CLI commands connect to Orchestrator with database session
+  2. Orchestrator persists instances to database (not memory)
+  3. Process operations update database state
+  4. Separate CLI invocations read from same database
+Integration Test: Full workflow script that verifies state persistence
+```
 
-#### **Type Safety First**
+### Phase 2: Integration-First Implementation
+
+#### **Integration Skeleton First**
+**MANDATORY**: Build minimal end-to-end integration before implementing functionality.
+
+```python
+# ✅ REQUIRED: Integration skeleton connects all components
+class Orchestrator:
+    def __init__(self, db_session: Session | None = None):
+        """Always integrate with database from day one."""
+        self.db_session = db_session or get_db_session()
+        self.db = InstanceCRUD(self.db_session)
+        self.instances: dict[str, ClaudeInstance] = {}
+        self._initialized = False
+
+    async def initialize(self) -> None:
+        """Real initialization - no TODOs in critical paths."""
+        # ✅ IMPLEMENTED: Database connection established
+        self.db.initialize_schema()
+        # ✅ IMPLEMENTED: Load existing instances from database
+        stored_instances = self.db.list_all()
+        for instance_data in stored_instances:
+            instance = ClaudeInstance.from_db_data(instance_data)
+            self.instances[instance.issue_id] = instance
+        self._initialized = True
+
+    async def create_instance(self, issue_id: str, **kwargs) -> ClaudeInstance:
+        """Integration-first: immediately persist to database."""
+        instance = ClaudeInstance(issue_id=issue_id, **kwargs)
+        await instance.initialize()
+
+        # ✅ CRITICAL: Persist to database immediately
+        db_instance = self.db.create(issue_id=issue_id, **kwargs)
+        instance.db_id = db_instance.id
+
+        self.instances[issue_id] = instance
+        return instance
+```
+
+#### **Type Safety With Integration**
 ```python
 # ✅ REQUIRED: Proper type annotations
 def load_config(
@@ -138,9 +203,79 @@ logger.info(
 )
 ```
 
-### Phase 3: Testing Requirements
+### Phase 3: Integration-First Testing Requirements
 
-#### **Mandatory Test Coverage**
+#### **Mandatory Integration Testing**
+**CRITICAL**: Every feature must include integration tests that verify complete user workflows.
+
+```python
+class TestInstanceManagementIntegration:
+    """✅ REQUIRED: Integration tests verify end-to-end workflows."""
+
+    @pytest.fixture
+    def orchestrator_with_db(self):
+        """Real database session for integration testing."""
+        db_session = create_test_db_session()
+        orchestrator = Orchestrator(db_session)
+        yield orchestrator
+        db_session.close()
+
+    async def test_complete_instance_lifecycle_integration(self, orchestrator_with_db):
+        """✅ CRITICAL: Test full user workflow - create → list → stop → verify"""
+        orchestrator = orchestrator_with_db
+        await orchestrator.initialize()
+
+        # Step 1: Create instance (like CLI: cc-orchestrator instances start issue-123)
+        instance = await orchestrator.create_instance("issue-123")
+        assert instance.issue_id == "issue-123"
+
+        # Step 2: Verify persistence - simulate separate CLI invocation
+        fresh_orchestrator = Orchestrator(orchestrator.db_session)
+        await fresh_orchestrator.initialize()
+        instances = fresh_orchestrator.list_instances()
+        assert len(instances) == 1
+        assert instances[0].issue_id == "issue-123"
+
+        # Step 3: Stop instance (like CLI: cc-orchestrator instances stop issue-123)
+        success = await fresh_orchestrator.destroy_instance("issue-123")
+        assert success is True
+
+        # Step 4: Verify stopped - simulate another separate CLI invocation
+        final_orchestrator = Orchestrator(orchestrator.db_session)
+        await final_orchestrator.initialize()
+        final_instances = final_orchestrator.list_instances()
+        assert len(final_instances) == 0
+
+    async def test_cross_process_state_persistence(self, orchestrator_with_db):
+        """✅ CRITICAL: Verify state survives process boundaries"""
+        # Simulate first CLI command creating instance
+        orchestrator1 = orchestrator_with_db
+        await orchestrator1.initialize()
+        await orchestrator1.create_instance("test-persistence")
+
+        # Simulate second CLI command (different process) reading instances
+        orchestrator2 = Orchestrator(orchestrator1.db_session)
+        await orchestrator2.initialize()
+        instances = orchestrator2.list_instances()
+
+        assert len(instances) == 1
+        assert instances[0].issue_id == "test-persistence"
+
+    async def test_cli_to_web_api_integration(self, orchestrator_with_db):
+        """✅ REQUIRED: Test CLI creates instance, Web API can access it"""
+        # Create via CLI layer
+        orchestrator = orchestrator_with_db
+        await orchestrator.initialize()
+        cli_instance = await orchestrator.create_instance("cli-web-test")
+
+        # Access via Web API layer
+        from cc_orchestrator.database.crud import InstanceCRUD
+        db_instances = InstanceCRUD.list_all(orchestrator.db_session)
+        assert len(db_instances) == 1
+        assert db_instances[0].issue_id == "cli-web-test"
+```
+
+#### **Mandatory Unit Test Coverage**
 ```python
 class TestConfigurationSystem:
     """✅ REQUIRED: Comprehensive test coverage."""
@@ -275,15 +410,33 @@ repos:
 - [ ] Documentation updated (docstrings, README)
 ```
 
-### **Before Every PR:**
+### **Before Every PR - Integration-First Requirements:**
 ```markdown
-- [ ] All quality gates passed
-- [ ] Integration tests with existing components
-- [ ] Backwards compatibility maintained
-- [ ] Migration path documented (if breaking changes)
-- [ ] Security implications reviewed
-- [ ] Performance impact assessed
-- [ ] Monitoring/logging instrumentation added
+## Integration Verification (MANDATORY)
+- [ ] **Complete user workflow tested** - full end-to-end journey from user action to outcome
+- [ ] **Cross-process state persistence verified** - data survives separate CLI/API invocations
+- [ ] **Integration tests included** - tests verify component connections, not just individual units
+- [ ] **No TODOs in critical integration paths** - database connections, state management fully implemented
+- [ ] **All layers connected** - CLI → Core → Database → Process management working together
+
+## Quality Gates
+- [ ] All automated quality gates passed
+- [ ] Integration tests with existing components pass
+- [ ] Unit test coverage ≥90% for new code
+- [ ] Manual end-to-end workflow verification completed
+- [ ] Cross-component data flow tested
+
+## System Integration
+- [ ] Backwards compatibility maintained across all interfaces
+- [ ] Migration path documented (if breaking changes to integrations)
+- [ ] Security implications reviewed for all integration points
+- [ ] Performance impact assessed across integrated system
+- [ ] Monitoring/logging instrumentation added to integration boundaries
+
+## Review Requirements
+- [ ] **Integration demo required** - PR author demonstrates complete user workflow to reviewer
+- [ ] **State persistence demo** - show data surviving separate process invocations
+- [ ] **Component boundary review** - verify all integration points are properly connected
 ```
 
 ---
@@ -655,34 +808,62 @@ def complex_operation(
 
 ## 🔄 **Code Review Standards**
 
-### **Reviewer Checklist**
+### **Integration-First Reviewer Checklist**
+**MANDATORY**: Reviewer must personally execute and verify complete user workflows.
+
 ```markdown
+## Integration Review (CRITICAL - Must be verified first)
+- [ ] **End-to-end workflow executed manually** - reviewer runs complete user journey start to finish
+- [ ] **Cross-process persistence verified** - reviewer confirms data survives separate CLI invocations
+- [ ] **Integration boundaries inspected** - all component connections reviewed for completeness
+- [ ] **No TODOs in integration paths** - database connections, state persistence fully implemented
+- [ ] **Component isolation tested** - each layer (CLI/Core/DB) properly connected but not coupled
+- [ ] **State consistency verified** - same data accessible via CLI and Web API
+- [ ] **Integration demo witnessed** - PR author demonstrates complete workflow to reviewer
+
+## Integration Testing Review
+- [ ] **Integration tests present** - tests verify component connections, not just units
+- [ ] **Cross-process scenarios tested** - separate invocations, state persistence
+- [ ] **User workflow coverage** - integration tests match real user journeys
+- [ ] **Component boundary testing** - tests verify data flow across all layers
+- [ ] **Integration test quality** - meaningful assertions, realistic data, edge cases
+
 ## Functionality Review
-- [ ] Feature works as designed
-- [ ] Error handling comprehensive
-- [ ] Edge cases covered
-- [ ] Performance acceptable
-- [ ] Security implications considered
+- [ ] Feature works as designed across all integration points
+- [ ] Error handling comprehensive across component boundaries
+- [ ] Edge cases covered for integrated system behavior
+- [ ] Performance acceptable for complete user workflows
+- [ ] Security implications considered for all integration points
 
 ## Code Quality Review
-- [ ] Type annotations complete and correct
-- [ ] Error handling follows standards
-- [ ] Logging appropriate and structured
-- [ ] Code is readable and maintainable
-- [ ] No code duplication or technical debt
+- [ ] Type annotations complete and correct across interfaces
+- [ ] Error handling follows standards at integration boundaries
+- [ ] Logging appropriate and structured for integrated operations
+- [ ] Code is readable and maintainable across component boundaries
+- [ ] No code duplication or technical debt in integration logic
+- [ ] Component interfaces properly defined and documented
 
-## Testing Review
+## Unit Testing Review (Secondary to Integration)
 - [ ] Test coverage ≥90% for new code
-- [ ] Tests cover happy path, errors, edge cases
-- [ ] Integration tests adequate
+- [ ] Tests cover happy path, errors, edge cases for individual components
+- [ ] Unit tests support integration scenarios
 - [ ] Tests are maintainable and clear
 
 ## Documentation Review
-- [ ] Docstrings complete and accurate
-- [ ] README/docs updated if needed
-- [ ] Breaking changes documented
-- [ ] Migration path clear (if applicable)
+- [ ] Integration patterns documented in docstrings
+- [ ] README/docs updated with user workflow examples if needed
+- [ ] Breaking changes to integrations documented
+- [ ] Migration path clear for integrated systems (if applicable)
 ```
+
+### **Review Failure Criteria - Automatic Rejection**
+**PRs MUST be rejected if:**
+- [ ] Reviewer cannot successfully execute complete user workflow
+- [ ] State does not persist across separate process invocations
+- [ ] Integration tests are missing or inadequate
+- [ ] TODOs exist in critical integration paths (database connections, state management)
+- [ ] Components exist in isolation without proper integration
+- [ ] Integration demo was not provided or failed during review
 
 ### **Review Response Standards**
 - **All feedback must be addressed** before merge
@@ -773,41 +954,92 @@ make security-scan
 
 ## ✅ **Success Criteria**
 
-A component is **production-ready** when:
+A feature is **production-ready** when it demonstrates complete integration across all system boundaries:
 
 ```markdown
+✅ **Integration Requirements (MANDATORY)**
+- [ ] **Complete user workflow executable** - end-to-end journey works from user action to outcome
+- [ ] **Cross-process state persistence verified** - data survives separate CLI/API invocations
+- [ ] **All components properly connected** - no TODOs in integration paths (database, state management)
+- [ ] **Integration tests implemented** - tests verify component connections and user workflows
+- [ ] **Manual integration verification completed** - reviewer executed full workflow successfully
+- [ ] **Component boundaries well-defined** - clear interfaces between CLI/Core/Database/Process layers
+- [ ] **State consistency across interfaces** - same data accessible via CLI and Web API
+
 ✅ **Quality Gates**
-- [ ] Zero mypy errors
+- [ ] Zero mypy errors across all integration points
 - [ ] Zero linting issues
-- [ ] 100% test pass rate
-- [ ] ≥90% test coverage
-- [ ] Performance benchmarks met
+- [ ] 100% integration test pass rate
+- [ ] 100% unit test pass rate
+- [ ] ≥90% test coverage including integration scenarios
+- [ ] Performance benchmarks met for complete user workflows
 
 ✅ **Functionality**
-- [ ] All acceptance criteria met
-- [ ] Error scenarios handled gracefully
-- [ ] Integration with existing components verified
-- [ ] Manual testing completed
+- [ ] All acceptance criteria met with integration verification
+- [ ] Error scenarios handled gracefully across component boundaries
+- [ ] Integration with existing components verified and tested
+- [ ] Manual testing of complete user workflows completed
+- [ ] Cross-process scenarios tested (separate invocations)
+
+✅ **Testing**
+- [ ] Integration tests present and comprehensive
+- [ ] Cross-process persistence scenarios tested
+- [ ] User workflow tests match real usage patterns
+- [ ] Component boundary testing implemented
+- [ ] Unit tests support integration scenarios
 
 ✅ **Documentation**
-- [ ] Code self-documenting with docstrings
-- [ ] User-facing documentation updated
-- [ ] Deployment/operation procedures documented
+- [ ] Integration patterns documented in code
+- [ ] User workflow examples provided
+- [ ] Component interface documentation complete
+- [ ] Deployment/operation procedures include integration setup
 
 ✅ **Security & Operations**
-- [ ] Security review completed
-- [ ] Monitoring instrumentation added
-- [ ] Health checks implemented
-- [ ] Graceful degradation designed
+- [ ] Security review completed for all integration points
+- [ ] Monitoring instrumentation added across component boundaries
+- [ ] Health checks implemented for integrated system
+- [ ] Graceful degradation designed across all layers
 
 ✅ **Team Readiness**
-- [ ] Code review completed and approved
-- [ ] Knowledge transferred to team
-- [ ] Support procedures documented
+- [ ] Integration-focused code review completed and approved
+- [ ] End-to-end workflow demonstrated to reviewer
+- [ ] Knowledge transferred including integration patterns
+- [ ] Support procedures documented for integrated system
 ```
 
-**Remember**: If any criterion is not met, the component is **not production-ready** and should not be merged.
+**Critical Rule**: If any integration criterion is not met, the feature is **not production-ready** and should not be merged. Features that work in isolation but fail integration are incomplete and create technical debt.
 
 ---
 
-*This methodology ensures that every component delivered meets production standards from day one, eliminating technical debt and ensuring system reliability.*
+---
+
+## 🔗 **Integration-First Development Summary**
+
+### **The Integration Debt Problem**
+The Issue #14 failure demonstrated how features can appear complete while missing critical integration:
+- ✅ Database layer implemented (complete CRUD operations)
+- ✅ CLI commands implemented (functional structure)
+- ✅ Core logic implemented (process management)
+- ❌ **Integration missing** - components never connected end-to-end
+- ❌ **State persistence broken** - each invocation created fresh isolated state
+- ❌ **User workflows failed** - create → list → stop → verify was impossible
+
+### **Integration-First Solution**
+This methodology prevents integration debt by requiring:
+
+1. **User Journey First**: Start with complete workflow, build components to support it
+2. **Integration Skeleton**: Connect all components with minimal functionality before adding features
+3. **Persistent State**: Verify data survives across separate process invocations
+4. **Cross-Process Testing**: Test that separate CLI commands share state via database
+5. **Integration Review**: Reviewer must manually execute complete user workflows
+6. **No TODOs in Integration Paths**: Database connections and state persistence fully implemented
+
+### **Quality Assurance Changes**
+- **PR Rejection Criteria**: Missing integration tests or failed cross-process workflows = automatic rejection
+- **Review Requirements**: Reviewer must personally execute complete user journey
+- **Testing Priority**: Integration tests required before unit tests can be considered sufficient
+- **Definition of Done**: Feature incomplete until integrated across all system boundaries
+
+---
+
+*This integration-first methodology ensures that every feature delivers complete, working user value from day one, eliminating the possibility of integration debt that creates the illusion of progress while delivering broken functionality.*
