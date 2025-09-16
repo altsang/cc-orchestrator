@@ -342,7 +342,9 @@ class TestOrchestrator:
             orchestrator = Orchestrator()
             orchestrator._initialized = True
             orchestrator._db_session = mock_session
-            orchestrator._should_close_session = True  # Orchestrator created the session
+            orchestrator._should_close_session = (
+                True  # Orchestrator created the session
+            )
 
         with patch.object(orchestrator, "list_instances", return_value=[]):
             with (
