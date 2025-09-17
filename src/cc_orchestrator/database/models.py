@@ -19,21 +19,14 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
+from ..core.enums import InstanceStatus
+
 
 class Base(DeclarativeBase):
     """Base class for all database models."""
 
     # Define default table args that can be inherited by all models
     __table_args__ = {}
-
-
-class InstanceStatus(Enum):
-    """Status of a Claude Code instance."""
-
-    INITIALIZING = "initializing"
-    RUNNING = "running"
-    STOPPED = "stopped"
-    ERROR = "error"
 
 
 class HealthStatus(Enum):

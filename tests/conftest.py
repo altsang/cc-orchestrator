@@ -25,7 +25,8 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from cc_orchestrator.core.instance import ClaudeInstance, InstanceStatus
+from cc_orchestrator.core.enums import InstanceStatus
+from cc_orchestrator.core.instance import ClaudeInstance
 from cc_orchestrator.core.orchestrator import Orchestrator
 
 

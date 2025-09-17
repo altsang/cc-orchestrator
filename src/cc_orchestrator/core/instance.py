@@ -1,7 +1,6 @@
 """Claude Code instance management."""
 
 from datetime import datetime
-from enum import Enum
 from pathlib import Path
 from typing import Any
 
@@ -11,27 +10,18 @@ from ..utils.process import (
     ProcessInfo,
     get_process_manager,
 )
+from .enums import InstanceStatus, InstanceState
 
 logger = get_logger(__name__, LogContext.INSTANCE)
+
+# Export InstanceState for backward compatibility
+__all__ = ["ClaudeInstance", "InstanceError", "InstanceStatus", "InstanceState"]
 
 
 class InstanceError(Exception):
     """Base exception for instance-related operations."""
 
     pass
-
-
-class InstanceStatus(Enum):
-    """Status of a Claude Code instance."""
-
-    INITIALIZING = "initializing"
-    RUNNING = "running"
-    STOPPED = "stopped"
-    ERROR = "error"
-
-
-# Alias for compatibility
-InstanceState = InstanceStatus
 
 
 class ClaudeInstance:
