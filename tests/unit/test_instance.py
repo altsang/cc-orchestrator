@@ -6,7 +6,8 @@ from unittest.mock import patch
 
 import pytest
 
-from cc_orchestrator.core.instance import ClaudeInstance, InstanceStatus
+from cc_orchestrator.core.enums import InstanceStatus
+from cc_orchestrator.core.instance import ClaudeInstance
 
 
 class TestClaudeInstance:

@@ -6,11 +6,11 @@ from sqlalchemy.orm import Session
 
 from ..database.crud import InstanceCRUD, NotFoundError
 from ..database.models import Instance
-from ..database.models import InstanceStatus as DBInstanceStatus
 from ..utils.logging import LogContext, get_logger
 from ..utils.process import cleanup_process_manager
+from .enums import InstanceStatus
 from .health_monitor import cleanup_health_monitor, get_health_monitor
-from .instance import ClaudeInstance, InstanceStatus
+from .instance import ClaudeInstance
 
 logger = get_logger(__name__, LogContext.ORCHESTRATOR)
 
@@ -44,6 +44,28 @@ class Orchestrator:
             db_manager = get_database_manager()
             self._db_session = db_manager.create_session()
             self._should_close_session = True
+
+        # Validate database connection and schema
+        try:
+            # Test database connectivity
+            from sqlalchemy import text
+
+            self._db_session.execute(text("SELECT 1"))
+
+            # Verify core tables exist
+            from ..database.models import Instance
+
+            # Test that we can query the instances table (basic check)
+            # Use count() instead of all() to avoid loading all columns in case of schema mismatch
+            self._db_session.query(Instance.id).limit(1).count()
+
+            logger.info("Database connection validation successful")
+        except Exception as db_e:
+            logger.error("Database connection validation failed", error=str(db_e))
+            if self._should_close_session and self._db_session:
+                self._db_session.close()
+                self._db_session = None
+            raise RuntimeError(f"Database validation failed: {db_e}") from db_e
 
         # TODO: Load configuration
         # TODO: Set up logging
@@ -93,8 +115,8 @@ class Orchestrator:
                 self._db_instance_to_claude_instance(db_inst)
                 for db_inst in db_instances
             ]
-        except Exception as e:
-            logger.error("Error listing instances", error=str(e), exc_info=True)
+        except Exception:
+            logger.error("Error listing instances", exc_info=True)
             return []
 
     async def create_instance(self, issue_id: str, **kwargs: Any) -> ClaudeInstance:
@@ -119,10 +141,12 @@ class Orchestrator:
 
         # Create ClaudeInstance object
         instance = ClaudeInstance(issue_id=issue_id, **kwargs)
-        await instance.initialize()
 
-        # Persist to database immediately
         try:
+            # Initialize the instance
+            await instance.initialize()
+
+            # Persist to database
             db_instance = InstanceCRUD.create(
                 session=self._db_session,
                 issue_id=issue_id,
@@ -140,8 +164,22 @@ class Orchestrator:
             )
             return instance
         except Exception as e:
+            # Clean up instance resources on any failure
+            try:
+                await instance.cleanup()
+                logger.info(
+                    "Cleaned up instance after creation failure", issue_id=issue_id
+                )
+            except Exception as cleanup_e:
+                logger.error(
+                    "Failed to clean up instance after creation failure",
+                    issue_id=issue_id,
+                    cleanup_error=str(cleanup_e),
+                )
+
+            # Roll back database transaction
             self._db_session.rollback()
-            logger.error("Failed to persist instance", issue_id=issue_id, error=str(e))
+            logger.error("Failed to create instance", issue_id=issue_id, error=str(e))
             raise
 
     async def destroy_instance(self, issue_id: str) -> bool:
@@ -158,24 +196,59 @@ class Orchestrator:
 
         logger.info("Destroying instance", issue_id=issue_id)
 
+        db_instance = None
+        instance = None
+
         try:
             # Get the instance first
             db_instance = InstanceCRUD.get_by_issue_id(self._db_session, issue_id)
             instance = self._db_instance_to_claude_instance(db_instance)
 
             # Clean up the Claude instance (stop processes, etc.)
-            await instance.cleanup()
+            cleanup_success = True
+            try:
+                await instance.cleanup()
+                logger.debug("Instance cleanup completed", issue_id=issue_id)
+            except Exception as cleanup_e:
+                cleanup_success = False
+                logger.error(
+                    "Instance cleanup failed, proceeding with database removal",
+                    issue_id=issue_id,
+                    error=str(cleanup_e),
+                )
 
-            # Remove from database
+            # Remove from database (proceed even if cleanup failed to prevent orphaned DB records)
             InstanceCRUD.delete(self._db_session, db_instance.id)
             self._db_session.commit()
 
-            logger.info("Instance destroyed successfully", issue_id=issue_id)
+            if cleanup_success:
+                logger.info("Instance destroyed successfully", issue_id=issue_id)
+            else:
+                logger.warning(
+                    "Instance destroyed with cleanup errors", issue_id=issue_id
+                )
             return True
+
         except NotFoundError:
             logger.warning("Instance not found for destruction", issue_id=issue_id)
             return False
         except Exception as e:
+            # If we have an instance object and database deletion failed,
+            # try one more cleanup attempt
+            if instance is not None and db_instance is not None:
+                try:
+                    logger.warning(
+                        "Database deletion failed, attempting final cleanup",
+                        issue_id=issue_id,
+                    )
+                    await instance.cleanup()
+                except Exception as final_cleanup_e:
+                    logger.error(
+                        "Final cleanup attempt failed",
+                        issue_id=issue_id,
+                        error=str(final_cleanup_e),
+                    )
+
             self._db_session.rollback()
             logger.error("Error destroying instance", issue_id=issue_id, error=str(e))
             return False
@@ -216,6 +289,14 @@ class Orchestrator:
         from pathlib import Path
 
         # Create ClaudeInstance with database data
+        # Filter out conflicting keys from extra_metadata
+        extra_metadata = db_instance.extra_metadata or {}
+        filtered_metadata = {
+            k: v
+            for k, v in extra_metadata.items()
+            if k not in ["issue_id", "workspace_path", "branch_name", "tmux_session"]
+        }
+
         claude_instance = ClaudeInstance(
             issue_id=db_instance.issue_id,
             workspace_path=(
@@ -223,53 +304,91 @@ class Orchestrator:
             ),
             branch_name=db_instance.branch_name,
             tmux_session=db_instance.tmux_session,
-            **(db_instance.extra_metadata or {}),
+            **filtered_metadata,
         )
 
         # Set status and other attributes from database
-        claude_instance.status = self._db_status_to_instance_status(db_instance.status)
+        claude_instance.status = db_instance.status
         claude_instance.process_id = db_instance.process_id
         claude_instance.created_at = db_instance.created_at
         claude_instance.last_activity = (
             db_instance.last_activity or db_instance.updated_at
         )
 
+        # Validate process state for RUNNING instances
+        if (
+            db_instance.status == InstanceStatus.RUNNING
+            and db_instance.process_id is not None
+        ):
+            # Check if the process still exists
+            try:
+                import psutil
+
+                if psutil.pid_exists(db_instance.process_id):
+                    # Process exists, verify it's actually a Claude process
+                    # Note: We could do additional verification on the process if needed
+
+                    # Set up process info for health monitoring
+                    claude_instance._process_info = type(
+                        "ProcessInfo",
+                        (),
+                        {
+                            "pid": db_instance.process_id,
+                            "status": "running",
+                            "started_at": db_instance.created_at,
+                            "cpu_percent": 0.0,
+                            "memory_mb": 0.0,
+                            "return_code": None,
+                            "error_message": None,
+                        },
+                    )()
+
+                    logger.info(
+                        "Reconnected to existing process for database-loaded instance",
+                        instance_id=db_instance.issue_id,
+                        pid=db_instance.process_id,
+                    )
+                else:
+                    # Process no longer exists, update status to stopped
+                    claude_instance.status = InstanceStatus.STOPPED
+                    claude_instance.process_id = None
+                    claude_instance._process_info = None
+
+                    logger.warning(
+                        "Process no longer exists for database instance, marking as stopped",
+                        instance_id=db_instance.issue_id,
+                        expected_pid=db_instance.process_id,
+                    )
+
+                    # Update database to reflect actual state
+                    try:
+                        from ..database.crud import InstanceCRUD
+
+                        InstanceCRUD.update(
+                            session=self._db_session,
+                            instance_id=db_instance.id,
+                            status=InstanceStatus.STOPPED,
+                            process_id=None,
+                        )
+                        self._db_session.commit()
+                    except Exception as update_e:
+                        logger.error(
+                            "Failed to update instance status in database",
+                            instance_id=db_instance.issue_id,
+                            error=str(update_e),
+                        )
+                        self._db_session.rollback()
+
+            except Exception as e:
+                logger.error(
+                    "Error validating process state for database instance",
+                    instance_id=db_instance.issue_id,
+                    process_id=db_instance.process_id,
+                    error=str(e),
+                )
+                # On error, mark as stopped to be safe
+                claude_instance.status = InstanceStatus.STOPPED
+                claude_instance.process_id = None
+                claude_instance._process_info = None
+
         return claude_instance
-
-    def _db_status_to_instance_status(
-        self, db_status: DBInstanceStatus
-    ) -> InstanceStatus:
-        """Convert database status to instance status.
-
-        Args:
-            db_status: Database instance status
-
-        Returns:
-            InstanceStatus enum value
-        """
-        status_mapping = {
-            DBInstanceStatus.INITIALIZING: InstanceStatus.INITIALIZING,
-            DBInstanceStatus.RUNNING: InstanceStatus.RUNNING,
-            DBInstanceStatus.STOPPED: InstanceStatus.STOPPED,
-            DBInstanceStatus.ERROR: InstanceStatus.ERROR,
-        }
-        return status_mapping.get(db_status, InstanceStatus.STOPPED)
-
-    def _instance_status_to_db_status(
-        self, instance_status: InstanceStatus
-    ) -> DBInstanceStatus:
-        """Convert instance status to database status.
-
-        Args:
-            instance_status: ClaudeInstance status
-
-        Returns:
-            Database InstanceStatus enum value
-        """
-        status_mapping = {
-            InstanceStatus.INITIALIZING: DBInstanceStatus.INITIALIZING,
-            InstanceStatus.RUNNING: DBInstanceStatus.RUNNING,
-            InstanceStatus.STOPPED: DBInstanceStatus.STOPPED,
-            InstanceStatus.ERROR: DBInstanceStatus.ERROR,
-        }
-        return status_mapping.get(instance_status, DBInstanceStatus.STOPPED)

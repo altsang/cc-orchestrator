@@ -362,3 +362,186 @@ class TestOrchestrator:
         # Session should be closed since orchestrator created it
         mock_session.close.assert_called_once()
         assert orchestrator._db_session is None
+
+    @pytest.mark.asyncio
+    async def test_create_instance_cleanup_on_database_failure(self):
+        """Test that instance is cleaned up when database persistence fails."""
+        mock_session = Mock()
+        orchestrator = Orchestrator(db_session=mock_session)
+        orchestrator._initialized = True
+
+        mock_instance = AsyncMock()
+
+        with patch.object(orchestrator, "get_instance", return_value=None):
+            with patch(
+                "cc_orchestrator.core.orchestrator.ClaudeInstance"
+            ) as mock_claude_instance_class:
+                mock_claude_instance_class.return_value = mock_instance
+
+                with patch(
+                    "cc_orchestrator.core.orchestrator.InstanceCRUD"
+                ) as mock_crud:
+                    # Make database creation fail
+                    mock_crud.create.side_effect = Exception("Database error")
+
+                    with pytest.raises(Exception, match="Database error"):
+                        await orchestrator.create_instance("test-123")
+
+                    # Verify instance cleanup was called
+                    mock_instance.cleanup.assert_called_once()
+                    mock_session.rollback.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_create_instance_cleanup_on_initialization_failure(self):
+        """Test that instance is cleaned up when initialization fails."""
+        mock_session = Mock()
+        orchestrator = Orchestrator(db_session=mock_session)
+        orchestrator._initialized = True
+
+        mock_instance = AsyncMock()
+        mock_instance.initialize.side_effect = Exception("Initialization failed")
+
+        with patch.object(orchestrator, "get_instance", return_value=None):
+            with patch(
+                "cc_orchestrator.core.orchestrator.ClaudeInstance"
+            ) as mock_claude_instance_class:
+                mock_claude_instance_class.return_value = mock_instance
+
+                with pytest.raises(Exception, match="Initialization failed"):
+                    await orchestrator.create_instance("test-123")
+
+                # Verify instance cleanup was called
+                mock_instance.cleanup.assert_called_once()
+                mock_session.rollback.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_destroy_instance_cleanup_failure_continues_db_removal(self):
+        """Test that database removal continues even if instance cleanup fails."""
+        mock_session = Mock()
+        orchestrator = Orchestrator(db_session=mock_session)
+        orchestrator._initialized = True
+
+        mock_db_instance = Mock()
+        mock_db_instance.id = 1
+        mock_instance = AsyncMock()
+        mock_instance.cleanup.side_effect = Exception("Cleanup failed")
+
+        with patch("cc_orchestrator.core.orchestrator.InstanceCRUD") as mock_crud:
+            mock_crud.get_by_issue_id.return_value = mock_db_instance
+
+            with patch.object(
+                orchestrator,
+                "_db_instance_to_claude_instance",
+                return_value=mock_instance,
+            ):
+                result = await orchestrator.destroy_instance("test-123")
+
+                # Should still succeed and remove from database
+                assert result is True
+                mock_crud.delete.assert_called_once_with(mock_session, 1)
+                mock_session.commit.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_destroy_instance_final_cleanup_on_db_failure(self):
+        """Test final cleanup attempt when database deletion fails."""
+        mock_session = Mock()
+        orchestrator = Orchestrator(db_session=mock_session)
+        orchestrator._initialized = True
+
+        mock_db_instance = Mock()
+        mock_db_instance.id = 1
+        mock_instance = AsyncMock()
+
+        with patch("cc_orchestrator.core.orchestrator.InstanceCRUD") as mock_crud:
+            mock_crud.get_by_issue_id.return_value = mock_db_instance
+            mock_crud.delete.side_effect = Exception("Database delete failed")
+
+            with patch.object(
+                orchestrator,
+                "_db_instance_to_claude_instance",
+                return_value=mock_instance,
+            ):
+                result = await orchestrator.destroy_instance("test-123")
+
+                # Should fail but attempt final cleanup
+                assert result is False
+                assert mock_instance.cleanup.call_count == 2  # Once normal, once final
+                mock_session.rollback.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_initialize_database_validation_failure(self):
+        """Test that initialize fails gracefully on database validation errors."""
+        mock_health_monitor = Mock()
+        mock_health_monitor.start = AsyncMock()
+
+        with patch(
+            "cc_orchestrator.core.orchestrator.get_health_monitor",
+            return_value=mock_health_monitor,
+        ):
+            with patch(
+                "cc_orchestrator.database.connection.get_database_manager"
+            ) as mock_get_db_manager:
+                mock_db_manager = Mock()
+                mock_session = Mock()
+                # Make database validation fail
+                mock_session.execute.side_effect = Exception("Connection failed")
+                mock_db_manager.create_session.return_value = mock_session
+                mock_get_db_manager.return_value = mock_db_manager
+
+                orchestrator = Orchestrator()
+
+                with pytest.raises(RuntimeError, match="Database validation failed"):
+                    await orchestrator.initialize()
+
+                # Session should be closed on failure
+                mock_session.close.assert_called_once()
+                assert orchestrator._db_session is None
+
+    def test_db_instance_to_claude_instance_process_validation(self):
+        """Test process validation when loading instances from database."""
+        mock_session = Mock()
+        orchestrator = Orchestrator(db_session=mock_session)
+        orchestrator._initialized = True
+
+        # Create a mock database instance with running status and process_id
+        mock_db_instance = Mock()
+        mock_db_instance.issue_id = "test-123"
+        mock_db_instance.workspace_path = "/test/workspace"
+        mock_db_instance.branch_name = "main"
+        mock_db_instance.tmux_session = "test-session"
+        mock_db_instance.status = Mock()
+        mock_db_instance.process_id = 12345
+        mock_db_instance.created_at = Mock()
+        mock_db_instance.last_activity = None
+        mock_db_instance.updated_at = Mock()
+        mock_db_instance.extra_metadata = {}
+
+        # Test case 1: Process exists
+        with patch("psutil.pid_exists", return_value=True):
+            with patch("psutil.Process") as mock_process_class:
+                mock_process = Mock()
+                mock_process_class.return_value = mock_process
+
+                from cc_orchestrator.core.enums import InstanceStatus
+
+                mock_db_instance.status = InstanceStatus.RUNNING
+
+                result = orchestrator._db_instance_to_claude_instance(mock_db_instance)
+
+                assert result.process_id == 12345
+                assert result.status == InstanceStatus.RUNNING
+                assert result._process_info is not None
+
+        # Test case 2: Process doesn't exist
+        with patch("psutil.pid_exists", return_value=False):
+            # The import happens inside the method, so we patch the module path correctly
+            with patch("cc_orchestrator.database.crud.InstanceCRUD") as mock_crud:
+                mock_db_instance.status = InstanceStatus.RUNNING
+
+                result = orchestrator._db_instance_to_claude_instance(mock_db_instance)
+
+                assert result.process_id is None
+                assert result.status == InstanceStatus.STOPPED
+                assert result._process_info is None
+                # Should attempt to update database
+                mock_crud.update.assert_called_once()
