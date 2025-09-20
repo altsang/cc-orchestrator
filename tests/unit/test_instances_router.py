@@ -154,7 +154,10 @@ class TestInstancesRouterFunctions:
         with pytest.raises(HTTPException) as exc_info:
             await instances.create_instance(instance_data=instance_data, crud=mock_crud)
 
-        assert "Instance with issue_id 'duplicate-issue' already exists" in exc_info.value.detail
+        assert (
+            "Instance with issue_id 'duplicate-issue' already exists"
+            in exc_info.value.detail
+        )
 
     @pytest.mark.asyncio
     async def test_get_instance_success(self, mock_crud):

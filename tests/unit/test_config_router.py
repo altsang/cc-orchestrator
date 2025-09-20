@@ -189,7 +189,10 @@ class TestConfigRouterFunctions:
         with pytest.raises(HTTPException) as exc_info:
             await config.create_configuration(config_data=config_data, crud=mock_crud)
 
-        assert "instance_id is required for instance-scoped configurations" in exc_info.value.detail
+        assert (
+            "instance_id is required for instance-scoped configurations"
+            in exc_info.value.detail
+        )
 
     @pytest.mark.asyncio
     async def test_create_configuration_global_with_instance_id(self, mock_crud):
@@ -201,7 +204,10 @@ class TestConfigRouterFunctions:
         with pytest.raises(HTTPException) as exc_info:
             await config.create_configuration(config_data=config_data, crud=mock_crud)
 
-        assert "instance_id can only be set for instance-scoped configurations" in exc_info.value.detail
+        assert (
+            "instance_id can only be set for instance-scoped configurations"
+            in exc_info.value.detail
+        )
 
     @pytest.mark.asyncio
     async def test_create_configuration_instance_not_found(self, mock_crud):
@@ -234,7 +240,10 @@ class TestConfigRouterFunctions:
         with pytest.raises(HTTPException) as exc_info:
             await config.create_configuration(config_data=config_data, crud=mock_crud)
 
-        assert "Configuration with key 'duplicate_key' already exists" in exc_info.value.detail
+        assert (
+            "Configuration with key 'duplicate_key' already exists"
+            in exc_info.value.detail
+        )
 
     @pytest.mark.asyncio
     async def test_get_configuration_success(self, mock_crud):
