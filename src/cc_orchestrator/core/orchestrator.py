@@ -202,24 +202,27 @@ class Orchestrator:
         try:
             # Get the instance first
             db_instance = InstanceCRUD.get_by_issue_id(self._db_session, issue_id)
-            instance = self._db_instance_to_claude_instance(db_instance)
 
-            # Clean up the Claude instance (stop processes, etc.)
+            # DELETE FROM DATABASE FIRST to ensure consistency
+            # If database deletion fails, resources remain allocated but database is consistent
+            InstanceCRUD.delete(self._db_session, db_instance.id)
+            self._db_session.commit()
+            logger.debug("Instance removed from database", issue_id=issue_id)
+
+            # CLEANUP RESOURCES SECOND - after successful database deletion
+            # Create instance object for cleanup (database record is already gone)
+            instance = self._db_instance_to_claude_instance(db_instance)
             cleanup_success = True
             try:
                 await instance.cleanup()
                 logger.debug("Instance cleanup completed", issue_id=issue_id)
             except Exception as cleanup_e:
                 cleanup_success = False
-                logger.error(
-                    "Instance cleanup failed, proceeding with database removal",
+                logger.warning(
+                    "Instance cleanup failed after database removal",
                     issue_id=issue_id,
                     error=str(cleanup_e),
                 )
-
-            # Remove from database (proceed even if cleanup failed to prevent orphaned DB records)
-            InstanceCRUD.delete(self._db_session, db_instance.id)
-            self._db_session.commit()
 
             if cleanup_success:
                 logger.info("Instance destroyed successfully", issue_id=issue_id)
@@ -390,5 +393,21 @@ class Orchestrator:
                 claude_instance.status = InstanceStatus.STOPPED
                 claude_instance.process_id = None
                 claude_instance._process_info = None
+
+        # Register with health monitor for ongoing monitoring
+        if claude_instance.status in [InstanceStatus.RUNNING, InstanceStatus.INITIALIZING]:
+            try:
+                self.health_monitor.register_instance(claude_instance)
+                logger.debug(
+                    "Registered database-loaded instance with health monitor",
+                    instance_id=claude_instance.issue_id,
+                    status=claude_instance.status.value,
+                )
+            except Exception as e:
+                logger.warning(
+                    "Failed to register instance with health monitor",
+                    instance_id=claude_instance.issue_id,
+                    error=str(e),
+                )
 
         return claude_instance
