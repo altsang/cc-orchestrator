@@ -1,7 +1,5 @@
 """Tests for error recovery fixes in orchestrator (addressing PR #60 review comments)."""
 
-import pytest
-
 import os
 import tempfile
 from unittest.mock import AsyncMock, Mock, patch
