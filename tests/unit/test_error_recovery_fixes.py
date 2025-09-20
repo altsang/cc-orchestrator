@@ -50,6 +50,10 @@ class TestCreateInstanceErrorRecovery:
         from cc_orchestrator.database.connection import DatabaseManager
 
         manager = DatabaseManager(database_url=database_url)
+
+        # Ensure tables are created with the manager's engine
+        Base.metadata.create_all(bind=manager.engine)
+
         orchestrator = Orchestrator(db_session=manager.create_session())
         await orchestrator.initialize()
 
@@ -88,6 +92,10 @@ class TestCreateInstanceErrorRecovery:
         from cc_orchestrator.database.connection import DatabaseManager
 
         manager = DatabaseManager(database_url=database_url)
+
+        # Ensure tables are created with the manager's engine
+        Base.metadata.create_all(bind=manager.engine)
+
         orchestrator = Orchestrator(db_session=manager.create_session())
         await orchestrator.initialize()
 
@@ -132,6 +140,10 @@ class TestDestroyInstanceErrorRecovery:
         from cc_orchestrator.database.connection import DatabaseManager
 
         manager = DatabaseManager(database_url=database_url)
+
+        # Ensure tables are created with the manager's engine
+        Base.metadata.create_all(bind=manager.engine)
+
         orchestrator = Orchestrator(db_session=manager.create_session())
         await orchestrator.initialize()
 
@@ -179,6 +191,10 @@ class TestDestroyInstanceErrorRecovery:
         from cc_orchestrator.database.connection import DatabaseManager
 
         manager = DatabaseManager(database_url=database_url)
+
+        # Ensure tables are created with the manager's engine
+        Base.metadata.create_all(bind=manager.engine)
+
         orchestrator = Orchestrator(db_session=manager.create_session())
         await orchestrator.initialize()
 
@@ -211,6 +227,10 @@ class TestDestroyInstanceErrorRecovery:
         from cc_orchestrator.database.connection import DatabaseManager
 
         manager = DatabaseManager(database_url=database_url)
+
+        # Ensure tables are created with the manager's engine
+        Base.metadata.create_all(bind=manager.engine)
+
         orchestrator = Orchestrator(db_session=manager.create_session())
         await orchestrator.initialize()
 
@@ -248,6 +268,10 @@ class TestHealthMonitorIntegration:
         from cc_orchestrator.database.connection import DatabaseManager
 
         manager = DatabaseManager(database_url=database_url)
+
+        # Ensure tables are created with the manager's engine
+        Base.metadata.create_all(bind=manager.engine)
+
         orchestrator = Orchestrator(db_session=manager.create_session())
         await orchestrator.initialize()
 
@@ -295,6 +319,10 @@ class TestHealthMonitorIntegration:
         from cc_orchestrator.database.connection import DatabaseManager
 
         manager = DatabaseManager(database_url=database_url)
+
+        # Ensure tables are created with the manager's engine
+        Base.metadata.create_all(bind=manager.engine)
+
         orchestrator = Orchestrator(db_session=manager.create_session())
         await orchestrator.initialize()
 
@@ -325,6 +353,10 @@ class TestHealthMonitorIntegration:
         from cc_orchestrator.database.connection import DatabaseManager
 
         manager = DatabaseManager(database_url=database_url)
+
+        # Ensure tables are created with the manager's engine
+        Base.metadata.create_all(bind=manager.engine)
+
         orchestrator = Orchestrator(db_session=manager.create_session())
         await orchestrator.initialize()
 
