@@ -4,8 +4,7 @@ from datetime import datetime
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
-from fastapi import FastAPI, Request, Response
-from fastapi.testclient import TestClient
+from fastapi import Request, Response
 
 from cc_orchestrator.web.middleware import (
     LoggingMiddleware,
