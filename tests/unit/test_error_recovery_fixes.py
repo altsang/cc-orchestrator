@@ -51,14 +51,25 @@ class TestCreateInstanceErrorRecovery:
 
         manager = DatabaseManager(database_url=database_url)
 
-        # Ensure tables are created with the manager's engine
+        # Create all tables using the manager's engine
         Base.metadata.create_all(bind=manager.engine)
 
-        orchestrator = Orchestrator(db_session=manager.create_session())
+        # Verify tables were created by testing with a session
+        test_session = manager.create_session()
+        try:
+            # Test that the instances table exists and is accessible
+            from cc_orchestrator.database.models import Instance
 
-        # Bypass the database validation and initialize manually for tests
-        orchestrator._initialized = True
-        await orchestrator.health_monitor.start()
+            test_session.query(Instance.id).limit(1).count()
+            test_session.close()
+        except Exception:
+            test_session.close()
+            # If tables don't exist, this might be a schema issue, create them again
+            Base.metadata.drop_all(bind=manager.engine)
+            Base.metadata.create_all(bind=manager.engine)
+
+        orchestrator = Orchestrator(db_session=manager.create_session())
+        await orchestrator.initialize()
 
         # Mock database failure after instance initialization
         with patch.object(InstanceCRUD, "create") as mock_create:
@@ -96,14 +107,25 @@ class TestCreateInstanceErrorRecovery:
 
         manager = DatabaseManager(database_url=database_url)
 
-        # Ensure tables are created with the manager's engine
+        # Create all tables using the manager's engine
         Base.metadata.create_all(bind=manager.engine)
 
-        orchestrator = Orchestrator(db_session=manager.create_session())
+        # Verify tables were created by testing with a session
+        test_session = manager.create_session()
+        try:
+            # Test that the instances table exists and is accessible
+            from cc_orchestrator.database.models import Instance
 
-        # Bypass the database validation and initialize manually for tests
-        orchestrator._initialized = True
-        await orchestrator.health_monitor.start()
+            test_session.query(Instance.id).limit(1).count()
+            test_session.close()
+        except Exception:
+            test_session.close()
+            # If tables don't exist, this might be a schema issue, create them again
+            Base.metadata.drop_all(bind=manager.engine)
+            Base.metadata.create_all(bind=manager.engine)
+
+        orchestrator = Orchestrator(db_session=manager.create_session())
+        await orchestrator.initialize()
 
         # Mock both database failure and cleanup failure
         with (
@@ -147,14 +169,25 @@ class TestDestroyInstanceErrorRecovery:
 
         manager = DatabaseManager(database_url=database_url)
 
-        # Ensure tables are created with the manager's engine
+        # Create all tables using the manager's engine
         Base.metadata.create_all(bind=manager.engine)
 
-        orchestrator = Orchestrator(db_session=manager.create_session())
+        # Verify tables were created by testing with a session
+        test_session = manager.create_session()
+        try:
+            # Test that the instances table exists and is accessible
+            from cc_orchestrator.database.models import Instance
 
-        # Bypass the database validation and initialize manually for tests
-        orchestrator._initialized = True
-        await orchestrator.health_monitor.start()
+            test_session.query(Instance.id).limit(1).count()
+            test_session.close()
+        except Exception:
+            test_session.close()
+            # If tables don't exist, this might be a schema issue, create them again
+            Base.metadata.drop_all(bind=manager.engine)
+            Base.metadata.create_all(bind=manager.engine)
+
+        orchestrator = Orchestrator(db_session=manager.create_session())
+        await orchestrator.initialize()
 
         # Create instance first
         await orchestrator.create_instance("test-issue")
@@ -201,14 +234,25 @@ class TestDestroyInstanceErrorRecovery:
 
         manager = DatabaseManager(database_url=database_url)
 
-        # Ensure tables are created with the manager's engine
+        # Create all tables using the manager's engine
         Base.metadata.create_all(bind=manager.engine)
 
-        orchestrator = Orchestrator(db_session=manager.create_session())
+        # Verify tables were created by testing with a session
+        test_session = manager.create_session()
+        try:
+            # Test that the instances table exists and is accessible
+            from cc_orchestrator.database.models import Instance
 
-        # Bypass the database validation and initialize manually for tests
-        orchestrator._initialized = True
-        await orchestrator.health_monitor.start()
+            test_session.query(Instance.id).limit(1).count()
+            test_session.close()
+        except Exception:
+            test_session.close()
+            # If tables don't exist, this might be a schema issue, create them again
+            Base.metadata.drop_all(bind=manager.engine)
+            Base.metadata.create_all(bind=manager.engine)
+
+        orchestrator = Orchestrator(db_session=manager.create_session())
+        await orchestrator.initialize()
 
         # Create instance first
         await orchestrator.create_instance("test-issue")
@@ -240,14 +284,25 @@ class TestDestroyInstanceErrorRecovery:
 
         manager = DatabaseManager(database_url=database_url)
 
-        # Ensure tables are created with the manager's engine
+        # Create all tables using the manager's engine
         Base.metadata.create_all(bind=manager.engine)
 
-        orchestrator = Orchestrator(db_session=manager.create_session())
+        # Verify tables were created by testing with a session
+        test_session = manager.create_session()
+        try:
+            # Test that the instances table exists and is accessible
+            from cc_orchestrator.database.models import Instance
 
-        # Bypass the database validation and initialize manually for tests
-        orchestrator._initialized = True
-        await orchestrator.health_monitor.start()
+            test_session.query(Instance.id).limit(1).count()
+            test_session.close()
+        except Exception:
+            test_session.close()
+            # If tables don't exist, this might be a schema issue, create them again
+            Base.metadata.drop_all(bind=manager.engine)
+            Base.metadata.create_all(bind=manager.engine)
+
+        orchestrator = Orchestrator(db_session=manager.create_session())
+        await orchestrator.initialize()
 
         # Create instance first
         await orchestrator.create_instance("test-issue")
@@ -284,14 +339,25 @@ class TestHealthMonitorIntegration:
 
         manager = DatabaseManager(database_url=database_url)
 
-        # Ensure tables are created with the manager's engine
+        # Create all tables using the manager's engine
         Base.metadata.create_all(bind=manager.engine)
 
-        orchestrator = Orchestrator(db_session=manager.create_session())
+        # Verify tables were created by testing with a session
+        test_session = manager.create_session()
+        try:
+            # Test that the instances table exists and is accessible
+            from cc_orchestrator.database.models import Instance
 
-        # Bypass the database validation and initialize manually for tests
-        orchestrator._initialized = True
-        await orchestrator.health_monitor.start()
+            test_session.query(Instance.id).limit(1).count()
+            test_session.close()
+        except Exception:
+            test_session.close()
+            # If tables don't exist, this might be a schema issue, create them again
+            Base.metadata.drop_all(bind=manager.engine)
+            Base.metadata.create_all(bind=manager.engine)
+
+        orchestrator = Orchestrator(db_session=manager.create_session())
+        await orchestrator.initialize()
 
         # Create an instance and manually set it to RUNNING in database
         await orchestrator.create_instance("test-issue")
@@ -338,14 +404,25 @@ class TestHealthMonitorIntegration:
 
         manager = DatabaseManager(database_url=database_url)
 
-        # Ensure tables are created with the manager's engine
+        # Create all tables using the manager's engine
         Base.metadata.create_all(bind=manager.engine)
 
-        orchestrator = Orchestrator(db_session=manager.create_session())
+        # Verify tables were created by testing with a session
+        test_session = manager.create_session()
+        try:
+            # Test that the instances table exists and is accessible
+            from cc_orchestrator.database.models import Instance
 
-        # Bypass the database validation and initialize manually for tests
-        orchestrator._initialized = True
-        await orchestrator.health_monitor.start()
+            test_session.query(Instance.id).limit(1).count()
+            test_session.close()
+        except Exception:
+            test_session.close()
+            # If tables don't exist, this might be a schema issue, create them again
+            Base.metadata.drop_all(bind=manager.engine)
+            Base.metadata.create_all(bind=manager.engine)
+
+        orchestrator = Orchestrator(db_session=manager.create_session())
+        await orchestrator.initialize()
 
         # Create instance (defaults to STOPPED after initialization)
         await orchestrator.create_instance("test-issue")
@@ -375,14 +452,25 @@ class TestHealthMonitorIntegration:
 
         manager = DatabaseManager(database_url=database_url)
 
-        # Ensure tables are created with the manager's engine
+        # Create all tables using the manager's engine
         Base.metadata.create_all(bind=manager.engine)
 
-        orchestrator = Orchestrator(db_session=manager.create_session())
+        # Verify tables were created by testing with a session
+        test_session = manager.create_session()
+        try:
+            # Test that the instances table exists and is accessible
+            from cc_orchestrator.database.models import Instance
 
-        # Bypass the database validation and initialize manually for tests
-        orchestrator._initialized = True
-        await orchestrator.health_monitor.start()
+            test_session.query(Instance.id).limit(1).count()
+            test_session.close()
+        except Exception:
+            test_session.close()
+            # If tables don't exist, this might be a schema issue, create them again
+            Base.metadata.drop_all(bind=manager.engine)
+            Base.metadata.create_all(bind=manager.engine)
+
+        orchestrator = Orchestrator(db_session=manager.create_session())
+        await orchestrator.initialize()
 
         # Create a RUNNING instance
         await orchestrator.create_instance("test-issue")
