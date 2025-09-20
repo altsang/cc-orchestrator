@@ -10,7 +10,7 @@ from ..utils.process import (
     ProcessInfo,
     get_process_manager,
 )
-from .enums import InstanceStatus, InstanceState
+from .enums import InstanceState, InstanceStatus
 
 logger = get_logger(__name__, LogContext.INSTANCE)
 

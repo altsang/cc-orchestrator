@@ -99,13 +99,20 @@ def rate_limit(
             request: Request | None = None, *args: Any, **kwargs: Any
         ) -> Any:
             if request:
+                import os
+
+                # Use test rate limit if set, otherwise use default
+                effective_limit = int(
+                    os.getenv("TEST_RATE_LIMIT_PER_MINUTE", str(requests_per_minute))
+                )
+
                 client_ip = get_client_ip(request)
                 endpoint = f"{request.method}:{request.url.path}"
 
                 rate_limiter.check_rate_limit(
                     client_ip=client_ip,
                     endpoint=endpoint,
-                    limit=requests_per_minute,
+                    limit=effective_limit,
                     window_seconds=60,
                 )
 
@@ -123,8 +130,15 @@ def websocket_rate_limit(
     connection_counts: dict[str, int] = defaultdict(int)
 
     def check_limit(client_ip: str) -> None:
-        if connection_counts[client_ip] >= connections_per_ip:
-            raise RateLimitExceededError(connections_per_ip, "concurrent connections")
+        import os
+
+        # Use higher limit for tests if set
+        effective_limit = int(
+            os.getenv("TEST_WEBSOCKET_CONNECTIONS_PER_IP", str(connections_per_ip))
+        )
+
+        if connection_counts[client_ip] >= effective_limit:
+            raise RateLimitExceededError(effective_limit, "concurrent connections")
 
     def add_connection(client_ip: str) -> None:
         connection_counts[client_ip] += 1
