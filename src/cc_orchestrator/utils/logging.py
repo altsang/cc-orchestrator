@@ -214,7 +214,7 @@ class ContextualLogger:
 
         if extra_context:
             for key, value in extra_context.items():
-                if key in ['exc_info', 'stack_info', 'stacklevel']:
+                if key in ["exc_info", "stack_info", "stacklevel"]:
                     reserved_params[key] = value
                 else:
                     filtered_context[key] = value

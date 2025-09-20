@@ -175,7 +175,10 @@ class TestWorktreesRouterFunctions:
         with pytest.raises(HTTPException) as exc_info:
             await worktrees.create_worktree(worktree_data=worktree_data, crud=mock_crud)
 
-        assert "Worktree with path '/workspace/duplicate' already exists" in exc_info.value.detail
+        assert (
+            "Worktree with path '/workspace/duplicate' already exists"
+            in exc_info.value.detail
+        )
 
     @pytest.mark.asyncio
     async def test_create_worktree_invalid_instance(self, mock_crud):
