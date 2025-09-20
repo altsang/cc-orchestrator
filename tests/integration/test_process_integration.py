@@ -147,6 +147,14 @@ class TestProcessIntegration:
     @pytest.mark.asyncio
     async def test_orchestrator_instance_management(self, orchestrator, temp_dir):
         """Test orchestrator managing multiple instances with processes."""
+        # Clean up any existing instances from previous tests
+        existing_instances = orchestrator.list_instances()
+        for instance in existing_instances:
+            await orchestrator.destroy_instance(instance.issue_id)
+
+        # Verify clean state
+        assert len(orchestrator.list_instances()) == 0
+
         # Create multiple instances
         instance_ids = ["issue-1", "issue-2", "issue-3"]
 
