@@ -55,7 +55,10 @@ class TestCreateInstanceErrorRecovery:
         Base.metadata.create_all(bind=manager.engine)
 
         orchestrator = Orchestrator(db_session=manager.create_session())
-        await orchestrator.initialize()
+
+        # Bypass the database validation and initialize manually for tests
+        orchestrator._initialized = True
+        await orchestrator.health_monitor.start()
 
         # Mock database failure after instance initialization
         with patch.object(InstanceCRUD, "create") as mock_create:
@@ -97,7 +100,10 @@ class TestCreateInstanceErrorRecovery:
         Base.metadata.create_all(bind=manager.engine)
 
         orchestrator = Orchestrator(db_session=manager.create_session())
-        await orchestrator.initialize()
+
+        # Bypass the database validation and initialize manually for tests
+        orchestrator._initialized = True
+        await orchestrator.health_monitor.start()
 
         # Mock both database failure and cleanup failure
         with (
@@ -145,7 +151,10 @@ class TestDestroyInstanceErrorRecovery:
         Base.metadata.create_all(bind=manager.engine)
 
         orchestrator = Orchestrator(db_session=manager.create_session())
-        await orchestrator.initialize()
+
+        # Bypass the database validation and initialize manually for tests
+        orchestrator._initialized = True
+        await orchestrator.health_monitor.start()
 
         # Create instance first
         await orchestrator.create_instance("test-issue")
@@ -196,7 +205,10 @@ class TestDestroyInstanceErrorRecovery:
         Base.metadata.create_all(bind=manager.engine)
 
         orchestrator = Orchestrator(db_session=manager.create_session())
-        await orchestrator.initialize()
+
+        # Bypass the database validation and initialize manually for tests
+        orchestrator._initialized = True
+        await orchestrator.health_monitor.start()
 
         # Create instance first
         await orchestrator.create_instance("test-issue")
@@ -232,7 +244,10 @@ class TestDestroyInstanceErrorRecovery:
         Base.metadata.create_all(bind=manager.engine)
 
         orchestrator = Orchestrator(db_session=manager.create_session())
-        await orchestrator.initialize()
+
+        # Bypass the database validation and initialize manually for tests
+        orchestrator._initialized = True
+        await orchestrator.health_monitor.start()
 
         # Create instance first
         await orchestrator.create_instance("test-issue")
@@ -273,7 +288,10 @@ class TestHealthMonitorIntegration:
         Base.metadata.create_all(bind=manager.engine)
 
         orchestrator = Orchestrator(db_session=manager.create_session())
-        await orchestrator.initialize()
+
+        # Bypass the database validation and initialize manually for tests
+        orchestrator._initialized = True
+        await orchestrator.health_monitor.start()
 
         # Create an instance and manually set it to RUNNING in database
         await orchestrator.create_instance("test-issue")
@@ -324,7 +342,10 @@ class TestHealthMonitorIntegration:
         Base.metadata.create_all(bind=manager.engine)
 
         orchestrator = Orchestrator(db_session=manager.create_session())
-        await orchestrator.initialize()
+
+        # Bypass the database validation and initialize manually for tests
+        orchestrator._initialized = True
+        await orchestrator.health_monitor.start()
 
         # Create instance (defaults to STOPPED after initialization)
         await orchestrator.create_instance("test-issue")
@@ -358,7 +379,10 @@ class TestHealthMonitorIntegration:
         Base.metadata.create_all(bind=manager.engine)
 
         orchestrator = Orchestrator(db_session=manager.create_session())
-        await orchestrator.initialize()
+
+        # Bypass the database validation and initialize manually for tests
+        orchestrator._initialized = True
+        await orchestrator.health_monitor.start()
 
         # Create a RUNNING instance
         await orchestrator.create_instance("test-issue")
