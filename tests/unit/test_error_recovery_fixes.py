@@ -1,7 +1,8 @@
 """Tests for error recovery fixes in orchestrator (addressing PR #60 review comments)."""
 
-import pytest
 from unittest.mock import AsyncMock, Mock, patch
+
+import pytest
 
 from cc_orchestrator.core.enums import InstanceStatus
 from cc_orchestrator.core.instance import ClaudeInstance
