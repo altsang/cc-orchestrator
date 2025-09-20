@@ -4,9 +4,9 @@ import pytest
 from unittest.mock import AsyncMock, Mock, patch
 
 from cc_orchestrator.core.enums import InstanceStatus
-from cc_orchestrator.core.orchestrator import Orchestrator
 from cc_orchestrator.core.instance import ClaudeInstance
-from cc_orchestrator.database.crud import InstanceCRUD, NotFoundError
+from cc_orchestrator.core.orchestrator import Orchestrator
+from cc_orchestrator.database.crud import InstanceCRUD
 
 
 class TestCreateInstanceErrorRecovery:
@@ -98,7 +98,7 @@ class TestDestroyInstanceErrorRecovery:
         await orchestrator.initialize()
 
         # Create instance first
-        instance = await orchestrator.create_instance("test-issue")
+        await orchestrator.create_instance("test-issue")
 
         # Track order of operations
         call_order = []
@@ -216,7 +216,7 @@ class TestHealthMonitorIntegration:
         # Mock health monitor
         with patch.object(orchestrator.health_monitor, 'register_instance') as mock_register:
             # Load instance from database (should trigger health monitor registration)
-            loaded_instance = orchestrator.get_instance("test-issue")
+            orchestrator.get_instance("test-issue")
 
             # Verify health monitor registration was called
             mock_register.assert_called_once()
@@ -245,7 +245,7 @@ class TestHealthMonitorIntegration:
         # Mock health monitor
         with patch.object(orchestrator.health_monitor, 'register_instance') as mock_register:
             # Load instance from database
-            loaded_instance = orchestrator.get_instance("test-issue")
+            orchestrator.get_instance("test-issue")
 
             # Verify health monitor registration was NOT called for STOPPED instance
             mock_register.assert_not_called()
