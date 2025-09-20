@@ -395,7 +395,10 @@ class Orchestrator:
                 claude_instance._process_info = None
 
         # Register with health monitor for ongoing monitoring
-        if claude_instance.status in [InstanceStatus.RUNNING, InstanceStatus.INITIALIZING]:
+        if claude_instance.status in [
+            InstanceStatus.RUNNING,
+            InstanceStatus.INITIALIZING,
+        ]:
             try:
                 self.health_monitor.register_instance(claude_instance)
                 logger.debug(
