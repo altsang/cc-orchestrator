@@ -146,6 +146,14 @@ class Orchestrator:
             # Initialize the instance
             await instance.initialize()
 
+            # Prepare metadata for JSON serialization (convert Path objects to strings)
+            serializable_metadata = {}
+            for key, value in kwargs.items():
+                if hasattr(value, "__fspath__"):  # Path-like object
+                    serializable_metadata[key] = str(value)
+                else:
+                    serializable_metadata[key] = value
+
             # Persist to database
             db_instance = InstanceCRUD.create(
                 session=self._db_session,
@@ -153,7 +161,7 @@ class Orchestrator:
                 workspace_path=str(instance.workspace_path),
                 branch_name=instance.branch_name,
                 tmux_session=instance.tmux_session,
-                extra_metadata=kwargs,
+                extra_metadata=serializable_metadata,
             )
             self._db_session.commit()
 
