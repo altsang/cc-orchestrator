@@ -6,7 +6,6 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-from sqlalchemy import create_engine
 
 from cc_orchestrator.core.enums import InstanceStatus
 from cc_orchestrator.core.instance import ClaudeInstance
@@ -34,7 +33,6 @@ class TestProcessIntegration:
 
         # Create database with tables
         from sqlalchemy import create_engine
-        from cc_orchestrator.database.models import Base
 
         engine = create_engine(database_url, connect_args={"check_same_thread": False})
         Base.metadata.create_all(bind=engine)
@@ -43,6 +41,7 @@ class TestProcessIntegration:
 
         # Cleanup
         import os
+
         try:
             os.unlink(temp_db_file.name)
         except FileNotFoundError:
@@ -54,7 +53,8 @@ class TestProcessIntegration:
         database_url, _ = temp_db
 
         # Reset any global database manager first
-        from cc_orchestrator.database.connection import close_database, DatabaseManager
+        from cc_orchestrator.database.connection import DatabaseManager, close_database
+
         close_database()
 
         # Create fresh database manager with current schema
@@ -216,10 +216,18 @@ class TestProcessIntegration:
             process_infos.append(process_info)
 
         with (
-            patch("cc_orchestrator.utils.process.ProcessManager.spawn_claude_process") as mock_spawn,
-            patch("cc_orchestrator.utils.process.ProcessManager.terminate_process") as mock_terminate,
-            patch("cc_orchestrator.utils.process.ProcessManager.get_process_info") as mock_get_info,
-            patch("cc_orchestrator.utils.process.ProcessManager.list_processes") as mock_list,
+            patch(
+                "cc_orchestrator.utils.process.ProcessManager.spawn_claude_process"
+            ) as mock_spawn,
+            patch(
+                "cc_orchestrator.utils.process.ProcessManager.terminate_process"
+            ) as mock_terminate,
+            patch(
+                "cc_orchestrator.utils.process.ProcessManager.get_process_info"
+            ) as mock_get_info,
+            patch(
+                "cc_orchestrator.utils.process.ProcessManager.list_processes"
+            ) as mock_list,
         ):
             # Set up mock returns
             mock_spawn.side_effect = process_infos
