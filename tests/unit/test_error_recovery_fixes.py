@@ -19,19 +19,23 @@ class TestCreateInstanceErrorRecovery:
 
         # Reset any global database manager first
         from cc_orchestrator.database.connection import close_database
+
         close_database()
 
         from cc_orchestrator.database.connection import DatabaseManager
+
         manager = DatabaseManager(database_url=database_url)
         orchestrator = Orchestrator(db_session=manager.create_session())
         await orchestrator.initialize()
 
         # Mock database failure after instance initialization
-        with patch.object(InstanceCRUD, 'create') as mock_create:
+        with patch.object(InstanceCRUD, "create") as mock_create:
             mock_create.side_effect = Exception("Database connection lost")
 
             # Mock instance to verify cleanup is called
-            with patch('cc_orchestrator.core.instance.ClaudeInstance') as mock_instance_class:
+            with patch(
+                "cc_orchestrator.core.instance.ClaudeInstance"
+            ) as mock_instance_class:
                 mock_instance = Mock()
                 mock_instance.initialize = AsyncMock()
                 mock_instance.cleanup = AsyncMock()
@@ -53,16 +57,22 @@ class TestCreateInstanceErrorRecovery:
         database_url, _ = temp_db
 
         from cc_orchestrator.database.connection import close_database
+
         close_database()
 
         from cc_orchestrator.database.connection import DatabaseManager
+
         manager = DatabaseManager(database_url=database_url)
         orchestrator = Orchestrator(db_session=manager.create_session())
         await orchestrator.initialize()
 
         # Mock both database failure and cleanup failure
-        with patch.object(InstanceCRUD, 'create') as mock_create, \
-             patch('cc_orchestrator.core.instance.ClaudeInstance') as mock_instance_class:
+        with (
+            patch.object(InstanceCRUD, "create") as mock_create,
+            patch(
+                "cc_orchestrator.core.instance.ClaudeInstance"
+            ) as mock_instance_class,
+        ):
 
             mock_create.side_effect = Exception("Database connection lost")
 
@@ -91,9 +101,11 @@ class TestDestroyInstanceErrorRecovery:
         database_url, _ = temp_db
 
         from cc_orchestrator.database.connection import close_database
+
         close_database()
 
         from cc_orchestrator.database.connection import DatabaseManager
+
         manager = DatabaseManager(database_url=database_url)
         orchestrator = Orchestrator(db_session=manager.create_session())
         await orchestrator.initialize()
@@ -104,8 +116,10 @@ class TestDestroyInstanceErrorRecovery:
         # Track order of operations
         call_order = []
 
-        with patch.object(InstanceCRUD, 'delete') as mock_delete, \
-             patch.object(ClaudeInstance, 'cleanup') as mock_cleanup:
+        with (
+            patch.object(InstanceCRUD, "delete") as mock_delete,
+            patch.object(ClaudeInstance, "cleanup") as mock_cleanup,
+        ):
 
             def track_delete(*args, **kwargs):
                 call_order.append("database_delete")
@@ -127,14 +141,18 @@ class TestDestroyInstanceErrorRecovery:
         await orchestrator.cleanup()
         manager.close()
 
-    async def test_destroy_instance_database_consistency_on_cleanup_failure(self, temp_db):
+    async def test_destroy_instance_database_consistency_on_cleanup_failure(
+        self, temp_db
+    ):
         """Test database consistency when resource cleanup fails."""
         database_url, _ = temp_db
 
         from cc_orchestrator.database.connection import close_database
+
         close_database()
 
         from cc_orchestrator.database.connection import DatabaseManager
+
         manager = DatabaseManager(database_url=database_url)
         orchestrator = Orchestrator(db_session=manager.create_session())
         await orchestrator.initialize()
@@ -143,7 +161,7 @@ class TestDestroyInstanceErrorRecovery:
         await orchestrator.create_instance("test-issue")
 
         # Mock cleanup failure (but database deletion succeeds)
-        with patch.object(ClaudeInstance, 'cleanup') as mock_cleanup:
+        with patch.object(ClaudeInstance, "cleanup") as mock_cleanup:
             mock_cleanup.side_effect = Exception("Cleanup failed")
 
             # Destroy should still succeed (database consistency prioritized)
@@ -162,9 +180,11 @@ class TestDestroyInstanceErrorRecovery:
         database_url, _ = temp_db
 
         from cc_orchestrator.database.connection import close_database
+
         close_database()
 
         from cc_orchestrator.database.connection import DatabaseManager
+
         manager = DatabaseManager(database_url=database_url)
         orchestrator = Orchestrator(db_session=manager.create_session())
         await orchestrator.initialize()
@@ -173,7 +193,7 @@ class TestDestroyInstanceErrorRecovery:
         await orchestrator.create_instance("test-issue")
 
         # Mock database deletion failure
-        with patch.object(InstanceCRUD, 'delete') as mock_delete:
+        with patch.object(InstanceCRUD, "delete") as mock_delete:
             mock_delete.side_effect = Exception("Database deletion failed")
 
             # Destroy should fail
@@ -197,9 +217,11 @@ class TestHealthMonitorIntegration:
         database_url, _ = temp_db
 
         from cc_orchestrator.database.connection import close_database
+
         close_database()
 
         from cc_orchestrator.database.connection import DatabaseManager
+
         manager = DatabaseManager(database_url=database_url)
         orchestrator = Orchestrator(db_session=manager.create_session())
         await orchestrator.initialize()
@@ -209,13 +231,20 @@ class TestHealthMonitorIntegration:
 
         # Update database to mark instance as RUNNING
         from cc_orchestrator.database.models import Instance
-        db_instance = orchestrator._db_session.query(Instance).filter_by(issue_id="test-issue").first()
+
+        db_instance = (
+            orchestrator._db_session.query(Instance)
+            .filter_by(issue_id="test-issue")
+            .first()
+        )
         db_instance.status = InstanceStatus.RUNNING
         db_instance.process_id = 12345
         orchestrator._db_session.commit()
 
         # Mock health monitor
-        with patch.object(orchestrator.health_monitor, 'register_instance') as mock_register:
+        with patch.object(
+            orchestrator.health_monitor, "register_instance"
+        ) as mock_register:
             # Load instance from database (should trigger health monitor registration)
             orchestrator.get_instance("test-issue")
 
@@ -228,14 +257,18 @@ class TestHealthMonitorIntegration:
         await orchestrator.cleanup()
         manager.close()
 
-    async def test_health_monitor_registration_skipped_for_stopped_instances(self, temp_db):
+    async def test_health_monitor_registration_skipped_for_stopped_instances(
+        self, temp_db
+    ):
         """Test that STOPPED instances are not registered with health monitor."""
         database_url, _ = temp_db
 
         from cc_orchestrator.database.connection import close_database
+
         close_database()
 
         from cc_orchestrator.database.connection import DatabaseManager
+
         manager = DatabaseManager(database_url=database_url)
         orchestrator = Orchestrator(db_session=manager.create_session())
         await orchestrator.initialize()
@@ -244,7 +277,9 @@ class TestHealthMonitorIntegration:
         await orchestrator.create_instance("test-issue")
 
         # Mock health monitor
-        with patch.object(orchestrator.health_monitor, 'register_instance') as mock_register:
+        with patch.object(
+            orchestrator.health_monitor, "register_instance"
+        ) as mock_register:
             # Load instance from database
             orchestrator.get_instance("test-issue")
 
@@ -259,9 +294,11 @@ class TestHealthMonitorIntegration:
         database_url, _ = temp_db
 
         from cc_orchestrator.database.connection import close_database
+
         close_database()
 
         from cc_orchestrator.database.connection import DatabaseManager
+
         manager = DatabaseManager(database_url=database_url)
         orchestrator = Orchestrator(db_session=manager.create_session())
         await orchestrator.initialize()
@@ -271,12 +308,19 @@ class TestHealthMonitorIntegration:
 
         # Update database to mark instance as RUNNING
         from cc_orchestrator.database.models import Instance
-        db_instance = orchestrator._db_session.query(Instance).filter_by(issue_id="test-issue").first()
+
+        db_instance = (
+            orchestrator._db_session.query(Instance)
+            .filter_by(issue_id="test-issue")
+            .first()
+        )
         db_instance.status = InstanceStatus.RUNNING
         orchestrator._db_session.commit()
 
         # Mock health monitor to fail
-        with patch.object(orchestrator.health_monitor, 'register_instance') as mock_register:
+        with patch.object(
+            orchestrator.health_monitor, "register_instance"
+        ) as mock_register:
             mock_register.side_effect = Exception("Health monitor failure")
 
             # Load instance should succeed despite health monitor failure
