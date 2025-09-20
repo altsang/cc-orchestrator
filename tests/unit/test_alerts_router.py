@@ -15,6 +15,7 @@ from datetime import UTC, datetime
 from unittest.mock import AsyncMock, Mock
 
 import pytest
+from fastapi import HTTPException
 
 from cc_orchestrator.web.dependencies import PaginationParams
 from cc_orchestrator.web.routers.v1 import alerts
@@ -136,11 +137,11 @@ class TestAlertsRouterFunctions:
             message="Test alert",
         )
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             await alerts.create_alert(alert_data=alert_data, crud=mock_crud)
 
-        # The error decorator converts HTTPException to CCOrchestratorException
-        assert "Instance with ID 999 not found" in str(exc_info.value)
+        # Check the HTTPException detail
+        assert "Instance with ID 999 not found" in exc_info.value.detail
 
     @pytest.mark.asyncio
     async def test_create_alert_duplicate_id(self, mock_crud):
@@ -157,11 +158,11 @@ class TestAlertsRouterFunctions:
             message="Test alert",
         )
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             await alerts.create_alert(alert_data=alert_data, crud=mock_crud)
 
-        # The error decorator converts HTTPException to CCOrchestratorException
-        assert "Alert with ID 'ALERT-001' already exists" in str(exc_info.value)
+        # Check the HTTPException detail
+        assert "Alert with ID 'ALERT-001' already exists" in exc_info.value.detail
 
     @pytest.mark.asyncio
     async def test_get_alert_success(self, mock_crud):
@@ -179,11 +180,11 @@ class TestAlertsRouterFunctions:
         """Test alert retrieval for non-existent alert."""
         mock_crud.get_alert_by_alert_id.return_value = None
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             await alerts.get_alert(alert_id="NONEXISTENT", crud=mock_crud)
 
-        # The error decorator converts HTTPException to CCOrchestratorException
-        assert "Alert with ID 'NONEXISTENT' not found" in str(exc_info.value)
+        # Check the HTTPException detail
+        assert "Alert with ID 'NONEXISTENT' not found" in exc_info.value.detail
 
     @pytest.mark.asyncio
     async def test_get_instance_alerts_success(self, mock_crud, pagination_params):
@@ -206,7 +207,7 @@ class TestAlertsRouterFunctions:
         """Test instance alerts for non-existent instance."""
         mock_crud.get_instance.return_value = None
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             await alerts.get_instance_alerts(
                 instance_id=999,
                 pagination=pagination_params,
@@ -214,8 +215,8 @@ class TestAlertsRouterFunctions:
                 crud=mock_crud,
             )
 
-        # The error decorator converts HTTPException to CCOrchestratorException
-        assert "Instance with ID 999 not found" in str(exc_info.value)
+        # Check the HTTPException detail
+        assert "Instance with ID 999 not found" in exc_info.value.detail
 
     @pytest.mark.asyncio
     async def test_get_instance_alerts_with_level_filter(

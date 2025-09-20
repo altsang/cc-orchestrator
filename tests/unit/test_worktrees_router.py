@@ -13,6 +13,7 @@ from datetime import UTC, datetime
 from unittest.mock import AsyncMock, Mock
 
 import pytest
+from fastapi import HTTPException
 
 from cc_orchestrator.database.models import WorktreeStatus
 from cc_orchestrator.web.dependencies import PaginationParams
@@ -171,12 +172,10 @@ class TestWorktreesRouterFunctions:
             path="/workspace/duplicate",
         )
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             await worktrees.create_worktree(worktree_data=worktree_data, crud=mock_crud)
 
-        assert "Worktree with path '/workspace/duplicate' already exists" in str(
-            exc_info.value
-        )
+        assert "Worktree with path '/workspace/duplicate' already exists" in exc_info.value.detail
 
     @pytest.mark.asyncio
     async def test_create_worktree_invalid_instance(self, mock_crud):
@@ -191,10 +190,10 @@ class TestWorktreesRouterFunctions:
             instance_id=999,
         )
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             await worktrees.create_worktree(worktree_data=worktree_data, crud=mock_crud)
 
-        assert "Instance with ID 999 not found" in str(exc_info.value)
+        assert "Instance with ID 999 not found" in exc_info.value.detail
 
     @pytest.mark.asyncio
     async def test_get_worktree_success(self, mock_crud):
@@ -212,10 +211,10 @@ class TestWorktreesRouterFunctions:
         """Test worktree retrieval for non-existent worktree."""
         mock_crud.get_worktree.return_value = None
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             await worktrees.get_worktree(worktree_id=999, crud=mock_crud)
 
-        assert "Worktree with ID 999 not found" in str(exc_info.value)
+        assert "Worktree with ID 999 not found" in exc_info.value.detail
 
     @pytest.mark.asyncio
     async def test_update_worktree_success(self, mock_crud):
@@ -241,12 +240,12 @@ class TestWorktreesRouterFunctions:
 
         update_data = WorktreeUpdate(name="updated-name")
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             await worktrees.update_worktree(
                 worktree_id=999, worktree_data=update_data, crud=mock_crud
             )
 
-        assert "Worktree with ID 999 not found" in str(exc_info.value)
+        assert "Worktree with ID 999 not found" in exc_info.value.detail
 
     @pytest.mark.asyncio
     async def test_update_worktree_invalid_instance(self, mock_crud):
@@ -255,12 +254,12 @@ class TestWorktreesRouterFunctions:
 
         update_data = WorktreeUpdate(instance_id=999)
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             await worktrees.update_worktree(
                 worktree_id=1, worktree_data=update_data, crud=mock_crud
             )
 
-        assert "Instance with ID 999 not found" in str(exc_info.value)
+        assert "Instance with ID 999 not found" in exc_info.value.detail
 
     @pytest.mark.asyncio
     async def test_delete_worktree_success(self, mock_crud):
@@ -278,10 +277,10 @@ class TestWorktreesRouterFunctions:
         """Test worktree deletion for non-existent worktree."""
         mock_crud.get_worktree.return_value = None
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             await worktrees.delete_worktree(worktree_id=999, crud=mock_crud)
 
-        assert "Worktree with ID 999 not found" in str(exc_info.value)
+        assert "Worktree with ID 999 not found" in exc_info.value.detail
 
     @pytest.mark.asyncio
     async def test_sync_worktree_success(self, mock_crud):
@@ -299,10 +298,10 @@ class TestWorktreesRouterFunctions:
         """Test worktree sync for non-existent worktree."""
         mock_crud.get_worktree.return_value = None
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             await worktrees.sync_worktree(worktree_id=999, crud=mock_crud)
 
-        assert "Worktree with ID 999 not found" in str(exc_info.value)
+        assert "Worktree with ID 999 not found" in exc_info.value.detail
 
     @pytest.mark.asyncio
     async def test_get_worktree_status_success(self, mock_crud):
@@ -326,10 +325,10 @@ class TestWorktreesRouterFunctions:
         """Test worktree status retrieval for non-existent worktree."""
         mock_crud.get_worktree.return_value = None
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             await worktrees.get_worktree_status(worktree_id=999, crud=mock_crud)
 
-        assert "Worktree with ID 999 not found" in str(exc_info.value)
+        assert "Worktree with ID 999 not found" in exc_info.value.detail
 
     @pytest.mark.asyncio
     async def test_get_worktree_tasks_success(self, mock_crud, pagination_params):
@@ -354,12 +353,12 @@ class TestWorktreesRouterFunctions:
         """Test worktree tasks retrieval for non-existent worktree."""
         mock_crud.get_worktree.return_value = None
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             await worktrees.get_worktree_tasks(
                 worktree_id=999, pagination=pagination_params, crud=mock_crud
             )
 
-        assert "Worktree with ID 999 not found" in str(exc_info.value)
+        assert "Worktree with ID 999 not found" in exc_info.value.detail
 
 
 class TestWorktreeValidation:

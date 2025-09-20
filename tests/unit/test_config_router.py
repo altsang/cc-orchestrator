@@ -13,6 +13,7 @@ from datetime import UTC, datetime
 from unittest.mock import AsyncMock, Mock
 
 import pytest
+from fastapi import HTTPException
 
 from cc_orchestrator.database.models import ConfigScope
 from cc_orchestrator.web.dependencies import PaginationParams
@@ -185,12 +186,10 @@ class TestConfigRouterFunctions:
             key="test_key", value="test_value", scope=ConfigScope.INSTANCE
         )
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             await config.create_configuration(config_data=config_data, crud=mock_crud)
 
-        assert "instance_id is required for instance-scoped configurations" in str(
-            exc_info.value
-        )
+        assert "instance_id is required for instance-scoped configurations" in exc_info.value.detail
 
     @pytest.mark.asyncio
     async def test_create_configuration_global_with_instance_id(self, mock_crud):
@@ -199,12 +198,10 @@ class TestConfigRouterFunctions:
             key="test_key", value="test_value", scope=ConfigScope.GLOBAL, instance_id=1
         )
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             await config.create_configuration(config_data=config_data, crud=mock_crud)
 
-        assert "instance_id can only be set for instance-scoped configurations" in str(
-            exc_info.value
-        )
+        assert "instance_id can only be set for instance-scoped configurations" in exc_info.value.detail
 
     @pytest.mark.asyncio
     async def test_create_configuration_instance_not_found(self, mock_crud):
@@ -218,10 +215,10 @@ class TestConfigRouterFunctions:
             instance_id=999,
         )
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             await config.create_configuration(config_data=config_data, crud=mock_crud)
 
-        assert "Instance with ID 999 not found" in str(exc_info.value)
+        assert "Instance with ID 999 not found" in exc_info.value.detail
 
     @pytest.mark.asyncio
     async def test_create_configuration_duplicate_key(self, mock_crud):
@@ -234,12 +231,10 @@ class TestConfigRouterFunctions:
             key="duplicate_key", value="test_value", scope=ConfigScope.GLOBAL
         )
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             await config.create_configuration(config_data=config_data, crud=mock_crud)
 
-        assert "Configuration with key 'duplicate_key' already exists" in str(
-            exc_info.value
-        )
+        assert "Configuration with key 'duplicate_key' already exists" in exc_info.value.detail
 
     @pytest.mark.asyncio
     async def test_get_configuration_success(self, mock_crud):
@@ -257,10 +252,10 @@ class TestConfigRouterFunctions:
         """Test configuration retrieval for non-existent config."""
         mock_crud.get_configuration.return_value = None
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             await config.get_configuration(config_id=999, crud=mock_crud)
 
-        assert "Configuration with ID 999 not found" in str(exc_info.value)
+        assert "Configuration with ID 999 not found" in exc_info.value.detail
 
     @pytest.mark.asyncio
     async def test_update_configuration_success(self, mock_crud):
@@ -286,12 +281,12 @@ class TestConfigRouterFunctions:
 
         update_data = ConfigurationUpdate(value="new_value")
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             await config.update_configuration(
                 config_id=999, config_data=update_data, crud=mock_crud
             )
 
-        assert "Configuration with ID 999 not found" in str(exc_info.value)
+        assert "Configuration with ID 999 not found" in exc_info.value.detail
 
     @pytest.mark.asyncio
     async def test_update_readonly_configuration(self, mock_crud):
@@ -303,12 +298,12 @@ class TestConfigRouterFunctions:
 
         update_data = ConfigurationUpdate(value="new_value")
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             await config.update_configuration(
                 config_id=1, config_data=update_data, crud=mock_crud
             )
 
-        assert "Cannot update read-only configuration" in str(exc_info.value)
+        assert "Cannot update read-only configuration" in exc_info.value.detail
 
     @pytest.mark.asyncio
     async def test_delete_configuration_success(self, mock_crud):
@@ -326,10 +321,10 @@ class TestConfigRouterFunctions:
         """Test configuration deletion for non-existent config."""
         mock_crud.get_configuration.return_value = None
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             await config.delete_configuration(config_id=999, crud=mock_crud)
 
-        assert "Configuration with ID 999 not found" in str(exc_info.value)
+        assert "Configuration with ID 999 not found" in exc_info.value.detail
 
     @pytest.mark.asyncio
     async def test_delete_readonly_configuration(self, mock_crud):
@@ -339,10 +334,10 @@ class TestConfigRouterFunctions:
         readonly_config.is_readonly = True
         mock_crud.get_configuration.return_value = readonly_config
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             await config.delete_configuration(config_id=1, crud=mock_crud)
 
-        assert "Cannot delete read-only configuration" in str(exc_info.value)
+        assert "Cannot delete read-only configuration" in exc_info.value.detail
 
     @pytest.mark.asyncio
     async def test_get_configuration_by_key_success(self, mock_crud):
@@ -378,7 +373,7 @@ class TestConfigRouterFunctions:
         """Test configuration retrieval by key when not found."""
         mock_crud.get_configuration_by_key_scope.return_value = None
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             await config.get_configuration_by_key(
                 key="nonexistent",
                 scope=ConfigScope.GLOBAL,
@@ -386,7 +381,7 @@ class TestConfigRouterFunctions:
                 crud=mock_crud,
             )
 
-        assert "Configuration with key 'nonexistent' not found" in str(exc_info.value)
+        assert "Configuration with key 'nonexistent' not found" in exc_info.value.detail
 
     @pytest.mark.asyncio
     async def test_get_resolved_configuration_success(self, mock_crud):
@@ -427,12 +422,12 @@ class TestConfigRouterFunctions:
         # Set up mock to return None for configuration lookup (not found)
         mock_crud.get_configuration_by_key_scope.return_value = None
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             await config.get_resolved_configuration(
                 key="missing_key", instance_id=None, crud=mock_crud
             )
 
-        assert "Configuration with key 'missing_key' not found" in str(exc_info.value)
+        assert "Configuration with key 'missing_key' not found" in exc_info.value.detail
 
     @pytest.mark.asyncio
     async def test_get_instance_configurations_success(
@@ -475,12 +470,12 @@ class TestConfigRouterFunctions:
         """Test instance configurations for non-existent instance."""
         mock_crud.get_instance.return_value = None
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             await config.get_instance_configurations(
                 instance_id=999, pagination=pagination_params, crud=mock_crud
             )
 
-        assert "Instance with ID 999 not found" in str(exc_info.value)
+        assert "Instance with ID 999 not found" in exc_info.value.detail
 
 
 class TestConfigValidation:

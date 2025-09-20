@@ -13,6 +13,7 @@ from datetime import UTC, datetime
 from unittest.mock import AsyncMock, Mock
 
 import pytest
+from fastapi import HTTPException
 
 from cc_orchestrator.database.models import TaskPriority, TaskStatus
 from cc_orchestrator.web.dependencies import PaginationParams
@@ -162,10 +163,10 @@ class TestTasksRouterFunctions:
 
         task_data = TaskCreate(title="Invalid Task", instance_id=999)
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             await tasks.create_task(task_data=task_data, crud=mock_crud)
 
-        assert "Instance with ID 999 not found" in str(exc_info.value)
+        assert "Instance with ID 999 not found" in exc_info.value.detail
 
     @pytest.mark.asyncio
     async def test_create_task_invalid_worktree(self, mock_crud):
@@ -174,10 +175,10 @@ class TestTasksRouterFunctions:
 
         task_data = TaskCreate(title="Invalid Worktree Task", worktree_id=999)
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             await tasks.create_task(task_data=task_data, crud=mock_crud)
 
-        assert "Worktree with ID 999 not found" in str(exc_info.value)
+        assert "Worktree with ID 999 not found" in exc_info.value.detail
 
     @pytest.mark.asyncio
     async def test_get_task_success(self, mock_crud):
@@ -195,10 +196,10 @@ class TestTasksRouterFunctions:
         """Test task retrieval for non-existent task."""
         mock_crud.get_task.return_value = None
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             await tasks.get_task(task_id=999, crud=mock_crud)
 
-        assert "Task with ID 999 not found" in str(exc_info.value)
+        assert "Task with ID 999 not found" in exc_info.value.detail
 
     @pytest.mark.asyncio
     async def test_update_task_success(self, mock_crud):
@@ -222,10 +223,10 @@ class TestTasksRouterFunctions:
 
         update_data = TaskUpdate(title="Updated Task")
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             await tasks.update_task(task_id=999, task_data=update_data, crud=mock_crud)
 
-        assert "Task with ID 999 not found" in str(exc_info.value)
+        assert "Task with ID 999 not found" in exc_info.value.detail
 
     @pytest.mark.asyncio
     async def test_delete_task_success(self, mock_crud):
@@ -243,10 +244,10 @@ class TestTasksRouterFunctions:
         """Test task deletion for non-existent task."""
         mock_crud.get_task.return_value = None
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             await tasks.delete_task(task_id=999, crud=mock_crud)
 
-        assert "Task with ID 999 not found" in str(exc_info.value)
+        assert "Task with ID 999 not found" in exc_info.value.detail
 
     @pytest.mark.asyncio
     async def test_start_task_success(self, mock_crud):
@@ -272,10 +273,10 @@ class TestTasksRouterFunctions:
         mock_task.status = TaskStatus.IN_PROGRESS
         mock_crud.get_task.return_value = mock_task
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             await tasks.start_task(task_id=1, crud=mock_crud)
 
-        assert "Task is already in progress" in str(exc_info.value)
+        assert "Task is already in progress" in exc_info.value.detail
 
     @pytest.mark.asyncio
     async def test_start_task_completed(self, mock_crud):
@@ -285,10 +286,10 @@ class TestTasksRouterFunctions:
         mock_task.status = TaskStatus.COMPLETED
         mock_crud.get_task.return_value = mock_task
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             await tasks.start_task(task_id=1, crud=mock_crud)
 
-        assert "Cannot start a completed task" in str(exc_info.value)
+        assert "Cannot start a completed task" in exc_info.value.detail
 
     @pytest.mark.asyncio
     async def test_complete_task_success(self, mock_crud):
@@ -317,10 +318,10 @@ class TestTasksRouterFunctions:
         mock_task.status = TaskStatus.COMPLETED
         mock_crud.get_task.return_value = mock_task
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             await tasks.complete_task(task_id=1, crud=mock_crud)
 
-        assert "Task is already completed" in str(exc_info.value)
+        assert "Task is already completed" in exc_info.value.detail
 
     @pytest.mark.asyncio
     async def test_cancel_task_success(self, mock_crud):
@@ -348,10 +349,10 @@ class TestTasksRouterFunctions:
         mock_task.status = TaskStatus.COMPLETED
         mock_crud.get_task.return_value = mock_task
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             await tasks.cancel_task(task_id=1, crud=mock_crud)
 
-        assert "Cannot cancel a completed task" in str(exc_info.value)
+        assert "Cannot cancel a completed task" in exc_info.value.detail
 
     @pytest.mark.asyncio
     async def test_assign_task_success(self, mock_crud):
@@ -374,12 +375,12 @@ class TestTasksRouterFunctions:
         mock_crud.get_instance.return_value = None
         assignment_data = {"instance_id": 999}
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             await tasks.assign_task(
                 assignment_data=assignment_data, task_id=1, crud=mock_crud
             )
 
-        assert "Instance with ID 999 not found" in str(exc_info.value)
+        assert "Instance with ID 999 not found" in exc_info.value.detail
 
     @pytest.mark.asyncio
     async def test_unassign_task_success(self, mock_crud):
