@@ -1,13 +1,38 @@
 """Tests for error recovery fixes in orchestrator (addressing PR #60 review comments)."""
 
+import os
+import tempfile
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
+from sqlalchemy import create_engine
 
 from cc_orchestrator.core.enums import InstanceStatus
 from cc_orchestrator.core.instance import ClaudeInstance
 from cc_orchestrator.core.orchestrator import Orchestrator
 from cc_orchestrator.database.crud import InstanceCRUD
+from cc_orchestrator.database.models import Base
+
+
+@pytest.fixture
+def temp_db():
+    """Create a temporary test database."""
+    temp_db_file = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
+    temp_db_file.close()
+
+    database_url = f"sqlite:///{temp_db_file.name}"
+
+    # Create database with tables
+    engine = create_engine(database_url, connect_args={"check_same_thread": False})
+    Base.metadata.create_all(bind=engine)
+
+    yield database_url, temp_db_file.name
+
+    # Cleanup
+    try:
+        os.unlink(temp_db_file.name)
+    except FileNotFoundError:
+        pass
 
 
 class TestCreateInstanceErrorRecovery:
