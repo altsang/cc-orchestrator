@@ -111,11 +111,14 @@ class TestDatabaseDependencies:
         assert session == mock_session
 
         # Test cleanup with commit error
-        with pytest.raises(Exception, match="Commit failed"):
+        with pytest.raises(HTTPException) as exc_info:
             try:
                 await async_gen.__anext__()
             except StopAsyncIteration:
                 pass
+
+        # Check that it's a database error HTTPException
+        assert exc_info.value.status_code == 500
 
         # Verify session was rolled back (commit error triggers rollback)
         assert mock_session.rollback.called

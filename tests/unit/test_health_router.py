@@ -12,6 +12,7 @@ from datetime import UTC, datetime
 from unittest.mock import AsyncMock, Mock
 
 import pytest
+from fastapi import HTTPException
 
 from cc_orchestrator.database.models import HealthStatus
 from cc_orchestrator.web.dependencies import PaginationParams
@@ -146,10 +147,10 @@ class TestHealthRouterFunctions:
         """Test instance health retrieval for non-existent instance."""
         mock_crud.get_instance.return_value = None
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             await health.get_instance_health(instance_id=999, crud=mock_crud)
 
-        assert "Instance with ID 999 not found" in str(exc_info.value)
+        assert "Instance with ID 999 not found" in exc_info.value.detail
 
     @pytest.mark.asyncio
     async def test_perform_health_check_success(self, mock_crud):
@@ -169,10 +170,10 @@ class TestHealthRouterFunctions:
         """Test health check for non-existent instance."""
         mock_crud.get_instance.return_value = None
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             await health.perform_health_check(instance_id=999, crud=mock_crud)
 
-        assert "Instance with ID 999 not found" in str(exc_info.value)
+        assert "Instance with ID 999 not found" in exc_info.value.detail
 
     @pytest.mark.asyncio
     async def test_get_health_history_success(self, mock_crud, pagination_params):
@@ -213,12 +214,12 @@ class TestHealthRouterFunctions:
         """Test health history for non-existent instance."""
         mock_crud.get_instance.return_value = None
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             await health.get_health_check_history(
                 instance_id=999, pagination=pagination_params, crud=mock_crud
             )
 
-        assert "Instance with ID 999 not found" in str(exc_info.value)
+        assert "Instance with ID 999 not found" in exc_info.value.detail
 
     @pytest.mark.asyncio
     async def test_get_health_metrics_success(self, mock_crud):
@@ -242,10 +243,10 @@ class TestHealthRouterFunctions:
         """Test health metrics for non-existent instance."""
         mock_crud.get_instance.return_value = None
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             await health.get_health_metrics(instance_id=999, days=7, crud=mock_crud)
 
-        assert "Instance with ID 999 not found" in str(exc_info.value)
+        assert "Instance with ID 999 not found" in exc_info.value.detail
 
     @pytest.mark.asyncio
     async def test_get_health_overview_success(self, mock_crud):

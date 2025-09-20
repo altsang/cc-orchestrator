@@ -208,10 +208,21 @@ class ContextualLogger:
         if self.task_id:
             extra["task_id"] = self.task_id
 
-        if extra_context:
-            extra.update(extra_context)
+        # Extract reserved logging parameters from extra_context
+        reserved_params = {}
+        filtered_context = {}
 
-        self.logger.log(level, message, extra=extra)
+        if extra_context:
+            for key, value in extra_context.items():
+                if key in ['exc_info', 'stack_info', 'stacklevel']:
+                    reserved_params[key] = value
+                else:
+                    filtered_context[key] = value
+
+        if filtered_context:
+            extra.update(filtered_context)
+
+        self.logger.log(level, message, extra=extra, **reserved_params)
 
     def debug(self, message: str, **kwargs: Any) -> None:
         """Log debug message with context."""

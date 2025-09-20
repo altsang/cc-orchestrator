@@ -151,12 +151,10 @@ class TestInstancesRouterFunctions:
             branch_name="duplicate-branch",
         )
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             await instances.create_instance(instance_data=instance_data, crud=mock_crud)
 
-        assert "Instance with issue_id 'duplicate-issue' already exists" in str(
-            exc_info.value
-        )
+        assert "Instance with issue_id 'duplicate-issue' already exists" in exc_info.value.detail
 
     @pytest.mark.asyncio
     async def test_get_instance_success(self, mock_crud):
@@ -174,10 +172,10 @@ class TestInstancesRouterFunctions:
         """Test instance retrieval for non-existent instance."""
         mock_crud.get_instance.return_value = None
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             await instances.get_instance(instance_id=999, crud=mock_crud)
 
-        assert "Instance with ID 999 not found" in str(exc_info.value)
+        assert "Instance with ID 999 not found" in exc_info.value.detail
 
     @pytest.mark.asyncio
     async def test_get_instance_database_error(self, mock_crud):
@@ -216,12 +214,12 @@ class TestInstancesRouterFunctions:
 
         update_data = InstanceUpdate(workspace_path="/new/path")
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             await instances.update_instance(
                 instance_id=999, instance_data=update_data, crud=mock_crud
             )
 
-        assert "Instance with ID 999 not found" in str(exc_info.value)
+        assert "Instance with ID 999 not found" in exc_info.value.detail
 
     @pytest.mark.asyncio
     async def test_delete_instance_success(self, mock_crud):
@@ -239,10 +237,10 @@ class TestInstancesRouterFunctions:
         """Test instance deletion for non-existent instance."""
         mock_crud.get_instance.return_value = None
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             await instances.delete_instance(instance_id=999, crud=mock_crud)
 
-        assert "Instance with ID 999 not found" in str(exc_info.value)
+        assert "Instance with ID 999 not found" in exc_info.value.detail
 
     @pytest.mark.asyncio
     async def test_start_instance_success(self, mock_crud):
@@ -270,20 +268,20 @@ class TestInstancesRouterFunctions:
         mock_instance.status = InstanceStatus.RUNNING
         mock_crud.get_instance.return_value = mock_instance
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             await instances.start_instance(instance_id=1, crud=mock_crud)
 
-        assert "Instance is already running" in str(exc_info.value)
+        assert "Instance is already running" in exc_info.value.detail
 
     @pytest.mark.asyncio
     async def test_start_instance_not_found(self, mock_crud):
         """Test starting a non-existent instance."""
         mock_crud.get_instance.return_value = None
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             await instances.start_instance(instance_id=999, crud=mock_crud)
 
-        assert "Instance with ID 999 not found" in str(exc_info.value)
+        assert "Instance with ID 999 not found" in exc_info.value.detail
 
     @pytest.mark.asyncio
     async def test_stop_instance_success(self, mock_crud):
@@ -311,20 +309,20 @@ class TestInstancesRouterFunctions:
         mock_instance.status = InstanceStatus.STOPPED
         mock_crud.get_instance.return_value = mock_instance
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             await instances.stop_instance(instance_id=1, crud=mock_crud)
 
-        assert "Instance is already stopped" in str(exc_info.value)
+        assert "Instance is already stopped" in exc_info.value.detail
 
     @pytest.mark.asyncio
     async def test_stop_instance_not_found(self, mock_crud):
         """Test stopping a non-existent instance."""
         mock_crud.get_instance.return_value = None
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             await instances.stop_instance(instance_id=999, crud=mock_crud)
 
-        assert "Instance with ID 999 not found" in str(exc_info.value)
+        assert "Instance with ID 999 not found" in exc_info.value.detail
 
     @pytest.mark.asyncio
     async def test_get_instance_status_success(self, mock_crud):
@@ -347,10 +345,10 @@ class TestInstancesRouterFunctions:
         """Test instance status retrieval for non-existent instance."""
         mock_crud.get_instance.return_value = None
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             await instances.get_instance_status(instance_id=999, crud=mock_crud)
 
-        assert "Instance with ID 999 not found" in str(exc_info.value)
+        assert "Instance with ID 999 not found" in exc_info.value.detail
 
     @pytest.mark.asyncio
     async def test_get_instance_tasks_success(self, mock_crud, pagination_params):
@@ -402,12 +400,12 @@ class TestInstancesRouterFunctions:
         """Test instance tasks retrieval for non-existent instance."""
         mock_crud.get_instance.return_value = None
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             await instances.get_instance_tasks(
                 instance_id=999, pagination=pagination_params, crud=mock_crud
             )
 
-        assert "Instance with ID 999 not found" in str(exc_info.value)
+        assert "Instance with ID 999 not found" in exc_info.value.detail
 
 
 class TestInstanceValidation:
@@ -540,8 +538,6 @@ class TestInstanceRouterErrorCases:
         self, mock_crud_with_errors
     ):
         """Test instance operations when instance not found."""
-        from fastapi import HTTPException
-
         with pytest.raises(HTTPException) as exc_info:
             await instances.get_instance(instance_id=1, crud=mock_crud_with_errors)
 

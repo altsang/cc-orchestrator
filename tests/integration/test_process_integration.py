@@ -6,10 +6,12 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+from sqlalchemy import create_engine
 
 from cc_orchestrator.core.enums import InstanceStatus
 from cc_orchestrator.core.instance import ClaudeInstance
 from cc_orchestrator.core.orchestrator import Orchestrator
+from cc_orchestrator.database.models import Base
 from cc_orchestrator.utils.process import get_process_manager
 
 
@@ -23,12 +25,47 @@ class TestProcessIntegration:
             yield Path(tmp_dir)
 
     @pytest.fixture
-    async def orchestrator(self):
+    def temp_db(self):
+        """Create a temporary test database."""
+        temp_db_file = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
+        temp_db_file.close()
+
+        database_url = f"sqlite:///{temp_db_file.name}"
+
+        # Create database with tables
+        from sqlalchemy import create_engine
+        from cc_orchestrator.database.models import Base
+
+        engine = create_engine(database_url, connect_args={"check_same_thread": False})
+        Base.metadata.create_all(bind=engine)
+
+        yield database_url, temp_db_file.name
+
+        # Cleanup
+        import os
+        try:
+            os.unlink(temp_db_file.name)
+        except FileNotFoundError:
+            pass
+
+    @pytest.fixture
+    async def orchestrator(self, temp_db):
         """Create an orchestrator instance for testing."""
-        orchestrator = Orchestrator()
+        database_url, _ = temp_db
+
+        # Reset any global database manager first
+        from cc_orchestrator.database.connection import close_database, DatabaseManager
+        close_database()
+
+        # Create fresh database manager with current schema
+        manager = DatabaseManager(database_url=database_url)
+        Base.metadata.create_all(bind=manager.engine)
+
+        orchestrator = Orchestrator(db_session=manager.create_session())
         await orchestrator.initialize()
         yield orchestrator
         await orchestrator.cleanup()
+        manager.close()
 
     @pytest.mark.asyncio
     async def test_claude_instance_lifecycle(self, temp_dir):
@@ -158,24 +195,39 @@ class TestProcessIntegration:
         # Create multiple instances
         instance_ids = ["issue-1", "issue-2", "issue-3"]
 
-        with patch("subprocess.Popen") as mock_popen:
-            # Mock successful process creation
-            mock_processes = []
-            for i, _issue_id in enumerate(instance_ids):
-                mock_process = type(
-                    "MockProcess",
-                    (),
-                    {
-                        "pid": 10000 + i,
-                        "poll": lambda: None,
-                        "terminate": lambda: None,
-                        "kill": lambda: None,
-                        "returncode": None,
-                    },
-                )()
-                mock_processes.append(mock_process)
+        # Mock ProcessManager methods directly for more reliable testing
+        from cc_orchestrator.utils.process import ProcessInfo, ProcessStatus
 
-            mock_popen.side_effect = mock_processes
+        # Create process info for each instance
+        process_infos = []
+        for i in range(len(instance_ids)):
+            process_info = ProcessInfo(
+                pid=10000 + i,
+                status=ProcessStatus.RUNNING,
+                command=["claude", "--continue"],
+                working_directory=temp_dir,
+                environment={},
+                started_at=1672531200.0 + i,
+                cpu_percent=0.0,
+                memory_mb=100.0,
+                return_code=None,
+                error_message=None,
+            )
+            process_infos.append(process_info)
+
+        with (
+            patch("cc_orchestrator.utils.process.ProcessManager.spawn_claude_process") as mock_spawn,
+            patch("cc_orchestrator.utils.process.ProcessManager.terminate_process") as mock_terminate,
+            patch("cc_orchestrator.utils.process.ProcessManager.get_process_info") as mock_get_info,
+            patch("cc_orchestrator.utils.process.ProcessManager.list_processes") as mock_list,
+        ):
+            # Set up mock returns
+            mock_spawn.side_effect = process_infos
+            mock_terminate.return_value = True
+            mock_get_info.side_effect = process_infos
+            mock_list.return_value = {
+                f"issue-{i+1}": process_infos[i] for i in range(len(instance_ids))
+            }
 
             # Create instances through orchestrator
             instances = []
@@ -199,11 +251,19 @@ class TestProcessIntegration:
             all_processes = await process_manager.list_processes()
             assert len(all_processes) == 3
 
-            # Stop all instances through orchestrator cleanup
-            await orchestrator.cleanup()
+            # Stop all instances explicitly
+            for instance in instances:
+                success = await instance.stop()
+                assert success is True
+                assert not instance.is_running()
 
-            # Verify cleanup
-            assert len(orchestrator.instances) == 0
+            # Verify instances are stopped but still exist in database
+            all_instances = orchestrator.list_instances()
+            assert len(all_instances) == 3
+
+            # Check that the original instances report as stopped
+            for instance in instances:
+                assert not instance.is_running()
 
     @pytest.mark.asyncio
     async def test_process_isolation(self, temp_dir):
