@@ -214,13 +214,7 @@ class Orchestrator:
             # Create instance object for cleanup BEFORE database operations
             instance = self._db_instance_to_claude_instance(db_instance)
 
-            # DELETE FROM DATABASE FIRST to ensure consistency
-            # If database deletion fails, resources remain allocated but database is consistent
-            InstanceCRUD.delete(self._db_session, db_instance.id)
-            self._db_session.commit()
-            logger.debug("Instance removed from database", issue_id=issue_id)
-
-            # CLEANUP RESOURCES SECOND - after successful database deletion
+            # ATTEMPT CLEANUP FIRST (even if database operations might fail)
             cleanup_success = True
             try:
                 await instance.cleanup()
@@ -228,10 +222,16 @@ class Orchestrator:
             except Exception as cleanup_e:
                 cleanup_success = False
                 logger.warning(
-                    "Instance cleanup failed after database removal",
+                    "Instance cleanup failed during destruction",
                     issue_id=issue_id,
                     error=str(cleanup_e),
                 )
+
+            # DELETE FROM DATABASE SECOND to ensure consistency
+            # If database deletion fails, resources remain allocated but database is consistent
+            InstanceCRUD.delete(self._db_session, db_instance.id)
+            self._db_session.commit()
+            logger.debug("Instance removed from database", issue_id=issue_id)
 
             if cleanup_success:
                 logger.info("Instance destroyed successfully", issue_id=issue_id)
