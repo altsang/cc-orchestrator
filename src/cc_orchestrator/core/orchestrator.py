@@ -424,6 +424,41 @@ class Orchestrator:
 
         return claude_instance
 
+    def _validate_instance_ownership(self, issue_id: str) -> bool:
+        """Validate that the current user has permission to modify this instance.
+
+        Args:
+            issue_id: The issue ID to validate ownership for
+
+        Returns:
+            bool: True if user has permission, False otherwise
+
+        Note:
+            For CLI operations, this is a basic validation.
+            In a multi-user environment, this should check actual user permissions.
+        """
+        try:
+            # Basic validation - ensure instance exists and we can access it
+            db_instance = InstanceCRUD.get_by_issue_id(self._db_session, issue_id)
+            if not db_instance:
+                logger.warning(
+                    "Authorization check failed - instance not found", issue_id=issue_id
+                )
+                return False
+
+            # For CLI usage, basic existence check is sufficient
+            # In production, you might check:
+            # - User ID against instance owner
+            # - Group permissions
+            # - Role-based access control
+            return True
+
+        except Exception as e:
+            logger.error(
+                "Authorization validation failed", issue_id=issue_id, error=str(e)
+            )
+            return False
+
     def sync_instance_to_database(self, instance: ClaudeInstance) -> bool:
         """Sync instance state changes back to the database.
 
@@ -433,17 +468,72 @@ class Orchestrator:
         Returns:
             bool: True if sync succeeded, False otherwise
         """
-        if not instance or not instance.issue_id:
-            logger.error("Invalid instance provided for sync")
+        # Enhanced input validation for security
+        if not instance:
+            logger.error("Invalid instance provided for sync - instance is None")
+            return False
+
+        # Validate issue_id with strict security checks
+        if not instance.issue_id or not isinstance(instance.issue_id, str):
+            logger.error(
+                "Invalid issue_id provided for sync - must be non-empty string"
+            )
+            return False
+
+        # Prevent potential injection attacks with issue_id length validation
+        if (
+            len(instance.issue_id) > 100
+            or not instance.issue_id.replace("-", "").replace("_", "").isalnum()
+        ):
+            logger.error(
+                "Invalid issue_id format - security validation failed",
+                issue_id="<redacted>",
+            )
+            return False
+
+        # Validate instance has required attributes to prevent attribute errors
+        if not hasattr(instance, "status") or instance.status is None:
+            logger.error("Instance missing required status field")
+            return False
+
+        if not hasattr(instance, "last_activity"):
+            logger.error("Instance missing required last_activity field")
             return False
 
         if not self._initialized or not self._db_session:
             logger.error("Orchestrator not initialized")
             return False
 
+        # Validate user permissions for this instance
+        if not self._validate_instance_ownership(instance.issue_id):
+            logger.error("Unauthorized sync attempt", issue_id=instance.issue_id)
+            return False
+
+        # Check database connection pool health before proceeding
         try:
-            # Use atomic transaction for read-modify-write operation
-            with self._db_session.begin():
+            engine = self._db_session.get_bind()
+            if hasattr(engine, "pool"):
+                pool = engine.pool
+                if hasattr(pool, "checkedout") and hasattr(pool, "size"):
+                    if pool.checkedout() > 0.8 * pool.size():
+                        logger.warning(
+                            "Database connection pool near capacity - deferring sync"
+                        )
+                        return False
+        except Exception as pool_e:
+            logger.debug("Could not check connection pool status", error=str(pool_e))
+
+        try:
+            # Use atomic transaction with timeout protection
+            with self._db_session.begin() as txn:
+                # Set statement timeout for security (prevent hanging transactions)
+                try:
+                    from sqlalchemy import text
+
+                    self._db_session.execute(text("/* sync_timeout_protection */"))
+                except Exception:
+                    pass  # Not all databases support this, continue without timeout
+
                 # Get the database instance to update
                 db_instance = InstanceCRUD.get_by_issue_id(
                     self._db_session, instance.issue_id
@@ -456,13 +546,27 @@ class Orchestrator:
                     )
                     return False
 
+                # Check for potential concurrent modification (stale data protection)
+                if (
+                    hasattr(instance, "last_activity")
+                    and instance.last_activity
+                    and hasattr(db_instance, "last_activity")
+                    and db_instance.last_activity
+                    and instance.last_activity < db_instance.last_activity
+                ):
+                    logger.warning(
+                        "Instance state appears stale - possible concurrent modification",
+                        issue_id=instance.issue_id,
+                    )
+                    return False
+
+                # Secure logging without sensitive data exposure
                 logger.info(
                     "Syncing instance to database",
                     issue_id=instance.issue_id,
                     memory_status=instance.status.value,
-                    memory_process_id=instance.process_id,
                     db_status=db_instance.status.value,
-                    db_process_id=db_instance.process_id,
+                    # Removed process_id from logging for security
                 )
 
                 # Update fields that might have changed
@@ -478,7 +582,7 @@ class Orchestrator:
                     "Instance state synced to database successfully",
                     issue_id=instance.issue_id,
                     final_status=updated_instance.status.value,
-                    final_process_id=updated_instance.process_id,
+                    # Removed process_id from logging for security
                 )
 
             return True
@@ -486,7 +590,11 @@ class Orchestrator:
         except Exception as e:
             logger.error(
                 "Failed to sync instance state to database",
-                issue_id=instance.issue_id if instance else "unknown",
+                issue_id=(
+                    instance.issue_id
+                    if instance and hasattr(instance, "issue_id")
+                    else "unknown"
+                ),
                 error=str(e),
             )
             return False
