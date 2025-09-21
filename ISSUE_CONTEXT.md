@@ -180,3 +180,115 @@ Focus: Implement hierarchical configuration management with validation, file gen
 - Fast queries for instance status and task assignment
 - Efficient filtering and sorting for dashboard views
 - Proper indexing for commonly accessed data
+
+# Issue #62: Fix tmux session layout template variable substitution
+See: https://github.com/altsang/cc-orchestrator/issues/62
+
+Focus: CRITICAL tmux integration bug - Template variable substitution failure prevents tmux session creation, blocking Phase 2 tmux functionality.
+
+## Current Status
+- **Issue**: #62 - Fix tmux session layout template variable substitution
+- **Status**: 🚧 IN PROGRESS (tmux integration bug fix)
+- **Branch**: feature/issue-62-fix-tmux-template-variables
+- **Worktree**: ~/workspace/cc-orchestrator-issue-62
+- **Priority**: High (Phase 2 functionality blocker)
+- **Labels**: bug, phase-2, priority-high, tmux
+
+## 🐛 TMUX INTEGRATION BUG DISCOVERED
+
+### Root Cause Analysis
+**Primary Issue**: Template variable substitution in tmux session creation
+```
+Error: Failed to apply layout template - cc-orchestrator-test-session (template: default): ["can't find session: $18"]
+```
+
+**Problem**: Variables like `$18` are not being properly replaced with actual session references before being sent to tmux commands.
+
+**Discovery Context**: Found during comprehensive integration audit post-Issue #59 resolution
+
+**Command that fails**:
+```bash
+cc-orchestrator tmux create --instance-id 999 test-session /path/to/workspace
+```
+
+### Technical Requirements (Issue #62)
+
+### CRITICAL FIXES REQUIRED
+1. **Template Variable Substitution Engine** (CRITICAL)
+   - Fix variable replacement in tmux layout templates
+   - Ensure session ID variables are properly substituted
+   - Verify template processing before sending to tmux
+
+2. **Session Reference Validation** (HIGH PRIORITY)
+   - Validate session references exist before applying templates
+   - Improve error handling for template variable issues
+   - Add debugging for template processing
+
+3. **Integration Testing** (HIGH PRIORITY)
+   - Add specific tests for tmux session creation with templates
+   - Test template variable substitution mechanisms
+   - Verify end-to-end tmux integration workflows
+
+## Acceptance Criteria (Issue #62)
+- [ ] `cc-orchestrator tmux create --instance-id 999 test-session /path/to/workspace` succeeds
+- [ ] Template variables are properly substituted before tmux execution
+- [ ] Session creation works with different layout templates
+- [ ] Error handling provides clear feedback for template issues
+- [ ] Integration tests cover tmux session creation workflows
+
+## MANDATORY Testing Requirements
+```bash
+# Test 1: Basic session creation
+cc-orchestrator tmux create --instance-id 123 test-session-1 /workspace/path
+
+# Test 2: Session with different templates
+cc-orchestrator tmux create --instance-id 124 test-session-2 /workspace/path --template custom
+
+# Test 3: Session integration with instances
+cc-orchestrator instances start 125
+# Should properly create and integrate tmux session
+
+# Test 4: Template variable verification
+# Verify that session variables are substituted correctly in template processing
+```
+
+## Current State (Issue #62)
+🚧 **IN PROGRESS** - Ready for manual development:
+- Git worktree created at ~/workspace/cc-orchestrator-issue-62
+- Tmux session ready: cc-orchestrator-issue-62
+- Template variable substitution bug documented and prioritized
+- Claude Code instance terminated - ready for manual work
+- All context and requirements documented
+
+## Key Files Requiring Investigation
+- `src/cc_orchestrator/cli/tmux.py` - Main tmux CLI commands
+- Template processing logic (layout template application)
+- Session creation and variable substitution code
+- Template configuration files
+
+## Development Approach
+1. **Analysis Phase**: Investigate template variable processing in tmux commands
+2. **Root Cause**: Identify why `$18` and similar variables aren't being substituted
+3. **Implementation**: Fix the template processing engine
+4. **Testing**: Verify all mandatory test cases pass
+5. **Integration**: Ensure end-to-end tmux workflows function
+
+## Impact Assessment
+- **BLOCKS**: Complete tmux integration functionality
+- **AFFECTS**: Instance-to-tmux session workflow
+- **FINAL COMPONENT**: Needed for complete Phase 2 integration
+
+## Manual Development Instructions
+To begin manual work on this issue:
+```bash
+# Navigate to the worktree
+cd ~/workspace/cc-orchestrator-issue-62
+
+# Attach to tmux session (optional)
+tmux attach-session -t "cc-orchestrator-issue-62"
+
+# Start manual development
+# Focus on src/cc_orchestrator/cli/tmux.py and template processing
+```
+
+This issue represents the **final functional gap** in Phase 2 integration. Once resolved, Phase 2 will be truly complete with all components fully integrated.
