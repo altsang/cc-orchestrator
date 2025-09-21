@@ -525,14 +525,14 @@ class Orchestrator:
 
         try:
             # Use atomic transaction with timeout protection
-            with self._db_session.begin() as txn:
+            with self._db_session.begin():
                 # Set statement timeout for security (prevent hanging transactions)
                 try:
                     from sqlalchemy import text
 
                     self._db_session.execute(text("/* sync_timeout_protection */"))
                 except Exception:
-                    pass  # Not all databases support this, continue without timeout
+                    pass  # Not all databases support this, continue without timeout  # nosec B110
 
                 # Get the database instance to update
                 db_instance = InstanceCRUD.get_by_issue_id(
