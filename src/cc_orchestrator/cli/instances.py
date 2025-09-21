@@ -140,17 +140,32 @@ def start(
                             existing_instance
                         )
                         if not sync_success:
-                            click.echo(
-                                "Warning: Instance started but state may not persist across sessions",
-                                err=True,
-                            )
+                            if output_json:
+                                # Add warning to JSON output
+                                # Will be handled in the JSON response below
+                                pass
+                            else:
+                                click.echo(
+                                    "ERROR: Instance started but will NOT survive system restart!",
+                                    err=True,
+                                )
+                                click.echo(
+                                    "This is a critical issue - contact system administrator",
+                                    err=True,
+                                )
 
                     if success:
                         info = existing_instance.get_info()
                         if output_json:
-                            click.echo(
-                                json.dumps({"status": "started", "instance": info})
-                            )
+                            result = {"status": "started", "instance": info}
+                            # Add sync status to JSON output for monitoring
+                            if "sync_success" in locals():
+                                if not sync_success:
+                                    result["warning"] = "state_not_persisted"
+                                    result["persistence_status"] = "failed"
+                                else:
+                                    result["persistence_status"] = "success"
+                            click.echo(json.dumps(result))
                         else:
                             click.echo(
                                 f"Started existing instance for issue {issue_id}"
@@ -188,15 +203,31 @@ def start(
             if success:
                 sync_success = orchestrator.sync_instance_to_database(instance)
                 if not sync_success:
-                    click.echo(
-                        "Warning: Instance started but state may not persist across sessions",
-                        err=True,
-                    )
+                    if output_json:
+                        # Will be handled in JSON response below
+                        pass
+                    else:
+                        click.echo(
+                            "ERROR: Instance started but will NOT survive system restart!",
+                            err=True,
+                        )
+                        click.echo(
+                            "This is a critical issue - contact system administrator",
+                            err=True,
+                        )
 
             if success:
                 info = instance.get_info()
                 if output_json:
-                    click.echo(json.dumps({"status": "started", "instance": info}))
+                    result = {"status": "started", "instance": info}
+                    # Add sync status to JSON output for monitoring
+                    if "sync_success" in locals():
+                        if not sync_success:
+                            result["warning"] = "state_not_persisted"
+                            result["persistence_status"] = "failed"
+                        else:
+                            result["persistence_status"] = "success"
+                    click.echo(json.dumps(result))
                 else:
                     click.echo(
                         f"Successfully started Claude instance for issue {issue_id}"
@@ -269,14 +300,30 @@ def stop(issue_id: str, force: bool, timeout: int, output_json: bool) -> None:
             if success:
                 sync_success = orchestrator.sync_instance_to_database(instance)
                 if not sync_success:
-                    click.echo(
-                        "Warning: Instance stopped but state may not persist across sessions",
-                        err=True,
-                    )
+                    if output_json:
+                        # Will be handled in JSON response below
+                        pass
+                    else:
+                        click.echo(
+                            "ERROR: Instance stopped but state may not persist across sessions!",
+                            err=True,
+                        )
+                        click.echo(
+                            "This is a critical issue - contact system administrator",
+                            err=True,
+                        )
 
             if success:
                 if output_json:
-                    click.echo(json.dumps({"status": "stopped", "issue_id": issue_id}))
+                    result = {"status": "stopped", "issue_id": issue_id}
+                    # Add sync status to JSON output for monitoring
+                    if "sync_success" in locals():
+                        if not sync_success:
+                            result["warning"] = "state_not_persisted"
+                            result["persistence_status"] = "failed"
+                        else:
+                            result["persistence_status"] = "success"
+                    click.echo(json.dumps(result))
                 else:
                     click.echo(f"Successfully stopped instance for issue {issue_id}")
             else:
