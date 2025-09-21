@@ -535,6 +535,11 @@ class TmuxService:
         """
         try:
             session_name = session.name or "unknown"
+
+            # Store reference to default window before any modifications
+            default_window = None
+            if session.windows:
+                default_window = session.windows[0]
         except Exception as name_error:
             tmux_logger.error(f"Failed to get session name: {name_error}")
             raise TmuxError(
@@ -569,12 +574,11 @@ class TmuxService:
                 )
 
                 try:
-                    # Create or reuse window
-                    if i == 0 and session.windows:
-                        # First template window - reuse the default window created by session
-                        window = session.windows[0]
-                        # Rename the window to match template
-                        window.rename_window(window_name)
+                    # For the first template window, reuse the existing default window if possible
+                    if i == 0 and default_window:
+                        # Rename the default window instead of creating a new one
+                        default_window.rename_window(window_name)
+                        window = default_window
                         tmux_logger.debug(
                             f"Reused first window as '{window_name}' in session {session_name}"
                         )

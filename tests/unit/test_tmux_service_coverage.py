@@ -621,20 +621,14 @@ class TestTmuxServiceComprehensive:
     async def test_apply_layout_template_reuse_default_window(
         self, tmux_service, mock_logging
     ):
-        """Test _apply_layout_template reuses default window instead of killing it."""
+        """Test _apply_layout_template reuses default window for first template window."""
         mock_session = MagicMock()
         mock_session.name = "test-session"
 
         # Mock default window
         mock_default_window = MagicMock()
-        mock_default_window.panes = [MagicMock()]  # Add panes to default window
+        mock_default_window.panes = [MagicMock()]
         mock_session.windows = [mock_default_window]
-
-        # Mock new window creation (not used for first window now)
-        mock_new_window = MagicMock()
-        mock_session.new_window.return_value = mock_new_window
-        mock_new_window.panes = [MagicMock()]
-
         template = LayoutTemplate(
             name="test",
             description="Test",
@@ -649,9 +643,12 @@ class TestTmuxServiceComprehensive:
 
         await tmux_service._apply_layout_template(mock_session, template)
 
-        # Default window should be reused (renamed), NOT killed
-        mock_default_window.kill.assert_not_called()
+        # Default window should be renamed, not killed
         mock_default_window.rename_window.assert_called_once_with("new-window")
+        mock_default_window.kill.assert_not_called()
+
+        # Should not create a new window for the first template window
+        mock_session.new_window.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_apply_layout_template_no_default_window_kill(
@@ -706,10 +703,10 @@ class TestTmuxServiceComprehensive:
 
         await tmux_service._apply_layout_template(mock_session, template)
 
-        # Should reuse existing window (rename), NOT kill it
-        mock_existing_window.kill.assert_not_called()
+        # Should rename existing window, not kill it
         mock_existing_window.rename_window.assert_called_once_with("first-window")
-        # Should NOT create new window since we're reusing the first one
+        mock_existing_window.kill.assert_not_called()
+        # Should not create a new window for the first template window
         mock_session.new_window.assert_not_called()
 
     @pytest.mark.asyncio
@@ -742,6 +739,53 @@ class TestTmuxServiceComprehensive:
 
         # Should create new window
         mock_session.new_window.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_apply_layout_template_multi_window_template(
+        self, tmux_service, mock_logging
+    ):
+        """Test _apply_layout_template handles multi-window templates correctly."""
+        mock_session = MagicMock()
+        mock_session.name = "test-session"
+
+        # Mock existing default window
+        mock_default_window = MagicMock()
+        mock_default_window.panes = [MagicMock()]
+        mock_session.windows = [mock_default_window]
+
+        # Mock new window creation for additional windows
+        mock_new_window = MagicMock()
+        mock_new_window.panes = [MagicMock()]
+        mock_session.new_window.return_value = mock_new_window
+
+        template = LayoutTemplate(
+            name="test",
+            description="Test",
+            windows=[
+                {
+                    "name": "first-window",
+                    "command": "bash",
+                    "panes": [{"command": "bash"}],
+                },
+                {
+                    "name": "second-window",
+                    "command": "htop",
+                    "panes": [{"command": "htop"}],
+                },
+            ],
+        )
+
+        await tmux_service._apply_layout_template(mock_session, template)
+
+        # First window should reuse default window
+        mock_default_window.rename_window.assert_called_once_with("first-window")
+
+        # Second window should create a new window
+        mock_session.new_window.assert_called_once_with(
+            window_name="second-window",
+            start_directory=mock_session.start_directory,
+            attach=False,
+        )
 
     @pytest.mark.asyncio
     async def test_apply_layout_template_pane_configuration(

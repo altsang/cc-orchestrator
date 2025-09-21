@@ -1,182 +1,104 @@
-# Issue #8: CLI framework implementation with Click
-See: https://github.com/altsang/cc-orchestrator/issues/8
+# Issue #66: Rewrite Unit Tests to Use Real Implementations Instead of Mocks
 
-Focus: Implement the main CLI framework using Click with command groups for different orchestrator functions.
+See: https://github.com/altsang/cc-orchestrator/issues/66
 
-## Current Status
-- **Issue**: #8 - CLI framework implementation with Click
-- **Status**: ✅ COMPLETED (GitHub issue closed)
-- **Branch**: feature/issue-8-cli-framework
-- **Worktree**: ~/workspace/cc-orchestrator-issue-8
-
-# Issue #9: SQLite database schema and models
-See: https://github.com/altsang/cc-orchestrator/issues/9
-
-Focus: Design and implement SQLite database schema for storing instances, tasks, worktrees, and configuration state.
+Focus: Eliminate testing anti-pattern where fully-implemented services are heavily mocked, preventing integration bugs from being caught.
 
 ## Current Status
-- **Issue**: #9 - SQLite database schema and models
-- **Status**: ✅ COMPLETED (GitHub issue closed)
-- **Branch**: feature/issue-9-database-schema
-- **Worktree**: ~/workspace/cc-orchestrator-issue-9
-- **Priority**: High (Phase 1)
-- **Dependencies**: Project setup (#7) ✅ COMPLETED
+- **Issue**: #66 - Rewrite unit tests to use real implementations instead of mocks
+- **Status**: 🚧 IN PROGRESS
+- **Branch**: feature/issue-66-testing-refactor
+- **Worktree**: ~/workspace/cc-orchestrator-issue-66
+- **Tmux Session**: cc-orchestrator-issue-66
+- **Priority**: High (Critical testing debt)
+- **Labels**: bug, priority-high
 
-## Technical Requirements (Issue #8)
-- Click framework for CLI commands
-- Command groups: instances, tasks, worktrees, config, web
-- Help system with comprehensive documentation
-- Configuration file and environment variable support
-- Output formatting (human-readable and JSON)
+## Problem Statement
 
-## Acceptance Criteria (Issue #8)
-- [x] Main CLI entry point cc-orchestrator works
-- [x] Command groups implemented: instances, tasks, worktrees, config, web
-- [x] Help text comprehensive for all commands
-- [x] Supports both config files and environment variables
-- [x] Error handling with clear user messages
-- [x] Output can be formatted as JSON for automation
+The current unit test suite extensively uses mocks for **fully-implemented services**, creating a testing gap that allowed Issue #65 (worktree path resolution bug) to slip through.
 
-## Current State (Issue #8)
-✅ **COMPLETED** - Full CLI framework implementation:
-- Main CLI entry point with comprehensive help and options
-- Complete command group structure: instances, tasks, worktrees, config, web
-- Configuration loading from files and environment variables
-- JSON and human-readable output formatting
-- Comprehensive test suite with unit and integration tests
-- Error handling with clear user messages
+### Why Issue #65 Wasn't Caught
 
-## Technical Requirements (Issue #9)
-- SQLite database with proper schema design
-- Tables: instances, tasks, worktrees, configurations
-- Database migrations support
-- CRUD operations for all entities
-- Transaction support for data consistency
+`WorktreeService.get_worktree_status()` uses `os.path.abspath(path_or_id)` which resolves paths relative to CWD. This bug was not caught because:
 
-## Acceptance Criteria (Issue #9)
-- [x] Database schema created with all required tables
-- [x] Database models/classes for each entity
-- [x] Migration system for schema updates
-- [x] Basic CRUD operations implemented
-- [x] Database connection pooling and error handling
-- [x] Data validation and constraints enforced
+1. CLI tests completely mock `WorktreeService`
+2. Service tests mock `GitWorktreeManager` and database sessions
+3. The real path resolution logic is **never executed** in any test
 
-## Current State (Issue #9)
-✅ **COMPLETED** - Full database implementation:
-- Complete SQLAlchemy models for instances, tasks, worktrees, and configurations
-- Database connection management with pooling and transaction handling
-- Migration system with versioning and initial schema migration
-- Comprehensive CRUD operations with validation and error handling
-- Performance optimizations with strategic indexes
-- 60 comprehensive tests (46 unit + 14 integration) all passing
-- Hierarchical configuration system with scope precedence
-- Data integrity with foreign key constraints and cascade deletes
+## Mock Usage Statistics
 
-# Issue #10: Configuration management system
-See: https://github.com/altsang/cc-orchestrator/issues/10
+- `test_cli_instances_coverage.py`: **124 mocks**
+- `test_tmux_service_coverage.py`: **86 mocks**
+- `test_cli_worktrees.py`: **56 mocks**
+- **Total**: ~400+ mocks across 10 test files
 
-Focus: Implement hierarchical configuration management with validation, file generation, and enhanced environment variable support.
+## Development Plan
 
-## Current Status
-- **Issue**: #10 - Configuration management system
-- **Status**: 🚧 IN PROGRESS (GitHub project board updated)
-- **Branch**: feature/issue-10-configuration-management
-- **Worktree**: ~/workspace/cc-orchestrator-issue-10
-- **Priority**: High (Phase 1)
-- **Dependencies**: Project setup (#7) ✅ COMPLETED, CLI framework (#8) ✅ COMPLETED, Database schema (#9) ✅ COMPLETED
+### Phase 1: Infrastructure Setup ✅ COMPLETED
+1. ✅ Create `tests/integration/` directory (already exists)
+2. ✅ Create shared fixtures (git repo, test db, CLI runner)
+3. ⏭️ Set up CI for integration tests (deferred)
 
-## Technical Requirements (Issue #10)
-- Hierarchical configuration loading (Global → User → Project → Instance)
-- Enhanced validation with detailed error messages
-- Configuration file generation and initialization via CLI
-- Improved environment variable handling and documentation
-- Configuration schema validation with Pydantic
-- Support for configuration inheritance and overrides
+### Phase 2: Critical Path Tests 🚧 IN PROGRESS
+1. ✅ Worktree CLI integration tests (would catch #65) - **COMPLETED**
+   - Created `tests/integration/test_cli_worktrees_integration.py`
+   - 6 integration tests using real git operations and database
+   - **Key test**: `test_worktree_status_with_real_path_resolution` - Would have caught Issue #65
+   - All tests pass without mocks
+2. ⏭️ Instance CLI integration tests
+3. ⏭️ Tmux CLI integration tests
 
-## Acceptance Criteria (Issue #10)
-- [ ] Hierarchical config loading with proper precedence
-- [ ] CLI commands for config init, validate, show, and get
-- [ ] Enhanced error messages for configuration issues
-- [ ] Environment variable documentation and validation
-- [ ] Configuration file templates and generation
-- [ ] Comprehensive test suite for config management
+### Phase 3: Service Layer Tests
+1. WorktreeService with real git/db
+2. TmuxService with real tmux
+3. Orchestrator tests
 
-## Current State (Issue #10)
-🚧 **IN PROGRESS** - Setting up development environment:
-- Git worktree created at ~/workspace/cc-orchestrator-issue-10
-- GitHub project board updated to "In Progress" status
-- Basic configuration loading exists in config/loader.py
-- Ready to enhance and expand configuration management system
+### Phase 4: End-to-End Tests
+1. Complete workflow tests
+2. Cross-component integration
 
-## Related Issues
-- Part of epic: Phase 1 Epic (#1)
-- Depends on: Project setup (#7) ✅ COMPLETED
-- Depends on: CLI framework (#8) ✅ COMPLETED
-- Depends on: Database schema (#9) ✅ COMPLETED
-- Issue #8 blocks: Configuration management system (#10) 🚧 IN PROGRESS
-- Issue #9 blocks: Instance and task management features
+### Phase 5: Cleanup
+1. Remove redundant mocked tests
+2. Document testing strategy
 
-## Development Plan (Issue #8)
-1. ✅ Expand CLI command structure with proper groups
-2. ✅ Implement comprehensive help and error handling
-3. ✅ Add configuration file support
-4. ✅ Add JSON output formatting
-5. ✅ Create comprehensive test suite
-6. ✅ Update documentation
+## Key Files Created/Updated
 
-## Development Plan (Issue #9)
-1. ✅ Design database schema for core entities
-2. ✅ Implement SQLAlchemy models and relationships
-3. ✅ Create database connection and session management
-4. ✅ Implement migration system for schema versioning
-5. ✅ Add CRUD operations and data validation
-6. ✅ Create comprehensive test suite
-7. ✅ Update documentation
+- ✅ `tests/integration/test_cli_worktrees_integration.py` - **NEW**
+  - Real git repository fixtures
+  - Database cleanup fixtures
+  - 6 comprehensive integration tests
+  - Tests actual path resolution (Issue #65 scenario)
+- ⏭️ `tests/integration/conftest.py` (shared fixtures - to be created)
+- ⏭️ `tests/integration/test_cli_instances_integration.py`
+- ⏭️ `tests/integration/test_workflows.py`
+- ⏭️ `TESTING.md` (strategy documentation)
 
-## Testing Requirements (Issue #8)
-- ✅ Unit tests for all CLI commands
-- ✅ Integration tests for command workflows
-- ✅ Test help text and error messages
-- ✅ Test configuration file loading
-- ✅ Test output formatting options
+## Progress Summary
 
-## Testing Requirements (Issue #9)
-- ✅ Unit tests for all database models (14 tests)
-- ✅ Integration tests for CRUD operations (32 tests)
-- ✅ Test database migrations and versioning (5 tests)
-- ✅ Test data validation and constraints (9 tests)
-- ✅ Test connection handling and error cases (included)
+### Completed Work
+1. **Analyzed the problem**:
+   - Identified that `test_cli_worktrees.py` has 56 mocks
+   - Found that Issue #65 (path resolution bug) was not caught because all tests mock WorktreeService
+   - The bug: `os.path.abspath(path_or_id)` resolves relative to CWD, not actual worktree path
 
-**Total: 60 comprehensive tests, all passing**
+2. **Created Integration Tests**:
+   - `test_cli_worktrees_integration.py` with 6 comprehensive tests
+   - Uses real GitWorktreeManager (no mocks)
+   - Uses real database sessions
+   - Uses real filesystem operations
+   - **Critical test added**: `test_worktree_status_with_real_path_resolution`
+     - Changes CWD and verifies status works regardless
+     - This test would have caught Issue #65
 
-## Key Files (Issue #8)
-- `src/cc_orchestrator/cli/main.py` - Main CLI entry point
-- `src/cc_orchestrator/cli/` - Command group modules
-- `tests/unit/test_cli.py` - CLI unit tests
-- `tests/integration/` - CLI integration tests
+3. **Test Results**:
+   - ✅ All 6 integration tests pass
+   - ✅ Tests verify real git operations
+   - ✅ Tests verify database persistence
+   - ✅ Tests verify path resolution across different CWDs
 
-## Key Files (Issue #9)
-- `src/cc_orchestrator/database/models.py` - SQLAlchemy models
-- `src/cc_orchestrator/database/schema.py` - Database schema definition
-- `src/cc_orchestrator/database/connection.py` - Database connection management
-- `src/cc_orchestrator/database/migrations/` - Migration scripts
-- `tests/unit/test_database.py` - Database unit tests
-- `tests/integration/test_database_integration.py` - Database integration tests
-
-## Schema Design Considerations
-### Core Entities
-- **Instances**: Claude Code instances with status, configuration, git info
-- **Tasks**: Work items with status, priority, assignment to instances
-- **Worktrees**: Git worktree management with paths, branches, status
-- **Configurations**: System and user configuration settings
-
-### Relationships
-- Instances can have multiple tasks assigned
-- Tasks are associated with specific worktrees
-- Worktrees track git branch and workspace information
-- Configurations support hierarchical overrides
-
-### Performance Requirements
-- Fast queries for instance status and task assignment
-- Efficient filtering and sorting for dashboard views
-- Proper indexing for commonly accessed data
+### Next Steps
+1. Create similar integration tests for Instance CLI commands
+2. Create integration tests for Tmux CLI commands
+3. Consider creating shared fixtures in `tests/integration/conftest.py`
+4. Document the new testing strategy
+5. Gradually reduce reliance on mocked unit tests
