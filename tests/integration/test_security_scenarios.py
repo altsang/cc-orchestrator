@@ -16,9 +16,9 @@ class TestSecurityScenarios:
     async def test_orchestrator(self, setup_test_environment):
         """Create an orchestrator with test database."""
         orchestrator = Orchestrator()
-        await test_test_orchestrator.initialize()
+        await orchestrator.initialize()
         yield orchestrator
-        await test_test_orchestrator.cleanup()
+        await orchestrator.cleanup()
 
     async def test_invalid_issue_id_injection_protection(self, test_orchestrator):
         """Test protection against SQL injection through issue_id."""
@@ -40,7 +40,7 @@ class TestSecurityScenarios:
             mock_instance.last_activity = "2025-09-21T00:00:00"
 
             # Sync should fail due to validation
-            result = test_test_orchestrator.sync_instance_to_database(mock_instance)
+            result = test_orchestrator.sync_instance_to_database(mock_instance)
             assert (
                 result is False
             ), f"Failed to block malicious issue_id: {malicious_id}"
@@ -48,7 +48,7 @@ class TestSecurityScenarios:
     async def test_authorization_bypass_attempt(self, test_orchestrator):
         """Test that sync operations require proper authorization."""
         # Create a valid instance first
-        instance = await test_test_orchestrator.create_instance(
+        _instance = await test_orchestrator.create_instance(
             issue_id="test-auth-123",
             workspace_path="/test/workspace",
             branch_name="test-branch",
@@ -62,13 +62,13 @@ class TestSecurityScenarios:
         mock_instance.process_id = 12345
         mock_instance.last_activity = "2025-09-21T00:00:00"
 
-        result = test_test_orchestrator.sync_instance_to_database(mock_instance)
+        result = test_orchestrator.sync_instance_to_database(mock_instance)
         assert result is False, "Should fail authorization for non-existent instance"
 
     async def test_concurrent_sync_operations(self, test_orchestrator):
         """Test handling of concurrent sync operations on same instance."""
         # Create test instance
-        instance = await test_test_orchestrator.create_instance(
+        instance = await test_orchestrator.create_instance(
             issue_id="concurrent-test-789",
             workspace_path="/test/workspace",
             branch_name="test-branch",
@@ -110,7 +110,7 @@ class TestSecurityScenarios:
             mock_bind.return_value = mock_engine
 
             # Create test instance
-            instance = await test_test_orchestrator.create_instance(
+            instance = await test_orchestrator.create_instance(
                 issue_id="pool-test-999",
                 workspace_path="/test/workspace",
                 branch_name="test-branch",
@@ -129,7 +129,7 @@ class TestSecurityScenarios:
         from datetime import datetime, timedelta
 
         # Create test instance
-        instance = await test_test_orchestrator.create_instance(
+        instance = await test_orchestrator.create_instance(
             issue_id="stale-test-111",
             workspace_path="/test/workspace",
             branch_name="test-branch",
@@ -200,7 +200,7 @@ class TestSecurityScenarios:
     async def test_database_transaction_rollback(self, test_orchestrator):
         """Test that database transactions roll back properly on errors."""
         # Create test instance
-        instance = await test_test_orchestrator.create_instance(
+        instance = await test_orchestrator.create_instance(
             issue_id="rollback-test-222",
             workspace_path="/test/workspace",
             branch_name="test-branch",
@@ -234,14 +234,14 @@ class TestPerformanceAndReliability:
     async def orchestrator(self, temp_database_manager):
         """Create an orchestrator with test database."""
         orchestrator = Orchestrator(db_session=temp_database_manager.create_session())
-        await test_test_orchestrator.initialize()
+        await orchestrator.initialize()
         yield orchestrator
-        await test_test_orchestrator.cleanup()
+        await orchestrator.cleanup()
 
     async def test_sync_operation_timeout(self, test_orchestrator):
         """Test that sync operations don't hang indefinitely."""
         # Create test instance
-        instance = await test_test_orchestrator.create_instance(
+        instance = await test_orchestrator.create_instance(
             issue_id="timeout-test-333",
             workspace_path="/test/workspace",
             branch_name="test-branch",
@@ -264,7 +264,7 @@ class TestPerformanceAndReliability:
         """Test that sync operations don't leak memory."""
         # This would be implemented with memory profiling tools
         # For now, just ensure multiple syncs don't accumulate resources
-        instance = await test_test_orchestrator.create_instance(
+        instance = await test_orchestrator.create_instance(
             issue_id="memory-test-444",
             workspace_path="/test/workspace",
             branch_name="test-branch",
@@ -275,7 +275,7 @@ class TestPerformanceAndReliability:
         instance.process_id = 12345
 
         # Perform multiple sync operations
-        for i in range(10):
+        for _ in range(10):
             result = test_orchestrator.sync_instance_to_database(instance)
             # Each operation should complete independently
             assert isinstance(result, bool)
