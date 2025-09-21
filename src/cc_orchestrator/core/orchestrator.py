@@ -23,7 +23,7 @@ class Orchestrator:
         config_path: str | None = None,
         db_session: Session | None = None,
         connection_pool_threshold: float = 0.8,
-        connection_pool_check_enabled: bool = True
+        connection_pool_check_enabled: bool = True,
     ) -> None:
         """Initialize the orchestrator.
 
@@ -49,11 +49,11 @@ class Orchestrator:
 
         # Performance metrics for monitoring
         self._sync_operation_metrics = {
-            'total_attempts': 0,
-            'successful_syncs': 0,
-            'failed_syncs': 0,
-            'pool_deferred_syncs': 0,
-            'authorization_failures': 0
+            "total_attempts": 0,
+            "successful_syncs": 0,
+            "failed_syncs": 0,
+            "pool_deferred_syncs": 0,
+            "authorization_failures": 0,
         }
 
     async def initialize(self) -> None:
@@ -473,33 +473,35 @@ class Orchestrator:
             current_user = self._get_current_user_context()
 
             # Check if instance was created by current user/system
-            if hasattr(db_instance, 'created_by') and db_instance.created_by:
+            if hasattr(db_instance, "created_by") and db_instance.created_by:
                 if db_instance.created_by != current_user:
                     logger.error(
                         "Authorization denied - instance belongs to different user",
                         issue_id=issue_id,
                         owner=db_instance.created_by,
-                        current_user=current_user
+                        current_user=current_user,
                     )
                     return False
 
             # Check workspace permissions - user must have access to the workspace
-            if hasattr(db_instance, 'workspace_path') and db_instance.workspace_path:
-                if not self._validate_workspace_access(db_instance.workspace_path, current_user):
+            if hasattr(db_instance, "workspace_path") and db_instance.workspace_path:
+                if not self._validate_workspace_access(
+                    db_instance.workspace_path, current_user
+                ):
                     logger.error(
                         "Authorization denied - no access to instance workspace",
                         issue_id=issue_id,
-                        workspace=db_instance.workspace_path
+                        workspace=db_instance.workspace_path,
                     )
                     return False
 
             # For single-user CLI environments, also check process ownership
-            if hasattr(db_instance, 'process_id') and db_instance.process_id:
+            if hasattr(db_instance, "process_id") and db_instance.process_id:
                 if not self._validate_process_ownership(db_instance.process_id):
                     logger.warning(
                         "Process ownership validation failed",
                         issue_id=issue_id,
-                        process_id=db_instance.process_id
+                        process_id=db_instance.process_id,
                     )
                     # Don't fail auth for process ownership issues, just log warning
 
@@ -527,16 +529,16 @@ class Orchestrator:
                 return username
             except Exception:
                 # Fallback to USER environment variable
-                username = os.environ.get('USER') or os.environ.get('USERNAME')
+                username = os.environ.get("USER") or os.environ.get("USERNAME")
                 if username:
                     return username
 
                 # Final fallback to UID
-                return str(os.getuid()) if hasattr(os, 'getuid') else 'unknown'
+                return str(os.getuid()) if hasattr(os, "getuid") else "unknown"
 
         except Exception as e:
             logger.warning("Could not determine current user context", error=str(e))
-            return 'unknown'
+            return "unknown"
 
     def _validate_workspace_access(self, workspace_path: str, user: str) -> bool:
         """Validate that the user has access to the specified workspace.
@@ -554,34 +556,51 @@ class Orchestrator:
 
             # Check if workspace path exists and is accessible
             if not os.path.exists(workspace_path):
-                logger.warning("Workspace path does not exist", workspace=workspace_path)
+                logger.warning(
+                    "Workspace path does not exist", workspace=workspace_path
+                )
                 return False
 
             # Check if user can read the workspace directory
             if not os.access(workspace_path, os.R_OK):
-                logger.warning("User lacks read access to workspace",
-                             workspace=workspace_path, user=user)
+                logger.warning(
+                    "User lacks read access to workspace",
+                    workspace=workspace_path,
+                    user=user,
+                )
                 return False
 
             # Check if user can write to the workspace (needed for instance operations)
             if not os.access(workspace_path, os.W_OK):
-                logger.warning("User lacks write access to workspace",
-                             workspace=workspace_path, user=user)
+                logger.warning(
+                    "User lacks write access to workspace",
+                    workspace=workspace_path,
+                    user=user,
+                )
                 return False
 
             # Additional check: ensure workspace is under user's control
             # This prevents access to system directories or other users' workspaces
             try:
                 workspace_stat = os.stat(workspace_path)
-                current_uid = os.getuid() if hasattr(os, 'getuid') else None
+                current_uid = os.getuid() if hasattr(os, "getuid") else None
 
                 if current_uid is not None and workspace_stat.st_uid != current_uid:
                     # Allow access if in same group with appropriate permissions
-                    current_gid = os.getgid() if hasattr(os, 'getgid') else None
-                    if (current_gid is None or workspace_stat.st_gid != current_gid or
-                        not (workspace_stat.st_mode & stat.S_IRGRP and workspace_stat.st_mode & stat.S_IWGRP)):
-                        logger.warning("Workspace not owned by user or group",
-                                     workspace=workspace_path, user=user)
+                    current_gid = os.getgid() if hasattr(os, "getgid") else None
+                    if (
+                        current_gid is None
+                        or workspace_stat.st_gid != current_gid
+                        or not (
+                            workspace_stat.st_mode & stat.S_IRGRP
+                            and workspace_stat.st_mode & stat.S_IWGRP
+                        )
+                    ):
+                        logger.warning(
+                            "Workspace not owned by user or group",
+                            workspace=workspace_path,
+                            user=user,
+                        )
                         return False
 
             except (OSError, AttributeError):
@@ -591,8 +610,12 @@ class Orchestrator:
             return True
 
         except Exception as e:
-            logger.error("Workspace access validation failed",
-                        workspace=workspace_path, user=user, error=str(e))
+            logger.error(
+                "Workspace access validation failed",
+                workspace=workspace_path,
+                user=user,
+                error=str(e),
+            )
             return False
 
     def _validate_process_ownership(self, process_id: int) -> bool:
@@ -618,39 +641,50 @@ class Orchestrator:
                 process = psutil.Process(process_id)
 
                 # Get current user UID
-                current_uid = os.getuid() if hasattr(os, 'getuid') else None
+                current_uid = os.getuid() if hasattr(os, "getuid") else None
                 if current_uid is None:
                     # On systems without UID support, skip ownership check
-                    logger.debug("Cannot determine UID, skipping process ownership check")
+                    logger.debug(
+                        "Cannot determine UID, skipping process ownership check"
+                    )
                     return True
 
                 # Check if current user owns the process
                 try:
                     process_uid = process.uids().real
                     if process_uid != current_uid:
-                        logger.warning("Process not owned by current user",
-                                     process_id=process_id,
-                                     process_uid=process_uid,
-                                     current_uid=current_uid)
+                        logger.warning(
+                            "Process not owned by current user",
+                            process_id=process_id,
+                            process_uid=process_uid,
+                            current_uid=current_uid,
+                        )
                         return False
                 except (psutil.AccessDenied, AttributeError):
                     # Can't access process info, assume not owned
-                    logger.warning("Cannot access process info - assuming not owned",
-                                 process_id=process_id)
+                    logger.warning(
+                        "Cannot access process info - assuming not owned",
+                        process_id=process_id,
+                    )
                     return False
 
                 # Additional security: verify process is actually a Claude instance
                 try:
                     cmdline = process.cmdline()
-                    if cmdline and any('claude' in arg.lower() for arg in cmdline):
+                    if cmdline and any("claude" in arg.lower() for arg in cmdline):
                         return True
                     else:
-                        logger.warning("Process does not appear to be a Claude instance",
-                                     process_id=process_id, cmdline=cmdline)
+                        logger.warning(
+                            "Process does not appear to be a Claude instance",
+                            process_id=process_id,
+                            cmdline=cmdline,
+                        )
                         return False
                 except (psutil.AccessDenied, psutil.NoSuchProcess):
-                    logger.warning("Cannot verify process is Claude instance",
-                                 process_id=process_id)
+                    logger.warning(
+                        "Cannot verify process is Claude instance",
+                        process_id=process_id,
+                    )
                     return False
 
             except psutil.NoSuchProcess:
@@ -661,8 +695,11 @@ class Orchestrator:
             logger.debug("psutil not available, skipping process ownership check")
             return True
         except Exception as e:
-            logger.error("Process ownership validation failed",
-                        process_id=process_id, error=str(e))
+            logger.error(
+                "Process ownership validation failed",
+                process_id=process_id,
+                error=str(e),
+            )
             return False
 
     def sync_instance_to_database(self, instance: ClaudeInstance) -> bool:
@@ -687,7 +724,7 @@ class Orchestrator:
             Recommended for: Reliability-first environments, immediate consistency needs
         """
         # Track sync attempt for metrics
-        self._sync_operation_metrics['total_attempts'] += 1
+        self._sync_operation_metrics["total_attempts"] += 1
         # Enhanced input validation for security
         if not instance:
             logger.error("Invalid instance provided for sync - instance is None")
@@ -726,7 +763,7 @@ class Orchestrator:
 
         # Validate user permissions for this instance
         if not self._validate_instance_ownership(instance.issue_id):
-            self._sync_operation_metrics['authorization_failures'] += 1
+            self._sync_operation_metrics["authorization_failures"] += 1
             logger.error("Unauthorized sync attempt", issue_id=instance.issue_id)
             return False
 
@@ -737,25 +774,29 @@ class Orchestrator:
                 if hasattr(engine, "pool"):
                     pool = engine.pool
                     if hasattr(pool, "checkedout") and hasattr(pool, "size"):
-                        pool_usage = pool.checkedout() / pool.size() if pool.size() > 0 else 0
+                        pool_usage = (
+                            pool.checkedout() / pool.size() if pool.size() > 0 else 0
+                        )
                         if pool_usage > self._connection_pool_threshold:
-                            self._sync_operation_metrics['pool_deferred_syncs'] += 1
+                            self._sync_operation_metrics["pool_deferred_syncs"] += 1
                             logger.warning(
                                 "Database connection pool near capacity - deferring sync",
                                 pool_usage=f"{pool_usage:.2%}",
                                 threshold=f"{self._connection_pool_threshold:.2%}",
                                 checkedout=pool.checkedout(),
-                                pool_size=pool.size()
+                                pool_size=pool.size(),
                             )
                             return False
                         else:
                             logger.debug(
                                 "Connection pool health check passed",
                                 pool_usage=f"{pool_usage:.2%}",
-                                threshold=f"{self._connection_pool_threshold:.2%}"
+                                threshold=f"{self._connection_pool_threshold:.2%}",
                             )
             except Exception as pool_e:
-                logger.debug("Could not check connection pool status", error=str(pool_e))
+                logger.debug(
+                    "Could not check connection pool status", error=str(pool_e)
+                )
 
         try:
             # Use atomic transaction with timeout protection
@@ -819,11 +860,11 @@ class Orchestrator:
                     # Removed process_id from logging for security
                 )
 
-            self._sync_operation_metrics['successful_syncs'] += 1
+            self._sync_operation_metrics["successful_syncs"] += 1
             return True
 
         except Exception as e:
-            self._sync_operation_metrics['failed_syncs'] += 1
+            self._sync_operation_metrics["failed_syncs"] += 1
             logger.error(
                 "Failed to sync instance state to database",
                 issue_id=(
@@ -851,18 +892,20 @@ class Orchestrator:
         metrics = self._sync_operation_metrics.copy()
 
         # Calculate derived metrics
-        total = metrics['total_attempts']
+        total = metrics["total_attempts"]
         if total > 0:
-            metrics['success_rate'] = (metrics['successful_syncs'] / total) * 100
-            metrics['pool_deferral_rate'] = (metrics['pool_deferred_syncs'] / total) * 100
+            metrics["success_rate"] = (metrics["successful_syncs"] / total) * 100
+            metrics["pool_deferral_rate"] = (
+                metrics["pool_deferred_syncs"] / total
+            ) * 100
         else:
-            metrics['success_rate'] = 0.0
-            metrics['pool_deferral_rate'] = 0.0
+            metrics["success_rate"] = 0.0
+            metrics["pool_deferral_rate"] = 0.0
 
         # Add configuration info
-        metrics['configuration'] = {
-            'connection_pool_threshold': self._connection_pool_threshold,
-            'connection_pool_check_enabled': self._connection_pool_check_enabled
+        metrics["configuration"] = {
+            "connection_pool_threshold": self._connection_pool_threshold,
+            "connection_pool_check_enabled": self._connection_pool_check_enabled,
         }
 
         return metrics
@@ -870,9 +913,9 @@ class Orchestrator:
     def reset_sync_metrics(self) -> None:
         """Reset all sync operation metrics to zero."""
         self._sync_operation_metrics = {
-            'total_attempts': 0,
-            'successful_syncs': 0,
-            'failed_syncs': 0,
-            'pool_deferred_syncs': 0,
-            'authorization_failures': 0
+            "total_attempts": 0,
+            "successful_syncs": 0,
+            "failed_syncs": 0,
+            "pool_deferred_syncs": 0,
+            "authorization_failures": 0,
         }
