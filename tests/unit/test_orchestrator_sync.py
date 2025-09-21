@@ -57,21 +57,25 @@ class TestOrchestratorSync:
                 return_value=False
             )
 
-            # Execute
-            result = mock_orchestrator.sync_instance_to_database(mock_instance)
+            # Mock the authorization validation to return True
+            with patch.object(
+                mock_orchestrator, "_validate_instance_ownership", return_value=True
+            ):
+                # Execute
+                result = mock_orchestrator.sync_instance_to_database(mock_instance)
 
-            # Verify
-            assert result is True
-            mock_crud.get_by_issue_id.assert_called_once_with(
-                mock_orchestrator._db_session, "test-issue-123"
-            )
-            mock_crud.update.assert_called_once_with(
-                session=mock_orchestrator._db_session,
-                instance_id=1,
-                status=InstanceStatus.RUNNING,
-                process_id=12345,
-                last_activity="2025-09-21T00:00:00",
-            )
+                # Verify
+                assert result is True
+                mock_crud.get_by_issue_id.assert_called_once_with(
+                    mock_orchestrator._db_session, "test-issue-123"
+                )
+                mock_crud.update.assert_called_once_with(
+                    session=mock_orchestrator._db_session,
+                    instance_id=1,
+                    status=InstanceStatus.RUNNING,
+                    process_id=12345,
+                    last_activity="2025-09-21T00:00:00",
+                )
 
     def test_sync_instance_to_database_invalid_instance(self, mock_orchestrator):
         """Test sync with invalid instance."""
@@ -159,11 +163,16 @@ class TestOrchestratorSync:
                 return_value=False
             )
 
-            result = mock_orchestrator.sync_instance_to_database(mock_instance)
+            # Mock the authorization validation to return True
+            with patch.object(
+                mock_orchestrator, "_validate_instance_ownership", return_value=True
+            ):
+                result = mock_orchestrator.sync_instance_to_database(mock_instance)
 
-            assert result is False
-            mock_crud.get_by_issue_id.assert_called_once()
-            mock_crud.update.assert_called_once()
+                assert result is False
+                # Note: get_by_issue_id is called twice - once for auth validation, once for sync
+                assert mock_crud.get_by_issue_id.call_count == 2
+                mock_crud.update.assert_called_once()
 
     def test_sync_instance_to_database_transaction_isolation(
         self, mock_orchestrator, mock_instance, mock_db_instance
@@ -177,13 +186,17 @@ class TestOrchestratorSync:
             mock_context = MagicMock()
             mock_orchestrator._db_session.begin.return_value = mock_context
 
-            result = mock_orchestrator.sync_instance_to_database(mock_instance)
+            # Mock the authorization validation to return True
+            with patch.object(
+                mock_orchestrator, "_validate_instance_ownership", return_value=True
+            ):
+                result = mock_orchestrator.sync_instance_to_database(mock_instance)
 
-            # Verify transaction was used
-            assert result is True
-            mock_orchestrator._db_session.begin.assert_called_once()
-            mock_context.__enter__.assert_called_once()
-            mock_context.__exit__.assert_called_once()
+                # Verify transaction was used
+                assert result is True
+                mock_orchestrator._db_session.begin.assert_called_once()
+                mock_context.__enter__.assert_called_once()
+                mock_context.__exit__.assert_called_once()
 
     @patch("cc_orchestrator.core.orchestrator.logger")
     def test_sync_instance_to_database_logging(
@@ -200,26 +213,29 @@ class TestOrchestratorSync:
                 return_value=False
             )
 
-            result = mock_orchestrator.sync_instance_to_database(mock_instance)
+            # Mock the authorization validation to return True
+            with patch.object(
+                mock_orchestrator, "_validate_instance_ownership", return_value=True
+            ):
+                result = mock_orchestrator.sync_instance_to_database(mock_instance)
 
-            assert result is True
+                assert result is True
 
-            # Verify logging calls
-            assert mock_logger.info.call_count >= 2  # Start and success logs
-            mock_logger.info.assert_any_call(
-                "Syncing instance to database",
-                issue_id="test-issue-123",
-                memory_status="running",
-                memory_process_id=12345,
-                db_status="stopped",
-                db_process_id=None,
-            )
-            mock_logger.info.assert_any_call(
-                "Instance state synced to database successfully",
-                issue_id="test-issue-123",
-                final_status="stopped",
-                final_process_id=None,
-            )
+                # Verify logging calls
+                assert mock_logger.info.call_count >= 2  # Start and success logs
+                mock_logger.info.assert_any_call(
+                    "Syncing instance to database",
+                    issue_id="test-issue-123",
+                    memory_status="running",
+                    db_status="stopped",
+                    # Removed process_id from logging for security
+                )
+                mock_logger.info.assert_any_call(
+                    "Instance state synced to database successfully",
+                    issue_id="test-issue-123",
+                    final_status="stopped",
+                    # Removed process_id from logging for security
+                )
 
     @patch("cc_orchestrator.core.orchestrator.logger")
     def test_sync_instance_to_database_error_logging(
@@ -227,8 +243,16 @@ class TestOrchestratorSync:
     ):
         """Test error logging when sync fails."""
         with patch("cc_orchestrator.core.orchestrator.InstanceCRUD") as mock_crud:
+            # Set up mock to succeed for authorization but fail for actual sync
+            db_instance_mock = Mock()
+            db_instance_mock.id = 1
             error_msg = "Database connection lost"
-            mock_crud.get_by_issue_id.side_effect = SQLAlchemyError(error_msg)
+
+            # First call (for authorization) succeeds, second call (for sync) fails
+            mock_crud.get_by_issue_id.side_effect = [
+                db_instance_mock,
+                SQLAlchemyError(error_msg),
+            ]
 
             # Mock the transaction context
             mock_orchestrator._db_session.begin.return_value.__enter__ = Mock()
