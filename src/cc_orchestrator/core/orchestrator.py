@@ -424,52 +424,69 @@ class Orchestrator:
 
         return claude_instance
 
-    def sync_instance_to_database(self, instance: ClaudeInstance) -> None:
+    def sync_instance_to_database(self, instance: ClaudeInstance) -> bool:
         """Sync instance state changes back to the database.
 
         Args:
             instance: ClaudeInstance with potentially updated state
+
+        Returns:
+            bool: True if sync succeeded, False otherwise
         """
+        if not instance or not instance.issue_id:
+            logger.error("Invalid instance provided for sync")
+            return False
+
         if not self._initialized or not self._db_session:
             logger.error("Orchestrator not initialized")
-            return
+            return False
 
         try:
-            # Get the database instance to update
-            db_instance = InstanceCRUD.get_by_issue_id(
-                self._db_session, instance.issue_id
-            )
+            # Use atomic transaction for read-modify-write operation
+            with self._db_session.begin():
+                # Get the database instance to update
+                db_instance = InstanceCRUD.get_by_issue_id(
+                    self._db_session, instance.issue_id
+                )
 
-            logger.info(
-                "Syncing instance to database",
-                issue_id=instance.issue_id,
-                memory_status=instance.status.value,
-                memory_process_id=instance.process_id,
-                db_status=db_instance.status.value,
-                db_process_id=db_instance.process_id,
-            )
+                if not db_instance:
+                    logger.error(
+                        "Instance not found in database during sync",
+                        issue_id=instance.issue_id,
+                    )
+                    return False
 
-            # Update fields that might have changed
-            updated_instance = InstanceCRUD.update(
-                session=self._db_session,
-                instance_id=db_instance.id,
-                status=instance.status,
-                process_id=instance.process_id,
-                last_activity=instance.last_activity,
-            )
-            self._db_session.commit()
+                logger.info(
+                    "Syncing instance to database",
+                    issue_id=instance.issue_id,
+                    memory_status=instance.status.value,
+                    memory_process_id=instance.process_id,
+                    db_status=db_instance.status.value,
+                    db_process_id=db_instance.process_id,
+                )
 
-            logger.info(
-                "Instance state synced to database successfully",
-                issue_id=instance.issue_id,
-                final_status=updated_instance.status.value,
-                final_process_id=updated_instance.process_id,
-            )
+                # Update fields that might have changed
+                updated_instance = InstanceCRUD.update(
+                    session=self._db_session,
+                    instance_id=db_instance.id,
+                    status=instance.status,
+                    process_id=instance.process_id,
+                    last_activity=instance.last_activity,
+                )
+
+                logger.info(
+                    "Instance state synced to database successfully",
+                    issue_id=instance.issue_id,
+                    final_status=updated_instance.status.value,
+                    final_process_id=updated_instance.process_id,
+                )
+
+            return True
 
         except Exception as e:
             logger.error(
                 "Failed to sync instance state to database",
-                issue_id=instance.issue_id,
+                issue_id=instance.issue_id if instance else "unknown",
                 error=str(e),
             )
-            self._db_session.rollback()
+            return False
