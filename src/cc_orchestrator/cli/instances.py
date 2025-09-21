@@ -133,6 +133,11 @@ def start(
                 else:
                     # Instance exists but not running, start it
                     success = await existing_instance.start()
+
+                    # Sync instance state changes back to database
+                    if success:
+                        orchestrator.sync_instance_to_database(existing_instance)
+
                     if success:
                         info = existing_instance.get_info()
                         if output_json:
@@ -171,6 +176,10 @@ def start(
 
             # Start the instance
             success = await instance.start()
+
+            # Sync instance state changes back to database
+            if success:
+                orchestrator.sync_instance_to_database(instance)
 
             if success:
                 info = instance.get_info()
@@ -243,6 +252,10 @@ def stop(issue_id: str, force: bool, timeout: int, output_json: bool) -> None:
 
             # Stop the instance
             success = await instance.stop()
+
+            # Sync instance state changes back to database
+            if success:
+                orchestrator.sync_instance_to_database(instance)
 
             if success:
                 if output_json:

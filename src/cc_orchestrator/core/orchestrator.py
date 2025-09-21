@@ -423,3 +423,53 @@ class Orchestrator:
                 )
 
         return claude_instance
+
+    def sync_instance_to_database(self, instance: ClaudeInstance) -> None:
+        """Sync instance state changes back to the database.
+
+        Args:
+            instance: ClaudeInstance with potentially updated state
+        """
+        if not self._initialized or not self._db_session:
+            logger.error("Orchestrator not initialized")
+            return
+
+        try:
+            # Get the database instance to update
+            db_instance = InstanceCRUD.get_by_issue_id(
+                self._db_session, instance.issue_id
+            )
+
+            logger.info(
+                "Syncing instance to database",
+                issue_id=instance.issue_id,
+                memory_status=instance.status.value,
+                memory_process_id=instance.process_id,
+                db_status=db_instance.status.value,
+                db_process_id=db_instance.process_id,
+            )
+
+            # Update fields that might have changed
+            updated_instance = InstanceCRUD.update(
+                session=self._db_session,
+                instance_id=db_instance.id,
+                status=instance.status,
+                process_id=instance.process_id,
+                last_activity=instance.last_activity,
+            )
+            self._db_session.commit()
+
+            logger.info(
+                "Instance state synced to database successfully",
+                issue_id=instance.issue_id,
+                final_status=updated_instance.status.value,
+                final_process_id=updated_instance.process_id,
+            )
+
+        except Exception as e:
+            logger.error(
+                "Failed to sync instance state to database",
+                issue_id=instance.issue_id,
+                error=str(e),
+            )
+            self._db_session.rollback()
