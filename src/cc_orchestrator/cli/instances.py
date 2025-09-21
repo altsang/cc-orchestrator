@@ -136,7 +136,14 @@ def start(
 
                     # Sync instance state changes back to database
                     if success:
-                        orchestrator.sync_instance_to_database(existing_instance)
+                        sync_success = orchestrator.sync_instance_to_database(
+                            existing_instance
+                        )
+                        if not sync_success:
+                            click.echo(
+                                "Warning: Instance started but state may not persist across sessions",
+                                err=True,
+                            )
 
                     if success:
                         info = existing_instance.get_info()
@@ -179,7 +186,12 @@ def start(
 
             # Sync instance state changes back to database
             if success:
-                orchestrator.sync_instance_to_database(instance)
+                sync_success = orchestrator.sync_instance_to_database(instance)
+                if not sync_success:
+                    click.echo(
+                        "Warning: Instance started but state may not persist across sessions",
+                        err=True,
+                    )
 
             if success:
                 info = instance.get_info()
@@ -255,7 +267,12 @@ def stop(issue_id: str, force: bool, timeout: int, output_json: bool) -> None:
 
             # Sync instance state changes back to database
             if success:
-                orchestrator.sync_instance_to_database(instance)
+                sync_success = orchestrator.sync_instance_to_database(instance)
+                if not sync_success:
+                    click.echo(
+                        "Warning: Instance stopped but state may not persist across sessions",
+                        err=True,
+                    )
 
             if success:
                 if output_json:
