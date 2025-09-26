@@ -22,6 +22,10 @@ class DatabaseManager:
         database_url: str | None = None,
         echo: bool = False,
         pool_pre_ping: bool = True,
+        pool_size: int = 10,
+        max_overflow: int = 20,
+        pool_timeout: int = 30,
+        pool_recycle: int = 3600,
     ) -> None:
         """Initialize database manager.
 
@@ -29,10 +33,18 @@ class DatabaseManager:
             database_url: Database connection URL. If None, uses default SQLite.
             echo: Whether to echo SQL statements to stdout.
             pool_pre_ping: Whether to enable pool pre-ping for connection validation.
+            pool_size: Number of connections to maintain in the pool.
+            max_overflow: Maximum number of overflow connections.
+            pool_timeout: Timeout for getting connection from pool.
+            pool_recycle: Time in seconds to recycle connections.
         """
         self.database_url = database_url or self._get_default_database_url()
         self.echo = echo
         self.pool_pre_ping = pool_pre_ping
+        self.pool_size = pool_size
+        self.max_overflow = max_overflow
+        self.pool_timeout = pool_timeout
+        self.pool_recycle = pool_recycle
 
         self._engine: Engine | None = None
         self._session_factory: sessionmaker[Session] | None = None
@@ -76,10 +88,19 @@ class DatabaseManager:
                 "poolclass": StaticPool,
                 "connect_args": {
                     "check_same_thread": False,  # Allow multi-threading
-                    "timeout": 30,  # 30 second timeout
+                    "timeout": self.pool_timeout,  # Configurable timeout
                 },
             }
             engine_kwargs.update(sqlite_config)
+        else:
+            # Production database configuration with connection pooling
+            pool_config = {
+                "pool_size": self.pool_size,
+                "max_overflow": self.max_overflow,
+                "pool_timeout": self.pool_timeout,
+                "pool_recycle": self.pool_recycle,
+            }
+            engine_kwargs.update(pool_config)
 
         engine = create_engine(self.database_url, **engine_kwargs)
 
@@ -168,6 +189,10 @@ def get_database_manager(
     database_url: str | None = None,
     echo: bool = False,
     reset: bool = False,
+    pool_size: int = 10,
+    max_overflow: int = 20,
+    pool_timeout: int = 30,
+    pool_recycle: int = 3600,
 ) -> DatabaseManager:
     """Get the global database manager instance.
 
@@ -188,6 +213,10 @@ def get_database_manager(
         _db_manager = DatabaseManager(
             database_url=database_url,
             echo=echo,
+            pool_size=pool_size,
+            max_overflow=max_overflow,
+            pool_timeout=pool_timeout,
+            pool_recycle=pool_recycle,
         )
 
         # Create tables if they don't exist

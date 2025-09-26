@@ -8,7 +8,7 @@ from typing import Any
 
 import click
 
-from ..core.orchestrator import Orchestrator
+from ..core.orchestrator import Orchestrator, DatabaseSyncError
 from ..utils.logging import LogContext, get_logger
 
 logger = get_logger(__name__, LogContext.CLI)
@@ -28,9 +28,9 @@ def status(output_json: bool) -> None:
     async def _status() -> None:
         try:
             orchestrator = Orchestrator()
-            await orchestrator.initialize()
+            await orchestrator.initialize(lazy_load=False)  # Need all instances for status
 
-            instances = orchestrator.list_instances()
+            instances = await orchestrator.list_instances()
 
             if not instances:
                 if output_json:
@@ -115,10 +115,10 @@ def start(
     async def _start() -> None:
         try:
             orchestrator = Orchestrator()
-            await orchestrator.initialize()
+            await orchestrator.initialize(lazy_load=True)  # Performance optimization
 
             # Check if instance already exists
-            existing_instance = orchestrator.get_instance(issue_id)
+            existing_instance = await orchestrator.get_instance(issue_id)
             if existing_instance:
                 if existing_instance.is_running():
                     message = f"Instance for issue {issue_id} is already running"
@@ -131,22 +131,36 @@ def start(
                     # Instance exists but not running, start it
                     success = await existing_instance.start()
 
-                    # Sync instance state to database
+                    # Sync instance state to database (FAIL-FAST)
                     try:
                         await orchestrator.sync_instance_state(issue_id)
                         logger.info(
                             "Existing instance state synced to database",
                             instance_id=issue_id,
                         )
+                    except DatabaseSyncError as e:
+                        # Critical failure - stop the instance and fail the operation
+                        logger.error("Critical database sync failure - stopping existing instance", instance_id=issue_id, error=str(e))
+                        await existing_instance.stop()  # Clean up the running process
+
+                        if output_json:
+                            click.echo(json.dumps({"error": "Database sync failed - instance stopped", "issue_id": issue_id, "details": str(e)}))
+                        else:
+                            click.echo(f"ERROR: Failed to persist instance {issue_id} to database", err=True)
+                            click.echo(f"Instance has been stopped to prevent inconsistent state", err=True)
+                        await orchestrator.cleanup()
+                        return
                     except Exception as e:
-                        logger.error(
-                            "Failed to sync existing instance state to database",
-                            instance_id=issue_id,
-                            error=str(e),
-                        )
-                        click.echo(
-                            "Failed to sync instance state to database", err=True
-                        )
+                        # Unexpected error - also fail fast
+                        logger.error("Unexpected error during database sync for existing instance", instance_id=issue_id, error=str(e))
+                        await existing_instance.stop()  # Clean up the running process
+
+                        if output_json:
+                            click.echo(json.dumps({"error": "Instance sync failed", "issue_id": issue_id, "details": str(e)}))
+                        else:
+                            click.echo(f"ERROR: Failed to sync existing instance {issue_id} - operation aborted", err=True)
+                        await orchestrator.cleanup()
+                        return
 
                     if success:
                         info = existing_instance.get_info()
@@ -187,24 +201,37 @@ def start(
             # Start the instance
             success = await instance.start()
 
-            # Sync instance state to database
+            # Sync instance state to database (FAIL-FAST)
             try:
                 await orchestrator.sync_instance_state(issue_id)
                 logger.info("Instance state synced to database", instance_id=issue_id)
+            except DatabaseSyncError as e:
+                # Critical failure - stop the instance and fail the operation
+                logger.error("Critical database sync failure - stopping instance", instance_id=issue_id, error=str(e))
+                await instance.stop()  # Clean up the running process
+                await orchestrator.destroy_instance(issue_id)  # Remove from memory
+
+                if output_json:
+                    click.echo(json.dumps({"error": "Database sync failed - instance stopped", "issue_id": issue_id, "details": str(e)}))
+                else:
+                    click.echo(f"ERROR: Failed to persist instance {issue_id} to database", err=True)
+                    click.echo(f"Instance has been stopped to prevent inconsistent state", err=True)
+                    click.echo(f"Details: {e}", err=True)
+                await orchestrator.cleanup()
+                return
             except Exception as e:
-                logger.error(
-                    "Failed to sync instance state to database",
-                    instance_id=issue_id,
-                    error=str(e),
-                )
-                click.echo("Failed to sync instance state to database", err=True)
-                click.echo(
-                    "ERROR: Instance started but will NOT survive system restart!",
-                    err=True,
-                )
-                click.echo(
-                    "This is a critical issue - contact system administrator", err=True
-                )
+                # Unexpected error - also fail fast
+                logger.error("Unexpected error during database sync", instance_id=issue_id, error=str(e))
+                await instance.stop()  # Clean up the running process
+                await orchestrator.destroy_instance(issue_id)  # Remove from memory
+
+                if output_json:
+                    click.echo(json.dumps({"error": "Instance sync failed", "issue_id": issue_id, "details": str(e)}))
+                else:
+                    click.echo(f"ERROR: Failed to sync instance {issue_id} - operation aborted", err=True)
+                    click.echo(f"Details: {e}", err=True)
+                await orchestrator.cleanup()
+                return
 
             if success:
                 info = instance.get_info()
@@ -267,9 +294,9 @@ def stop(issue_id: str, force: bool, timeout: int, output_json: bool) -> None:
     async def _stop() -> None:
         try:
             orchestrator = Orchestrator()
-            await orchestrator.initialize()
+            await orchestrator.initialize(lazy_load=True)  # Performance optimization - only load specific instance
 
-            instance = orchestrator.get_instance(issue_id)
+            instance = await orchestrator.get_instance(issue_id)
             if not instance:
                 message = f"No instance found for issue {issue_id}"
                 if output_json:
@@ -339,9 +366,9 @@ def list(output_json: bool, running_only: bool) -> None:
     async def _list() -> None:
         try:
             orchestrator = Orchestrator()
-            await orchestrator.initialize()
+            await orchestrator.initialize(lazy_load=False)  # Need all instances for list
 
-            instances = orchestrator.list_instances()
+            instances = await orchestrator.list_instances()
             logger.info("Retrieved instances from orchestrator", count=len(instances))
 
             if running_only:
