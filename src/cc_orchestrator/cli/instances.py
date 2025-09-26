@@ -201,35 +201,58 @@ def start(
             # Start the instance
             success = await instance.start()
 
-            # Sync instance state to database (FAIL-FAST)
+            # CRITICAL: Sync instance state to database (FAIL-FAST BEHAVIOR)
+            # This is the core fix for Issue #59 - ensures instances persist across sessions
             try:
                 await orchestrator.sync_instance_state(issue_id)
                 logger.info("Instance state synced to database", instance_id=issue_id)
-            except DatabaseSyncError as e:
-                # Critical failure - stop the instance and fail the operation
-                logger.error("Critical database sync failure - stopping instance", instance_id=issue_id, error=str(e))
-                await instance.stop()  # Clean up the running process
-                await orchestrator.destroy_instance(issue_id)  # Remove from memory
 
+            except DatabaseSyncError as e:
+                # FAIL-FAST: Critical database sync failure
+                # Rather than allow inconsistent state (instance running but not persisted),
+                # we stop the instance immediately to maintain system integrity
+                logger.error("Critical database sync failure - stopping instance", instance_id=issue_id, error=str(e))
+
+                # Step 1: Stop the running process to prevent orphaned instances
+                await instance.stop()
+
+                # Step 2: Remove from in-memory cache
+                await orchestrator.destroy_instance(issue_id)
+
+                # Step 3: Report failure to user
                 if output_json:
-                    click.echo(json.dumps({"error": "Database sync failed - instance stopped", "issue_id": issue_id, "details": str(e)}))
+                    click.echo(json.dumps({
+                        "error": "Database sync failed - instance stopped",
+                        "issue_id": issue_id,
+                        "details": str(e)
+                    }))
                 else:
                     click.echo(f"ERROR: Failed to persist instance {issue_id} to database", err=True)
                     click.echo(f"Instance has been stopped to prevent inconsistent state", err=True)
                     click.echo(f"Details: {e}", err=True)
+
                 await orchestrator.cleanup()
                 return
+
             except Exception as e:
-                # Unexpected error - also fail fast
+                # FAIL-FAST: Unexpected database error
+                # Same fail-fast behavior for any database-related failure
                 logger.error("Unexpected error during database sync", instance_id=issue_id, error=str(e))
-                await instance.stop()  # Clean up the running process
-                await orchestrator.destroy_instance(issue_id)  # Remove from memory
+
+                # Clean up running instance to prevent inconsistency
+                await instance.stop()
+                await orchestrator.destroy_instance(issue_id)
 
                 if output_json:
-                    click.echo(json.dumps({"error": "Instance sync failed", "issue_id": issue_id, "details": str(e)}))
+                    click.echo(json.dumps({
+                        "error": "Instance sync failed",
+                        "issue_id": issue_id,
+                        "details": str(e)
+                    }))
                 else:
                     click.echo(f"ERROR: Failed to sync instance {issue_id} - operation aborted", err=True)
                     click.echo(f"Details: {e}", err=True)
+
                 await orchestrator.cleanup()
                 return
 
