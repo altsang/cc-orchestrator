@@ -95,8 +95,10 @@ async def get_current_user(
 # Development user store - REMOVE IN PRODUCTION
 # Use environment variable to enable demo users only in development
 _demo_enabled = os.getenv("ENABLE_DEMO_USERS", "false").lower() == "true"
+_testing_mode = os.getenv("TESTING", "false").lower() == "true"
 
-if _demo_enabled:
+if _demo_enabled and not _testing_mode:
+    # Only create demo users if not in testing mode to avoid bcrypt issues
     DEMO_USERS = {
         "admin": {
             "username": "admin",
