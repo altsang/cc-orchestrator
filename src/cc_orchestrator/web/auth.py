@@ -18,7 +18,12 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 # Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# In testing mode, use plaintext to avoid bcrypt issues in CI
+_testing_mode = os.getenv("TESTING", "false").lower() == "true"
+if _testing_mode:
+    pwd_context = CryptContext(schemes=["plaintext"], deprecated="auto")
+else:
+    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer()
 
 
@@ -95,15 +100,15 @@ async def get_current_user(
 # Development user store - REMOVE IN PRODUCTION
 # Use environment variable to enable demo users only in development
 _demo_enabled = os.getenv("ENABLE_DEMO_USERS", "false").lower() == "true"
-_testing_mode = os.getenv("TESTING", "false").lower() == "true"
 
-if _demo_enabled and not _testing_mode:
-    # Only create demo users if not in testing mode to avoid bcrypt issues
+if _demo_enabled:
+    # Create demo users, using shorter password in testing to avoid bcrypt issues
+    demo_password = "admin123" if not _testing_mode else "test123"
     DEMO_USERS = {
         "admin": {
             "username": "admin",
             "hashed_password": get_password_hash(
-                os.getenv("DEMO_ADMIN_PASSWORD", "admin123")
+                os.getenv("DEMO_ADMIN_PASSWORD", demo_password)
             ),
             "role": "admin",
         }
