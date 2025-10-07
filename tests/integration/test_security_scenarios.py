@@ -4,9 +4,10 @@ import asyncio
 from unittest.mock import Mock, patch
 
 import pytest
-from cc_test_orchestrator.core.enums import InstanceStatus
-from cc_test_orchestrator.core.instance import ClaudeInstance
-from cc_test_orchestrator.core.orchestrator import Orchestrator
+
+from cc_orchestrator.core.enums import InstanceStatus
+from cc_orchestrator.core.instance import ClaudeInstance
+from cc_orchestrator.core.orchestrator import Orchestrator
 
 
 class TestSecurityScenarios:
