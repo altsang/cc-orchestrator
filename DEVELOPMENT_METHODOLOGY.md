@@ -610,25 +610,91 @@ claude --dangerously-skip-permissions
 
 ### **Issue Completion Cleanup Protocol**
 
-**MANDATORY**: Clean up all test artifacts and scaffolding when issue work is complete.
+**MANDATORY**: Clean up all development artifacts and scaffolding when issue work is complete. ALL 5 cleanup actions must be performed.
 
-#### **Environment Cleanup Steps:**
+#### **Environment Cleanup Steps (ALL REQUIRED):**
 ```bash
-# 1. Verify issue is closed and PR is merged
+# 1. CLOSE GITHUB ISSUE (if not already closed)
+# Verify issue and PR status first
 gh issue view <NUMBER>
-gh pr list --state merged --limit 5
+gh pr view <PR_NUMBER>
 
-# 2. Kill the dedicated tmux session
+# Close issue if not automatically closed by PR merge
+gh issue close <NUMBER> --comment "Resolved by PR #<PR_NUMBER>. [Brief description of what was implemented]"
+
+# 2. UPDATE PROJECT BOARD STATUS TO "DONE"
+# Get project item ID
+gh project item-list 1 --owner <OWNER> --format json | jq -r '.items[] | select(.content.number == <NUMBER>) | .id'
+
+# Update status to Done
+gh project item-edit --id <ITEM_ID> --project-id <PROJECT_ID> --field-id <STATUS_FIELD_ID> --single-select-option-id <DONE_OPTION_ID>
+
+# Verify project board status
+gh project item-list 1 --owner <OWNER> --format json | jq -r '.items[] | select(.content.number == <NUMBER>) | "Status: \(.status)"'
+
+# 3. REMOVE GIT WORKTREE
+# List worktrees to verify target exists
+git worktree list
+
+# Remove the issue worktree
+git worktree remove cc-orchestrator-issue-<NUMBER>
+
+# Clean up local feature branch (after merge)
+git branch -D feature/issue-<NUMBER>-<description>
+
+# 4. CLEAN UP ORPHANED DIRECTORIES
+# Check for any orphaned test or temporary directories
+ls -la ~/workspace/ | grep -E "cc-orchestrator-issue|test|temp"
+
+# Remove any orphaned directories not tracked by git worktree
+rm -rf ~/workspace/cc-orchestrator-issue-test-*
+rm -rf ~/workspace/cc-orchestrator-temp-*
+
+# 5. KILL TMUX SESSIONS
+# List active tmux sessions
+tmux list-sessions | grep cc-orchestrator
+
+# Kill the dedicated issue session
 tmux kill-session -t "cc-orchestrator-issue-<NUMBER>"
 
-# 3. Remove the git worktree
-git worktree remove ../cc-orchestrator-issue-<NUMBER>
+# Kill any orphaned test sessions
+tmux kill-session -t "cc-orchestrator-test-*" 2>/dev/null || true
+```
 
-# 4. Update project board to "Done"
-gh project item-edit --id <ITEM_ID> --project-id <PROJECT_ID> --field-id <STATUS_FIELD> --single-select-option-id <DONE_ID>
+#### **Mandatory Cleanup Checklist:**
+**ALL 5 actions must be verified complete:**
+- [ ] **1. GitHub Issue**: Closed with resolution comment
+- [ ] **2. Project Board**: Status updated to "Done"
+- [ ] **3. Git Worktree**: Removed and local branch deleted
+- [ ] **4. Orphaned Directories**: All test/temp directories cleaned up
+- [ ] **5. Tmux Sessions**: Issue session and any test sessions killed
 
-# 5. Clean up local feature branch (after merge)
-git branch -D feature/issue-<NUMBER>-<description>
+#### **Final Cleanup Verification:**
+```bash
+# Run comprehensive verification to ensure all cleanup complete
+echo "=== Git Worktrees ===" && \
+git worktree list && \
+echo -e "\n=== Workspace Directories ===" && \
+ls -la ~/workspace/ | grep cc-orchestrator && \
+echo -e "\n=== Tmux Sessions ===" && \
+tmux list-sessions | grep cc-orchestrator && \
+echo -e "\n=== Issue Status ===" && \
+gh issue view <NUMBER> --json state,projectItems --jq '{state: .state, project_status: .projectItems[0].status}'
+```
+
+**Expected verification output:**
+```
+=== Git Worktrees ===
+/Users/altsang/workspace/cc-orchestrator  (bare)
+
+=== Workspace Directories ===
+drwxr-xr-x  41 altsang staff  1312 Oct  6 11:33 cc-orchestrator
+
+=== Tmux Sessions ===
+(no output or only unrelated sessions)
+
+=== Issue Status ===
+{"state":"CLOSED","project_status":{"name":"Done"}}
 ```
 
 #### **Test Worktree Policy:**
@@ -636,18 +702,8 @@ git branch -D feature/issue-<NUMBER>-<description>
 - **No worktrees should persist beyond their active development phase**
 - **Cleanup is mandatory before moving to next issue**
 - **Test branches must be deleted after merge**
-
-#### **Cleanup Verification:**
-```bash
-# Verify no orphaned worktrees
-git worktree list
-
-# Verify no test branches
-git branch -a | grep -E "test|temp|debug"
-
-# Verify clean tmux sessions
-tmux list-sessions | grep cc-orchestrator
-```
+- **Orphaned directories from failed tests must be cleaned up**
+- **All tmux sessions related to completed work must be killed**
 
 ### **Phase Epic Completion Protocol (MANDATORY)**
 
