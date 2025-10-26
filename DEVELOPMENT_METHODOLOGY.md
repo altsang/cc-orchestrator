@@ -637,7 +637,7 @@ gh project item-list 1 --owner <OWNER> --format json | jq -r '.items[] | select(
 git worktree list
 
 # Remove the issue worktree
-git worktree remove cc-orchestrator-issue-<NUMBER>
+git worktree remove /Users/altsang/workspace/cc-orchestrator-issue-<NUMBER>
 
 # Clean up local feature branch (after merge)
 git branch -D feature/issue-<NUMBER>-<description>
@@ -647,8 +647,8 @@ git branch -D feature/issue-<NUMBER>-<description>
 ls -la ~/workspace/ | grep -E "cc-orchestrator-issue|test|temp"
 
 # Remove any orphaned directories not tracked by git worktree
-rm -rf ~/workspace/cc-orchestrator-issue-test-*
-rm -rf ~/workspace/cc-orchestrator-temp-*
+find ~/workspace -maxdepth 1 -type d -name "cc-orchestrator-issue-test-*" -exec rm -rf {} \;
+find ~/workspace -maxdepth 1 -type d -name "cc-orchestrator-temp-*" -exec rm -rf {} \;
 
 # 5. KILL TMUX SESSIONS
 # List active tmux sessions
@@ -658,7 +658,9 @@ tmux list-sessions | grep cc-orchestrator
 tmux kill-session -t "cc-orchestrator-issue-<NUMBER>"
 
 # Kill any orphaned test sessions
-tmux kill-session -t "cc-orchestrator-test-*" 2>/dev/null || true
+for session in $(tmux list-sessions -F "#{session_name}" 2>/dev/null | grep "cc-orchestrator-test-"); do
+  tmux kill-session -t "$session"
+done
 ```
 
 #### **Mandatory Cleanup Checklist:**
@@ -668,6 +670,52 @@ tmux kill-session -t "cc-orchestrator-test-*" 2>/dev/null || true
 - [ ] **3. Git Worktree**: Removed and local branch deleted
 - [ ] **4. Orphaned Directories**: All test/temp directories cleaned up
 - [ ] **5. Tmux Sessions**: Issue session and any test sessions killed
+
+#### **Error Handling Guidance:**
+**Common errors and safe resolution steps:**
+
+**Git Worktree Errors:**
+```bash
+# Error: "worktree is locked"
+# Solution: Remove lock file and retry
+rm /Users/altsang/workspace/cc-orchestrator-issue-<NUMBER>/.git/worktrees/*/gitdir.lock
+git worktree remove /Users/altsang/workspace/cc-orchestrator-issue-<NUMBER>
+
+# Error: "worktree already removed" or "not a working tree"
+# Solution: Clean up manually and prune
+rm -rf /Users/altsang/workspace/cc-orchestrator-issue-<NUMBER>
+git worktree prune
+```
+
+**Tmux Session Errors:**
+```bash
+# Error: "no session found" or "session not found"
+# Solution: This is safe - session already cleaned up, continue
+
+# Error: "can't find session" when listing
+# Solution: No action needed, session doesn't exist
+```
+
+**Directory Cleanup Errors:**
+```bash
+# Error: "No such file or directory"
+# Solution: Directory already cleaned up, continue
+
+# Error: "Permission denied"
+# Solution: Check ownership and use sudo if necessary
+sudo find ~/workspace -maxdepth 1 -type d -name "cc-orchestrator-issue-test-*" -exec rm -rf {} \;
+```
+
+**GitHub API Errors:**
+```bash
+# Error: "issue already closed"
+# Solution: Verify closure reason and continue
+gh issue view <NUMBER> --json state,closedAt,stateReason
+
+# Error: "project item not found"
+# Solution: Item may already be removed or moved, verify manually
+gh project item-list 1 --owner <OWNER> --format json | jq '.items[] | select(.content.number == <NUMBER>)'
+```
 
 #### **Final Cleanup Verification:**
 ```bash
