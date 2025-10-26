@@ -585,10 +585,10 @@ claude --dangerously-skip-permissions
 **Control Tower Preparation Steps:**
 ```bash
 # 1. Create isolated git worktree
-git worktree add -b feature/issue-<NUMBER>-<description> ../cc-orchestrator-issue-<NUMBER>
+git worktree add -b feature/issue-<NUMBER>-<description> ~/workspace/cc-orchestrator-issue-<NUMBER>
 
 # 2. Create dedicated tmux session
-tmux new-session -d -s "cc-orchestrator-issue-<NUMBER>" -c "/Users/altsang/workspace/cc-orchestrator-issue-<NUMBER>"
+tmux new-session -d -s "cc-orchestrator-issue-<NUMBER>" -c "~/workspace/cc-orchestrator-issue-<NUMBER>"
 
 # 3. Update GitHub project board status
 gh project item-edit --id <ITEM_ID> --field-id <STATUS_FIELD> --single-select-option-id <IN_PROGRESS_ID>
@@ -623,43 +623,61 @@ gh pr view <PR_NUMBER>
 gh issue close <NUMBER> --comment "Resolved by PR #<PR_NUMBER>. [Brief description of what was implemented]"
 
 # 2. UPDATE PROJECT BOARD STATUS TO "DONE"
-# Get project item ID
+# Get project item ID (replace <OWNER> with GitHub username, e.g., "altsang")
 gh project item-list 1 --owner <OWNER> --format json | jq -r '.items[] | select(.content.number == <NUMBER>) | .id'
 
 # Update status to Done
 gh project item-edit --id <ITEM_ID> --project-id <PROJECT_ID> --field-id <STATUS_FIELD_ID> --single-select-option-id <DONE_OPTION_ID>
 
 # Verify project board status
-gh project item-list 1 --owner <OWNER> --format json | jq -r '.items[] | select(.content.number == <NUMBER>) | "Status: \(.status)"'
+gh project item-list 1 --owner <OWNER> --format json | jq -r '.items[] | select(.content.number == <NUMBER>) | "Status: \(.status // "No status found")"'
 
 # 3. REMOVE GIT WORKTREE
+# ⚠️ WARNING: Only proceed after verifying:
+#   - PR is merged to main/master
+#   - All changes are committed and pushed
+#   - No uncommitted work exists in the worktree
+
 # List worktrees to verify target exists
 git worktree list
 
+# Check for uncommitted changes in the worktree
+cd ~/workspace/cc-orchestrator-issue-<NUMBER>
+git status
+
+# If changes exist and should be saved:
+# git stash
+# git stash drop  # Or keep if needed
+
+# Return to main worktree
+cd ~/workspace/cc-orchestrator
+
 # Remove the issue worktree
-git worktree remove /Users/altsang/workspace/cc-orchestrator-issue-<NUMBER>
+git worktree remove ~/workspace/cc-orchestrator-issue-<NUMBER>
 
 # Clean up local feature branch (after merge)
 git branch -D feature/issue-<NUMBER>-<description>
 
 # 4. CLEAN UP ORPHANED DIRECTORIES
 # Check for any orphaned test or temporary directories
-ls -la ~/workspace/ | grep -E "cc-orchestrator-issue|test|temp"
+ls -la ~/workspace/ | grep -E "cc-orchestrator-issue|test|temp" || echo "No test/temp directories found"
 
-# Remove any orphaned directories not tracked by git worktree
-find ~/workspace -maxdepth 1 -type d -name "cc-orchestrator-issue-test-*" -exec rm -rf {} \;
-find ~/workspace -maxdepth 1 -type d -name "cc-orchestrator-temp-*" -exec rm -rf {} \;
+# List directories to be removed (REVIEW THIS OUTPUT CAREFULLY)
+find ~/workspace -maxdepth 1 -type d \( -name "cc-orchestrator-issue-test-*" -o -name "cc-orchestrator-temp-*" \)
+
+# After verifying the list is correct, remove them
+find ~/workspace -maxdepth 1 -type d \( -name "cc-orchestrator-issue-test-*" -o -name "cc-orchestrator-temp-*" \) -exec rm -rf {} +
 
 # 5. KILL TMUX SESSIONS
 # List active tmux sessions
-tmux list-sessions | grep cc-orchestrator
+tmux list-sessions | grep cc-orchestrator || echo "No cc-orchestrator sessions found"
 
 # Kill the dedicated issue session
 tmux kill-session -t "cc-orchestrator-issue-<NUMBER>"
 
 # Kill any orphaned test sessions
 for session in $(tmux list-sessions -F "#{session_name}" 2>/dev/null | grep "cc-orchestrator-test-"); do
-  tmux kill-session -t "$session"
+  tmux kill-session -t "$session" 2>/dev/null || echo "Session $session already terminated"
 done
 ```
 
@@ -677,13 +695,13 @@ done
 **Git Worktree Errors:**
 ```bash
 # Error: "worktree is locked"
-# Solution: Remove lock file and retry
-rm /Users/altsang/workspace/cc-orchestrator-issue-<NUMBER>/.git/worktrees/*/gitdir.lock
-git worktree remove /Users/altsang/workspace/cc-orchestrator-issue-<NUMBER>
+# Solution: Remove lock file from main repository and retry
+rm ~/workspace/cc-orchestrator/.git/worktrees/cc-orchestrator-issue-<NUMBER>/gitdir.lock
+git worktree remove ~/workspace/cc-orchestrator-issue-<NUMBER>
 
 # Error: "worktree already removed" or "not a working tree"
 # Solution: Clean up manually and prune
-rm -rf /Users/altsang/workspace/cc-orchestrator-issue-<NUMBER>
+rm -rf ~/workspace/cc-orchestrator-issue-<NUMBER>
 git worktree prune
 ```
 
@@ -702,8 +720,16 @@ git worktree prune
 # Solution: Directory already cleaned up, continue
 
 # Error: "Permission denied"
-# Solution: Check ownership and use sudo if necessary
-sudo find ~/workspace -maxdepth 1 -type d -name "cc-orchestrator-issue-test-*" -exec rm -rf {} \;
+# Solution: First check ownership and verify paths
+ls -la ~/workspace/cc-orchestrator-issue-test-* 2>/dev/null || echo "No test directories found"
+
+# ⚠️ CAUTION: Only use sudo after verifying the exact paths above
+# If ownership is incorrect, fix it first:
+sudo chown -R $(whoami) ~/workspace/cc-orchestrator-issue-test-*
+sudo chown -R $(whoami) ~/workspace/cc-orchestrator-temp-*
+
+# Then remove without sudo:
+find ~/workspace -maxdepth 1 -type d \( -name "cc-orchestrator-issue-test-*" -o -name "cc-orchestrator-temp-*" \) -exec rm -rf {} +
 ```
 
 **GitHub API Errors:**
@@ -723,11 +749,11 @@ gh project item-list 1 --owner <OWNER> --format json | jq '.items[] | select(.co
 echo "=== Git Worktrees ===" && \
 git worktree list && \
 echo -e "\n=== Workspace Directories ===" && \
-ls -la ~/workspace/ | grep cc-orchestrator && \
+(ls -la ~/workspace/ | grep cc-orchestrator || echo "No cc-orchestrator directories found") && \
 echo -e "\n=== Tmux Sessions ===" && \
-tmux list-sessions | grep cc-orchestrator && \
+(tmux list-sessions | grep cc-orchestrator || echo "No cc-orchestrator sessions found") && \
 echo -e "\n=== Issue Status ===" && \
-gh issue view <NUMBER> --json state,projectItems --jq '{state: .state, project_status: .projectItems[0].status}'
+gh issue view <NUMBER> --json state,projectItems --jq '{state: .state, project_status: (.projectItems[0].status // "No project assigned")}'
 ```
 
 **Expected verification output:**
