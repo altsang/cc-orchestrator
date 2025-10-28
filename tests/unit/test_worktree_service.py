@@ -229,15 +229,21 @@ class TestWorktreeService:
         test_path = "/test/path"
         mock_worktree = Mock()
         mock_worktree.id = 1
+        mock_worktree.path = test_path
 
         mock_git_manager.remove_worktree.return_value = True
 
         with patch("cc_orchestrator.core.worktree_service.WorktreeCRUD") as mock_crud:
+            # First try by name returns None, then by path returns worktree
+            mock_crud.get_by_name.return_value = None
             mock_crud.get_by_path.return_value = mock_worktree
 
             result = service.remove_worktree(test_path)
 
             assert result is True
+            # Verify it tried name lookup first
+            mock_crud.get_by_name.assert_called_once_with(mock_db_session, test_path)
+            # Then fell back to path lookup
             mock_crud.get_by_path.assert_called_once_with(
                 mock_db_session, os.path.abspath(test_path)
             )
@@ -380,13 +386,19 @@ class TestWorktreeService:
         """Test getting worktree status by path."""
         test_path = "/test/path"
         mock_worktree = Mock()
+        mock_worktree.path = test_path
 
         with patch("cc_orchestrator.core.worktree_service.WorktreeCRUD") as mock_crud:
+            # First try by name returns None, then by path returns worktree
+            mock_crud.get_by_name.return_value = None
             mock_crud.get_by_path.return_value = mock_worktree
             mock_git_manager.get_worktree_status.return_value = {}
 
             service.get_worktree_status(test_path)
 
+            # Verify it tried name lookup first
+            mock_crud.get_by_name.assert_called_once_with(mock_db_session, test_path)
+            # Then fell back to path lookup
             mock_crud.get_by_path.assert_called_once_with(
                 mock_db_session, os.path.abspath(test_path)
             )

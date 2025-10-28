@@ -517,6 +517,20 @@ class WorktreeCRUD:
         return worktree
 
     @staticmethod
+    def get_by_name(session: Session, name: str) -> Worktree | None:
+        """Get worktree by name.
+
+        Args:
+            session: Database session.
+            name: Worktree name.
+
+        Returns:
+            Worktree object or None if not found.
+        """
+        worktree = session.query(Worktree).filter(Worktree.name == name).first()
+        return worktree
+
+    @staticmethod
     def get_by_id(session: Session, worktree_id: int) -> Worktree:
         """Get worktree by ID.
 

@@ -176,7 +176,7 @@ class WorktreeService:
         """Remove a worktree and its database record.
 
         Args:
-            path_or_id: Worktree path or database ID
+            path_or_id: Worktree name, path, or database ID
             force: Force removal even with uncommitted changes
 
         Returns:
@@ -188,12 +188,23 @@ class WorktreeService:
         try:
             with get_db_session() as session:
                 # Get worktree record
+                worktree = None
                 if isinstance(path_or_id, int):
                     worktree = WorktreeCRUD.get_by_id(session, path_or_id)
-                    worktree_path = worktree.path
                 else:
-                    worktree_path = os.path.abspath(path_or_id)
-                    worktree = WorktreeCRUD.get_by_path(session, worktree_path)
+                    # Try lookup by name first
+                    worktree = WorktreeCRUD.get_by_name(session, path_or_id)
+
+                    # If not found by name, try as absolute path
+                    if worktree is None:
+                        worktree_path = os.path.abspath(path_or_id)
+                        worktree = WorktreeCRUD.get_by_path(session, worktree_path)
+
+                if worktree is None:
+                    raise WorktreeServiceError(f"Worktree '{path_or_id}' not found")
+
+                # Use the path from database record
+                worktree_path = worktree.path
 
                 logger.info(f"Removing worktree '{worktree.name}' at {worktree_path}")
 
@@ -351,7 +362,7 @@ class WorktreeService:
         """Get detailed status of a worktree.
 
         Args:
-            path_or_id: Worktree path or database ID
+            path_or_id: Worktree name, path, or database ID
 
         Returns:
             Dictionary with detailed worktree status
@@ -359,13 +370,22 @@ class WorktreeService:
         try:
             with get_db_session() as session:
                 # Get worktree record
+                worktree = None
                 if isinstance(path_or_id, int):
                     worktree = WorktreeCRUD.get_by_id(session, path_or_id)
                 else:
-                    worktree_path = os.path.abspath(path_or_id)
-                    worktree = WorktreeCRUD.get_by_path(session, worktree_path)
+                    # Try lookup by name first
+                    worktree = WorktreeCRUD.get_by_name(session, path_or_id)
 
-                # Get git status
+                    # If not found by name, try as absolute path
+                    if worktree is None:
+                        worktree_path = os.path.abspath(path_or_id)
+                        worktree = WorktreeCRUD.get_by_path(session, worktree_path)
+
+                if worktree is None:
+                    raise WorktreeServiceError(f"Worktree '{path_or_id}' not found")
+
+                # Get git status using the path from database record
                 git_status = self.git_manager.get_worktree_status(worktree.path)
 
                 # Combine database and git information
