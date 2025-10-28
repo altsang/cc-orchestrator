@@ -437,3 +437,87 @@ class TestWorktreesCLIIntegration:
 
         finally:
             os.chdir(original_cwd)
+
+    def test_worktree_status_and_remove_by_name(
+        self, cli_runner, git_repo, worktree_base_dir
+    ):
+        """Test worktree status and remove by NAME (Issue #65 bug scenario).
+
+        This test verifies the fix for Issue #65 where status and remove commands
+        failed when using worktree name instead of full path.
+
+        The bug was: commands used os.path.abspath(name) which resolved relative
+        to CWD, not the actual worktree path in database.
+
+        This test ensures:
+        1. Status command works with worktree name (not full path)
+        2. Remove command works with worktree name (not full path)
+        3. Works regardless of current working directory
+        """
+        original_cwd = os.getcwd()
+        os.chdir(git_repo)
+
+        try:
+            worktree_path = worktree_base_dir / "test-worktree"
+
+            # Create worktree (stored at worktree_base_dir/test-worktree)
+            result = cli_runner.invoke(
+                main,
+                [
+                    "worktrees",
+                    "create",
+                    "test-worktree",
+                    "feature/test-123",
+                    "--path",
+                    str(worktree_path),
+                ],
+            )
+            assert result.exit_code == 0, f"Create failed: {result.output}"
+            assert "Created worktree 'test-worktree'" in result.output
+
+            # Verify worktree path in database (should be worktree_base_dir/test-worktree)
+            with get_db_session() as session:
+                worktrees = WorktreeCRUD.list_all(session)
+                assert len(worktrees) == 1
+                assert worktrees[0].name == "test-worktree"
+                db_path = worktrees[0].path
+                assert db_path == str(worktree_path)
+
+            # TEST 1: Get status by NAME (not path) - This is the Issue #65 bug scenario
+            # Before fix: would try to find worktree at CWD/test-worktree (wrong path)
+            # After fix: looks up by name, finds correct path in database
+            result = cli_runner.invoke(main, ["worktrees", "status", "test-worktree"])
+            assert result.exit_code == 0, f"Status by name failed: {result.output}"
+            assert "test-worktree" in result.output
+            assert "feature/test-123" in result.output
+
+            # TEST 2: Change CWD and try status by name again
+            # This is the critical test - before fix, this would fail because
+            # os.path.abspath("test-worktree") from different CWD gives wrong path
+            temp_other_dir = worktree_base_dir / "other-dir"
+            temp_other_dir.mkdir()
+            os.chdir(temp_other_dir)
+
+            result = cli_runner.invoke(main, ["worktrees", "status", "test-worktree"])
+            assert (
+                result.exit_code == 0
+            ), f"Status by name from different CWD failed: {result.output}"
+            assert "test-worktree" in result.output
+
+            # Change back to git repo for remove operation (needed for git commands)
+            os.chdir(git_repo)
+
+            # TEST 3: Remove by NAME (not path) - Issue #65 bug also affected remove
+            result = cli_runner.invoke(main, ["worktrees", "remove", "test-worktree"])
+            assert result.exit_code == 0, f"Remove by name failed: {result.output}"
+            assert "Successfully removed worktree" in result.output
+
+            # Verify worktree was actually removed
+            with get_db_session() as session:
+                worktrees = WorktreeCRUD.list_all(session)
+                assert len(worktrees) == 0, "Worktree should be removed from database"
+
+            assert not worktree_path.exists(), "Worktree directory should be removed"
+
+        finally:
+            os.chdir(original_cwd)
